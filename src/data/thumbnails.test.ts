@@ -38,6 +38,13 @@ describe('thumbnail set', () => {
     expect(v.frames.map(name)).toEqual(['sd1.jpg', 'sd2.jpg', 'sd3.jpg'])
   })
 
+  it('falls back to the 320px stills when the sd ones are missing too', () => {
+    setLoadSeed(seedFor(1))
+    const v = expandRecord({ ...rec, m: 0, s: 0 })
+    expect(name(v.backdrop)).toBe('mq1.jpg')
+    expect(v.frames.map(name)).toEqual(['mq1.jpg', 'mq2.jpg', 'mq3.jpg'])
+  })
+
   it('keeps a source-site backdrop instead of rotating it', () => {
     setLoadSeed(seedFor(2))
     const v = expandRecord({ ...rec, m: 0, b: 'https://oer.upou.edu.ph/x.jpg' })

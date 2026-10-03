@@ -44,9 +44,9 @@ export function expandRecord(r: CatalogRecord): Video {
   const hiRes = r.m !== 0
   // The set is the YouTube thumbnail plus its three still frames; small and large share an index.
   // Without 1280px stills, the 640px "sd" ones (4:3 letterboxed; object-fit: cover crops the bars)
-  // still beat the 320px thumbnails when enlarged.
+  // still beat the 320px thumbnails when enlarged; `s: 0` marks videos that lack those too.
   const small = ['mqdefault', 'mq1', 'mq2', 'mq3'].map((n) => image(r.y, n))
-  const size = hiRes ? 'maxres' : 'sd'
+  const size = hiRes ? 'maxres' : r.s === 0 ? 'mq' : 'sd'
   const large = [
     r.b ?? image(r.y, `${size}default`),
     ...[1, 2, 3].map((n) => image(r.y, `${size}${n}`)),

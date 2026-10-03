@@ -38,8 +38,10 @@ export interface CatalogRecord {
   g?: string[]
   /** Featured on the source site. */
   f?: 1
-  /** 0 when YouTube has no maxres still frames: use mq1..3 (and mqdefault as the backdrop). */
+  /** 0 when YouTube has no 1280px still frames: use the 640px sd stills. */
   m?: 0
+  /** 0 when the 640px sd stills are missing as well: only the 320px mq images exist. */
+  s?: 0
   /** Backdrop URL (og:image or maxresdefault) when it is not the YouTube default for `m`. */
   b?: string
   /** Channel, only when it is not "UP Open University". */

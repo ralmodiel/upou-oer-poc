@@ -1,7 +1,7 @@
+import { CheckIcon, PlusIcon } from '../../components/icons'
 import Button from '../../components/ui/Button'
 import { useMyList } from '../../lib/storage'
 import type { Video } from '../../types'
-import { CheckIcon, PlusIcon } from './icons'
 
 /** My List toggle with a visible label. */
 export default function SaveButton({ video }: { video: Video }) {

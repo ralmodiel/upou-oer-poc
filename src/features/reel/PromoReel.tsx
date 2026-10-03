@@ -18,6 +18,9 @@ import { DECODE_CAP_MS, settleImages } from './preload'
 import './reel.css'
 
 export const REEL_MS = 10_000
+export type ReelVariant = 'full' | 'preview'
+// Preview stages up to this many device pixels wide use the 320px stills.
+const SMALL_STAGE_PX = 640
 
 // Wordmark letters, indexed across both words so the kinetic ident can drop them in one by one.
 const WORDMARK = ['UPOU', 'OER'].map((word, wi, words) => {
@@ -31,20 +34,38 @@ interface Stills {
   backdrop: string | null
 }
 
-interface Props {
+export interface PromoReelProps {
   video: Video
+  /** Called once, when the reel ends or is skipped. */
   onComplete: () => void
+  /**
+   * `full` (default) is the watch stage: Skip, sound and the end-card countdown.
+   * `preview` fits a card's 16:9 box on hover or focus: silent, no controls, lighter effects
+   * and type sized for 160–480px stages. Same 10 s timeline, still seeded per video.
+   */
+  variant?: ReelVariant
+  /** Start silent whatever the stored preference (previews always are). */
+  muted?: boolean
 }
 
-/** Ten-second promo generated from the video's data; calls `onComplete` once when done or skipped. */
-export default function PromoReel({ video, onComplete }: Props) {
+/** Ten-second preview generated from the video's data; calls `onComplete` once when done or skipped. */
+export default function PromoReel({
+  video,
+  onComplete,
+  variant = 'full',
+  muted = false,
+}: PromoReelProps) {
+  const preview = variant === 'preview'
+  const silent = muted || preview
   const plan = useMemo(() => buildReelPlan(video), [video])
   const style = useMemo(
     () => ({ ...plan.style, '--reel-ms': `${REEL_MS}ms` }) as CSSProperties,
     [plan],
   )
   const [loaded, setLoaded] = useState<Stills | null>(null)
-  const [soundOn, setSoundOn] = usePersistentState('upou:reel-sound', true)
+  // First visits are silent; stored values may be hand-edited, so only `true` turns sound on.
+  const [stored, setStored] = usePersistentState<unknown>('upou:reel-sound', false)
+  const soundOn = !silent && stored === true
   const rootRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<ReelAudio | null>(null)
   const clockRef = useRef<Clock | null>(null)
@@ -63,6 +84,7 @@ export default function PromoReel({ video, onComplete }: Props) {
 
   // Sound is set up while the stills decode: starting an AudioContext can stall the main thread.
   useEffect(() => {
+    if (silent) return
     const audio = createReelAudio(plan.rootHz, () => clockRef.current?.elapsed() ?? 0)
     audioRef.current = audio
     audio.setMuted(!soundWanted())
@@ -70,31 +92,35 @@ export default function PromoReel({ video, onComplete }: Props) {
       audio.dispose()
       audioRef.current = null
     }
-  }, [plan])
+  }, [plan, silent])
 
   // Decode the stills (capped) before the clock starts; failures fall back to the backdrop or a gradient.
   useEffect(() => {
     let live = true
-    const srcs = [video.backdrop, ...plan.shots.map((s) => s.src)]
-    void settleImages(srcs, DECODE_CAP_MS).then(([backdropOk, ...shotOk]) => {
+    // Small preview stages take the 320px stills: good enough there and far cheaper on hover.
+    const width = (rootRef.current?.clientWidth ?? 0) * (window.devicePixelRatio || 1)
+    const small = preview && width <= SMALL_STAGE_PX
+    const backdrop = small ? video.thumbnail : video.backdrop
+    const shots = plan.shots.map((s) => (small ? s.small : s.src))
+    void settleImages([backdrop, ...shots], DECODE_CAP_MS).then(([backdropOk, ...shotOk]) => {
       if (!live) return
-      const fallback = backdropOk ? video.backdrop : null
+      const fallback = backdropOk ? backdrop : null
       setLoaded({
         key: video.id,
-        shots: plan.shots.map((s, i) => (shotOk[i] ? s.src : fallback)),
-        backdrop: fallback ?? plan.shots.find((_, i) => shotOk[i])?.src ?? null,
+        shots: shots.map((src, i) => (shotOk[i] ? src : fallback)),
+        backdrop: fallback ?? shots.find((_, i) => shotOk[i]) ?? null,
       })
     })
     return () => {
       live = false
     }
-  }, [video, plan])
+  }, [video, plan, preview])
 
   // One timer drives completion; animations, timer and audio pause together while the tab is hidden.
   useEffect(() => {
     const root = rootRef.current
+    if (!started || !root) return
     const audio = audioRef.current
-    if (!started || !root || !audio) return
     const clock = createClock(REEL_MS, () => onTimeUp())
     clockRef.current = clock
     let running = false
@@ -104,12 +130,12 @@ export default function PromoReel({ video, onComplete }: Props) {
       root.toggleAttribute('data-paused', hidden)
       if (hidden) {
         clock.pause()
-        audio.pause()
+        audio?.pause()
         // Flush styles so the CSS pause lands before the tab stops rendering.
         root.getBoundingClientRect()
       } else if (running) {
         clock.resume()
-        audio.resume()
+        audio?.resume()
       }
     }
     // Clock and sound follow the CSS timeline: its start time is only known once it is ready,
@@ -120,15 +146,15 @@ export default function PromoReel({ video, onComplete }: Props) {
       running = true
       clock.advance(Number(timeline?.currentTime) || 0)
       sync()
-      audio.begin()
+      audio?.begin()
     }
     // On direct page loads audio starts suspended; a first press on the reel can unlock it.
-    const unlock = () => audio.resume()
+    const unlock = () => audio?.resume()
     sync()
     if (timeline) timeline.ready.then(begin, () => {})
     else begin()
     document.addEventListener('visibilitychange', sync)
-    root.addEventListener('pointerdown', unlock)
+    if (audio) root.addEventListener('pointerdown', unlock)
     return () => {
       disposed = true
       document.removeEventListener('visibilitychange', sync)
@@ -145,54 +171,68 @@ export default function PromoReel({ video, onComplete }: Props) {
   return (
     <div
       ref={rootRef}
-      role="group"
-      aria-label={`Promo reel: ${video.title}`}
+      role={preview ? undefined : 'group'}
+      aria-label={preview ? undefined : `Preview: ${video.title}`}
+      aria-hidden={preview || undefined}
       className="reel"
+      data-variant={variant}
       data-template={plan.template}
       data-accent={plan.accent}
       data-side={plan.side}
       data-motion={plan.motion}
       data-end={plan.ending}
-      data-lowres={plan.lowRes || undefined}
+      data-lowres={(plan.lowRes && !preview) || undefined}
       style={style}
     >
       {stills ? (
-        <Timeline plan={plan} stills={stills} />
+        <Timeline plan={plan} stills={stills} preview={preview} />
       ) : (
-        <div className="reel-loading" role="status">
-          <span className="sr-only">Loading promo</span>
+        <div className="reel-loading" role={preview ? undefined : 'status'}>
+          {!preview && <span className="sr-only">Loading preview</span>}
         </div>
       )}
-      <div className="reel-controls">
-        <button
-          type="button"
-          className="reel-btn reel-sound"
-          aria-pressed={soundOn}
-          onClick={() => setSoundOn((on) => !on)}
-        >
-          {soundOn ? <SoundOnIcon /> : <SoundOffIcon />}
-          <span>{soundOn ? 'Sound on' : 'Sound off'}</span>
-        </button>
-        <button type="button" className="reel-btn reel-skip" onClick={complete}>
-          <span>Skip intro</span>
-          <SkipIcon />
-        </button>
-      </div>
+      {!preview && (
+        <div className="reel-controls">
+          {!silent && (
+            <button
+              type="button"
+              className="reel-btn reel-sound"
+              aria-pressed={soundOn}
+              onClick={() => setStored(!soundOn)}
+            >
+              {soundOn ? <SoundOnIcon /> : <SoundOffIcon />}
+              <span>{soundOn ? 'Mute' : 'Unmute'}</span>
+            </button>
+          )}
+          <button type="button" className="reel-btn reel-skip" onClick={complete}>
+            <span>Skip preview</span>
+            <SkipIcon />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-// Static once mounted: the CSS timeline runs without React re-rendering it.
-const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stills: Stills }) {
+interface TimelineProps {
+  plan: ReelPlan
+  stills: Stills
+  preview: boolean
+}
+
+// Static once mounted: the CSS timeline runs without React re-rendering it. The montage is
+// decorative for assistive tech; the end card carries the one readable summary.
+const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps) {
+  const framed = plan.lowRes && !preview && plan.template === 'cinematic'
   return (
     <>
       {/* Low-res stills are shown framed over a blurred fill instead of blown up. */}
-      {plan.lowRes && plan.template === 'cinematic' && stills.backdrop && (
+      {framed && stills.backdrop && (
         <div className="reel-backfill" aria-hidden="true">
           <img src={stills.backdrop} alt="" draggable={false} />
         </div>
       )}
-      <div className="reel-stage">
+      <div className="reel-stage" aria-hidden="true">
         {plan.shots.map((shot, i) => (
           <div key={i} className="reel-shot" style={shot.style}>
             <div className="reel-tx" data-tx={shot.tx}>
@@ -203,26 +243,28 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
           </div>
         ))}
       </div>
-      <div className="reel-frame" />
-      <div className="reel-shade" />
-      <div className="reel-rule" />
-      <p className="reel-index" aria-hidden="true">
-        <span className="reel-index-now">
-          {INDEX_STYLES.map((s, i) => (
-            <span key={i} style={s}>{`0${i + 1}`}</span>
-          ))}
-        </span>
-        <span>/ 03</span>
-      </p>
+      <div className="reel-frame" aria-hidden="true" />
+      <div className="reel-shade" aria-hidden="true" />
+      <div className="reel-rule" aria-hidden="true" />
+      {!preview && (
+        <p className="reel-index" aria-hidden="true">
+          <span className="reel-index-now">
+            {INDEX_STYLES.map((s, i) => (
+              <span key={i} style={s}>{`0${i + 1}`}</span>
+            ))}
+          </span>
+          <span>/ 03</span>
+        </p>
+      )}
 
-      <div className="reel-copy">
+      <div className="reel-copy" aria-hidden="true">
         <div className="reel-titleblock" style={plan.titleStyle}>
           {plan.kicker && (
             <p className="reel-kicker" style={plan.kickerStyle}>
               {plan.kicker}
             </p>
           )}
-          <p className="reel-title" aria-hidden="true">
+          <p className="reel-title">
             {plan.lines.map((line, li) => (
               <span
                 key={li}
@@ -252,7 +294,7 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
             </p>
           )}
           {plan.tags.length > 0 && (
-            <ul className="reel-tags" aria-label="Topics">
+            <ul className="reel-tags">
               {plan.tags.map((tag) => (
                 <li key={tag.text} style={tag.style}>
                   {tag.text}
@@ -264,9 +306,9 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
       </div>
 
       <div className="reel-ident">
-        <span className="reel-ident-wash" />
+        <span className="reel-ident-wash" aria-hidden="true" />
         <p className="reel-wordmark">
-          <span className="reel-ident-block" />
+          <span className="reel-ident-block" aria-hidden="true" />
           <span className="sr-only">UPOU OER</span>
           <span className="reel-wm" aria-hidden="true">
             {WORDMARK.map((word, wi) => (
@@ -280,12 +322,12 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
             ))}
           </span>
         </p>
-        <span className="reel-streak" />
+        <span className="reel-streak" aria-hidden="true" />
         <p className="reel-ident-sub">Open Educational Resources</p>
       </div>
 
       <div className="reel-end">
-        <div className="reel-end-poster">
+        <div className="reel-end-poster" aria-hidden="true">
           <div className="reel-end-art">
             {stills.backdrop && <img src={stills.backdrop} alt="" draggable={false} />}
           </div>
@@ -293,7 +335,7 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
         <div className="reel-end-copy">
           <p className="reel-eyebrow">
             <span className="reel-live" aria-hidden="true" />
-            Now playing
+            {preview ? 'Preview' : 'Now playing'}
           </p>
           <p className="reel-end-title">{plan.title}</p>
           <p className="reel-end-meta">
@@ -304,27 +346,39 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
               </span>
             ))}
           </p>
-          <p className="reel-count">
-            Starting in
-            {TICK_STYLES.map((s, i) => (
-              <Fragment key={i}>
-                {i > 0 && (
-                  <span className="reel-sep" aria-hidden="true">
-                    ·
+          {!preview && (
+            <p className="reel-count" role="status">
+              Starting in
+              {TICK_STYLES.map((s, i) => (
+                <Fragment key={i}>
+                  {i > 0 && (
+                    <span className="reel-sep" aria-hidden="true">
+                      ·
+                    </span>
+                  )}
+                  <span className="reel-digit" style={s}>
+                    {3 - i}
                   </span>
-                )}
-                <span className="reel-digit" style={s}>
-                  {3 - i}
-                </span>
-              </Fragment>
-            ))}
-          </p>
+                </Fragment>
+              ))}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="reel-vignette" />
-      <div className="reel-grain" />
-      <div className="reel-progress" />
+      {!preview && (
+        <>
+          <div className="reel-vignette" aria-hidden="true" />
+          <div className="reel-grain" aria-hidden="true" />
+          <div
+            className="reel-progress"
+            role="progressbar"
+            aria-label="Preview progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </>
+      )}
     </>
   )
 })

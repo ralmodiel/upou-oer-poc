@@ -1,5 +1,65 @@
 /* Watch page bits that utilities don't cover. */
 
+.watch-page {
+  position: relative;
+  isolation: isolate;
+}
+
+/*
+  Blurred, dimmed still behind the player column. The image is laid out at a quarter of the
+  band and scaled up (with a little overscan for the blurred edges), so the blur runs on a small
+  layer; the gradient fades it into the page before the article text starts.
+*/
+.watch-backdrop {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: min(calc(56.25vw + 8rem), 100dvh);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@media (width >= 64rem) {
+  .watch-backdrop {
+    height: min(calc(37.5vw + 8rem), 46rem);
+  }
+}
+
+.watch-backdrop img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 25%;
+  object-fit: cover;
+  transform-origin: 0 0;
+  transform: scale(4.6) translate(-6.5%, -6.5%);
+  filter: blur(6px) saturate(1.1);
+  opacity: 0;
+}
+
+.watch-backdrop img[data-loaded] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-backdrop img {
+    transition: opacity 600ms var(--ease-out-soft, ease);
+  }
+}
+
+.watch-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-paper) 55%, transparent),
+    color-mix(in srgb, var(--color-paper) 72%, transparent) 50%,
+    var(--color-paper)
+  );
+}
+
 /*
   The stage is centred and never outgrows the viewport on short screens (phones on their side);
   below md it also bleeds into the page gutters.
@@ -17,12 +77,37 @@
   }
 }
 
+/* One line: the title crumb gives way first. */
+.watch-crumbs ol {
+  flex-wrap: nowrap;
+}
+
+.watch-crumbs li:not(:last-child) {
+  flex-shrink: 0;
+}
+
+/* Very long titles step down a size. */
+.watch-title[data-long] {
+  font-size: clamp(1.375rem, 1rem + 1.4vw, 2.125rem);
+}
+
+/* Date · channel: the dot belongs to the item that follows, so a wrapped line never starts with one. */
+.watch-meta li {
+  white-space: nowrap;
+}
+
+.watch-meta li + li::before {
+  content: '·';
+  margin-inline: 0.5rem;
+  color: var(--color-ink-3);
+}
+
 .watch-hint {
   animation: watch-hint 7s ease both;
 }
 
 .watch-toast {
-  animation: watch-toast 2.4s ease both;
+  animation: watch-toast 2s ease both;
 }
 
 @keyframes watch-hint {

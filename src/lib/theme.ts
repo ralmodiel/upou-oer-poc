@@ -9,6 +9,13 @@ const DARK_QUERY = '(prefers-color-scheme: dark)'
 // Paper colour per theme, mirrored into <meta name="theme-color">.
 const CHROME_COLOR: Record<ResolvedTheme, string> = { light: '#faf8f6', dark: '#1a191a' }
 
+/** The three choices, in display order (controls add their own icons). */
+export const THEMES: { value: Theme; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+]
+
 export const isTheme = (value: unknown): value is Theme =>
   value === 'light' || value === 'dark' || value === 'system'
 

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
-import { useLocation, useNavigate } from 'react-router'
-import { useHowItWorks } from '../lib/howitworks'
+import { useHelp } from '../lib/howitworks'
 import { openShortcuts } from '../lib/shortcuts'
 
 const LINK =
@@ -35,16 +34,8 @@ function External({
 }
 
 export default function Footer() {
-  const { show } = useHowItWorks()
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-
-  // Re-opens the "How it works" strip at the top of the home page.
-  const help = () => {
-    show()
-    void navigate('/', { replace: pathname === '/' })
-    window.scrollTo({ top: 0 })
-  }
+  // Re-opens the "How it works" strip at the top of the home page, focus on its heading.
+  const help = useHelp()
 
   return (
     <footer className="mt-16 border-t border-line bg-surface text-sm">

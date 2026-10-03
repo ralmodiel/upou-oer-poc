@@ -1,19 +1,30 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { getVideo, similarTo, summaryOf } from '../data/catalog'
-import { DEFAULT_CHANNEL } from '../data/expand'
-import { formatDate } from '../lib/format'
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { getVideo } from '../data/catalog'
+import { useProfile } from '../lib/history'
+import { topicTags } from '../lib/tags'
 import { watchUrl } from '../lib/youtube'
 import type { Video } from '../types'
+import Backdrop from './Backdrop'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
-import { TEXT_LINK } from './browse-ui'
+import { useFrozen } from './browse-hooks'
+import { FactsLine, LONG_TITLE, TEXT_LINK } from './browse-ui'
 import { DetailsContext, wasOpenedInApp } from './details'
 import { prefersReducedMotion, useDocumentTitle } from './hooks'
 import { CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
-import { slugOfCategory } from './media'
+import { stopPreview } from './preview'
+import { moreLikeThis } from './recs'
 import Chip from './ui/Chip'
 import IconButton from './ui/IconButton'
 import { buttonClass } from './ui/button-styles'
@@ -22,6 +33,8 @@ import './browse.css'
 // Matches the data-closing transition in browse.css.
 const EXIT_MS = 200
 const SIMILAR = 6
+// Soft glow of the video's still behind the image column, gone by the time the text starts.
+const SCRIM = 'bg-linear-to-b from-surface/40 via-surface/80 via-60% to-surface'
 
 /** Quick look dialog driven by `?v=<id>`; unknown ids render nothing. */
 export default function DetailModal() {
@@ -46,7 +59,10 @@ function DetailDialog({ video }: { video: Video }) {
   }, [search])
   // Similar titles swap in place, so Back and close still land on the page underneath.
   const target = useMemo(() => ({ base, replace: true, state }), [base, state])
-  const similar = useMemo(() => similarTo(video, undefined, SIMILAR), [video])
+  // The taste profile as of this title: saving a card below must not reshuffle the grid.
+  const profile = useFrozen(useProfile(), video.id)
+  const similar = useMemo(() => moreLikeThis(video, { profile, limit: SIMILAR }), [video, profile])
+  const tags = useMemo(() => topicTags(video.tags), [video])
 
   useLayoutEffect(() => {
     const el = dialog.current
@@ -64,6 +80,7 @@ function DetailDialog({ video }: { video: Video }) {
   }, [])
 
   useEffect(() => {
+    stopPreview()
     dialog.current?.scrollTo({ top: 0 })
   }, [video.id])
 
@@ -89,12 +106,36 @@ function DetailDialog({ video }: { video: Video }) {
   }
 
   const sourceUrl = /^https?:\/\//.test(video.sourceUrl) ? video.sourceUrl : undefined
+  const long = video.title.length > LONG_TITLE
+
+  // Tab wraps inside the dialog, so focus never lands on the dialog element or the page.
+  const trapTab = (e: KeyboardEvent<HTMLDialogElement>) => {
+    if (e.key !== 'Tab') return
+    const stops = Array.from(
+      e.currentTarget.querySelectorAll<HTMLElement>(
+        'a[href], button, input, [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((el) => el.tabIndex >= 0 && !el.closest('[inert], [hidden]'))
+    if (!stops.length) return
+    const first = stops[0]
+    const last = stops[stops.length - 1]
+    const target = e.target as HTMLElement
+    if (!e.shiftKey && (target === last || target === e.currentTarget)) {
+      e.preventDefault()
+      first.focus()
+    } else if (e.shiftKey && (target === first || target === e.currentTarget)) {
+      e.preventDefault()
+      last.focus()
+    }
+  }
 
   return (
     <dialog
       ref={dialog}
       data-details=""
       aria-labelledby={titleId}
+      tabIndex={-1}
+      onKeyDown={trapTab}
       onCancel={(e) => {
         // Escape: run the exit animation instead of closing at once.
         e.preventDefault()
@@ -112,7 +153,8 @@ function DetailDialog({ video }: { video: Video }) {
       }}
       className="fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10"
     >
-      <div className="relative mx-auto min-h-full w-full bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] md:rounded-card md:border md:border-line md:shadow-lift motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
+      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] md:rounded-card md:border md:border-line md:shadow-lift motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
+        <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />
         <IconButton
           label="Close"
           icon={<CloseIcon />}
@@ -128,7 +170,7 @@ function DetailDialog({ video }: { video: Video }) {
               sizes="(min-width: 48rem) 400px, 100vw"
               large
               loading="eager"
-              className="md:rounded-card md:ring-1 md:ring-black/5"
+              className="md:rounded-card md:shadow-lift md:ring-1 md:ring-black/10"
             />
           </div>
 
@@ -149,34 +191,23 @@ function DetailDialog({ video }: { video: Video }) {
           </div>
 
           <div className="min-w-0 md:col-span-7 md:col-start-6 md:row-span-3 md:row-start-1 md:pr-8">
-            <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-3">
-              <Link
-                to={`/collections/${slugOfCategory(video.category)}`}
-                className="eyebrow -my-3 py-3 hover:underline"
-              >
-                {video.category}
-              </Link>
-              <span aria-hidden="true">·</span>
-              <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>
-              {video.channel !== DEFAULT_CHANNEL && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span>{video.channel}</span>
-                </>
-              )}
-            </p>
             <h2
               id={titleId}
-              className="mt-2 font-display text-2xl leading-tight text-balance text-ink sm:text-3xl"
+              className={`font-display leading-tight text-balance text-ink ${
+                long ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
+              }`}
             >
               {video.title}
             </h2>
-            <p className="mt-4 text-base leading-relaxed whitespace-pre-line text-ink-2">
-              {summaryOf(video)}
-            </p>
-            {video.tags.length > 0 && (
-              <ul role="list" aria-label="Tags" className="mt-5 flex flex-wrap gap-2">
-                {video.tags.map((tag) => (
+            <FactsLine video={video} className="mt-3" />
+            {video.description && (
+              <p className="mt-4 text-base leading-relaxed whitespace-pre-line text-ink-2">
+                {video.description}
+              </p>
+            )}
+            {tags.length > 0 && (
+              <ul role="list" aria-label="Topics" className="mt-5 flex flex-wrap gap-2">
+                {tags.map((tag) => (
                   <li key={tag}>
                     <Chip
                       to={`/search?q=${encodeURIComponent(tag)}`}

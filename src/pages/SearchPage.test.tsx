@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -72,6 +72,17 @@ describe('SearchPage', () => {
     await userEvent.type(screen.getByRole('searchbox', { name: 'Search videos' }), 'ocean{Enter}')
     expect(router.state.location.search).toBe('?q=ocean')
     expect(screen.getByRole('status')).toHaveTextContent('1 video')
+  })
+
+  it('records a query once it rests, and at once when a collection filter is chosen', async () => {
+    const recorded = () =>
+      (JSON.parse(localStorage.getItem('upou:searches') ?? '[]') as { q: string }[]).map((e) => e.q)
+    renderAt('/search?q=ocean')
+    expect(recorded()).toEqual([])
+    await waitFor(() => expect(recorded()).toEqual(['ocean']), { timeout: 2500 })
+    cleanup()
+    renderAt('/search?q=science&category=research')
+    expect(recorded()).toEqual(['science', 'ocean'])
   })
 
   it('shows a friendly message with suggestions when nothing matches', () => {

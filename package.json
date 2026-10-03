@@ -10,7 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node tools/seo/generate.mjs",
+    "seo": "node tools/seo/generate.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "lint": "eslint .",
@@ -19,7 +20,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "audit": "npm audit --audit-level=low",
-    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test && vite build && npm run audit"
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run audit"
   },
   "dependencies": {
     "react": "^19.3.0",

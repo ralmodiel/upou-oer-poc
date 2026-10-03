@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Link } from 'react-router'
-import { getCategoryVideos, type Category } from '../data/catalog'
+import { GENERAL_CATEGORY, getCategoryVideos, type Category } from '../data/catalog'
 import Thumbnail from './Thumbnail'
 
 const SIZES = '(min-width: 96rem) 23vw, (min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 92vw'
@@ -20,6 +20,7 @@ function CategoryCard({ category }: { category: Category }) {
         </h2>
         <p className="mt-0.5 text-sm text-ink-3">
           {count} {count === 1 ? 'video' : 'videos'}
+          {name === GENERAL_CATEGORY && ' · no subject category'}
         </p>
         <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm text-ink-2">
           {samples.map((v) => (

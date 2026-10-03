@@ -1,19 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { preconnect } from 'react-dom'
 import { Link, useParams } from 'react-router'
-import { useDocumentTitle } from '../components/hooks'
 import Breadcrumbs, { type Crumb } from '../components/ui/Breadcrumbs'
 import Button from '../components/ui/Button'
-import LinkButton from '../components/ui/LinkButton'
-import { getCategory, getVideo, similarTo, slugifyCategory } from '../data/catalog'
+import NotFound from '../components/ui/NotFound'
+import { getCategoryByName, getVideo } from '../data/catalog'
 import YouTubePlayer from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
 import EscHint from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
 import UpNext from '../features/watch/UpNext'
+import { upNextFor } from '../features/watch/recommendations'
+import WatchBackdrop from '../features/watch/WatchBackdrop'
 import WatchMeta from '../features/watch/WatchMeta'
 import WatchTags from '../features/watch/WatchTags'
 import '../features/watch/watch.css'
+import { useProfile } from '../lib/history'
+import { pageTitle, useSeo, videoSeo } from '../lib/seo'
 import { useGoBack } from '../lib/shortcuts'
 import { useWatchHistory } from '../lib/storage'
 import type { Video } from '../types'
@@ -23,6 +26,7 @@ const ORIGINS = [
   'https://www.youtube.com',
   'https://i.ytimg.com',
 ]
+const LONG_TITLE = 120
 
 export default function WatchPage() {
   const { id } = useParams()
@@ -35,14 +39,35 @@ function Watch({ video }: { video: Video }) {
   const goBack = useGoBack()
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
+  const profile = useProfile()
+  // Picked once per video (this component is keyed by id) with the profile at that moment, so
+  // the list is not re-ranked while watching. Rendered with the page: a later arrival would
+  // shift the footer on short pages.
+  const [upNext] = useState(() => upNextFor(video, profile))
+  const category = getCategoryByName(video.category)
+  useSeo(videoSeo(video, category))
   for (const origin of ORIGINS) preconnect(origin)
-  useDocumentTitle(`${video.title} · UPOU OER`)
 
   // Focus the stage (never the YouTube iframe) when the reel starts and again when the player
   // appears, so the app shell's Esc = Back handler keeps receiving key events.
   useEffect(() => {
     stageRef.current?.focus({ preventScroll: true })
   }, [phase])
+
+  // Chrome treats focus moved by script as :focus-visible until the first pointer event, which
+  // would ring the stage for the whole reel on load; show the ring only once a key has been used.
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const keyed = () => stage.toggleAttribute('data-kbd', true)
+    const pointed = () => stage.toggleAttribute('data-kbd', false)
+    window.addEventListener('keydown', keyed, true)
+    window.addEventListener('pointerdown', pointed, true)
+    return () => {
+      window.removeEventListener('keydown', keyed, true)
+      window.removeEventListener('pointerdown', pointed, true)
+    }
+  }, [])
 
   const startPlayer = () => {
     setPhase('player')
@@ -59,8 +84,6 @@ function Watch({ video }: { video: Video }) {
     }
   }
 
-  const category = getCategory(slugifyCategory(video.category))
-  const upNext = similarTo(video, undefined, 8)
   // Most source pages have no description; say so instead of padding with metadata.
   const about =
     video.description ||
@@ -70,80 +93,81 @@ function Watch({ video }: { video: Video }) {
   crumbs.push({ label: video.title })
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-(--gutter) pb-16">
-      <div className="lg:grid lg:grid-cols-12 lg:gap-10">
-        <div className="lg:col-span-8">
-          <div className="flex min-h-14 items-center justify-between gap-3 py-2">
-            <Button variant="secondary" size="sm" icon={<BackIcon />} onClick={goBack}>
-              Back
-            </Button>
-            <EscHint />
-          </div>
+    <div className="watch-page pb-16">
+      <WatchBackdrop video={video} />
+      <div className="mx-auto w-full max-w-[1600px] px-(--gutter)">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+          <div className="lg:col-span-8">
+            <div className="flex min-h-14 items-center justify-between gap-3 py-2">
+              <Button variant="secondary" size="sm" icon={<BackIcon />} onClick={goBack}>
+                Back
+              </Button>
+              <EscHint />
+            </div>
 
-          <div
-            ref={stageRef}
-            tabIndex={-1}
-            role="region"
-            aria-label={phase === 'reel' ? 'Promo reel' : 'Video player'}
-            onPointerLeave={reclaimFocus}
-            className="watch-stage relative aspect-video overflow-hidden bg-surface outline-none ring-1 ring-black/5 focus-visible:ring-2 focus-visible:ring-maroon md:rounded-card"
-          >
-            {phase === 'reel' ? (
-              <PromoReel video={video} onComplete={startPlayer} />
-            ) : (
-              <YouTubePlayer video={video} />
-            )}
-          </div>
-
-          <article className="pt-5">
-            <Breadcrumbs items={crumbs} />
-            <h1 className="mt-3 font-display text-title text-balance text-ink">{video.title}</h1>
-            <WatchMeta video={video} category={category} />
-            <p className="mt-5 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
-              {about}
-            </p>
-            <WatchTags tags={video.tags} />
-          </article>
-        </div>
-
-        <aside className="pt-10 lg:col-span-4 lg:pt-16">
-          <UpNext items={upNext} />
-          {category && (
-            <Link
-              to={`/collections/${category.slug}`}
-              className="mt-6 inline-flex min-h-10 items-center gap-2 font-semibold text-maroon hover:underline"
+            <div
+              ref={stageRef}
+              tabIndex={-1}
+              role="region"
+              aria-label={phase === 'reel' ? 'Preview' : 'Video player'}
+              onPointerLeave={reclaimFocus}
+              className="watch-stage relative aspect-video overflow-hidden bg-surface shadow-lift outline-none ring-1 ring-black/5 data-kbd:focus-visible:ring-2 data-kbd:focus-visible:ring-maroon md:rounded-card"
             >
-              <BackIcon className="size-4" />
-              Back to {category.name}
-              <span className="font-normal text-ink-3">({category.count})</span>
-            </Link>
-          )}
-        </aside>
+              {phase === 'reel' ? (
+                <PromoReel video={video} onComplete={startPlayer} />
+              ) : (
+                <YouTubePlayer video={video} />
+              )}
+            </div>
+
+            <article className="pt-5">
+              <Breadcrumbs items={crumbs} className="watch-crumbs" />
+              <h1
+                className="watch-title mt-3 font-display text-title text-balance text-ink"
+                data-long={video.title.length > LONG_TITLE || undefined}
+              >
+                {video.title}
+              </h1>
+              <WatchMeta video={video} />
+              <p className="mt-5 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
+                {about}
+              </p>
+              <WatchTags tags={video.tags} />
+            </article>
+          </div>
+
+          <aside className="pt-10 lg:col-span-4 lg:pt-16">
+            <UpNext items={upNext} />
+            {category && (
+              <Link
+                to={`/collections/${category.slug}`}
+                className="mt-6 inline-flex min-h-10 items-center gap-2 font-semibold text-maroon hover:underline"
+              >
+                <BackIcon className="size-4" />
+                Back to {category.name}
+                <span className="font-normal text-ink-3">({category.count})</span>
+              </Link>
+            )}
+          </aside>
+        </div>
       </div>
     </div>
   )
 }
 
 function WatchNotFound() {
-  useDocumentTitle('Video not found · UPOU OER')
+  useSeo({
+    title: pageTitle('Video not found'),
+    description: 'This video may have moved or is no longer in the catalog.',
+    noindex: true,
+  })
   return (
-    <section className="mx-auto max-w-md px-(--gutter) py-16 text-center sm:py-24">
-      <p className="eyebrow">UPOU OER</p>
-      <h1 className="mt-3 font-display text-title text-ink">Video not found</h1>
-      <p className="mt-3 text-ink-2">
-        This video may have moved or is no longer in the catalog. Try one of these instead.
-      </p>
-      <div className="mt-8 flex flex-wrap justify-center gap-2">
-        <LinkButton to="/" size="sm">
-          Browse videos
-        </LinkButton>
-        <LinkButton to="/collections" variant="secondary" size="sm">
-          All collections
-        </LinkButton>
-        <LinkButton to="/search" variant="secondary" size="sm">
-          Search
-        </LinkButton>
-      </div>
-    </section>
+    <NotFound
+      title="Video not found"
+      crumbs={[{ label: 'Browse', to: '/' }, { label: 'Video not found' }]}
+      className="mx-auto w-full max-w-[1600px]"
+    >
+      This video may have moved or is no longer in the catalog. Try one of these instead.
+    </NotFound>
   )
 }

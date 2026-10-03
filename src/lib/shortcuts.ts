@@ -39,7 +39,23 @@ export function isEditable(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement && !NON_TEXT_INPUTS.has(target.type)
 }
 
-export const hasOpenDialog = () => document.querySelector('dialog[open]') !== null
+// A field holding text keeps it on Esc; anything else steps back.
+const holdsText = (el: HTMLElement) =>
+  el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement
+    ? el.value !== ''
+    : el.isContentEditable && el.textContent !== ''
+
+export const topDialog = () => {
+  const dialogs = document.querySelectorAll<HTMLDialogElement>('dialog[open]')
+  return dialogs.length ? dialogs[dialogs.length - 1] : null
+}
+export const hasOpenDialog = () => topDialog() !== null
+
+// requestClose fires `cancel` first (animated exits); older browsers close at once.
+function closeDialog(dialog: HTMLDialogElement) {
+  if (typeof dialog.requestClose === 'function') dialog.requestClose()
+  else dialog.close()
+}
 
 /** Back = previous in-app page when there is one, otherwise home (deep links, replaced entries). */
 export function useGoBack() {
@@ -57,7 +73,8 @@ export function useGoBack() {
 
 /**
  * App-wide keys, mounted once in AppLayout:
- * Esc = Back (an open <dialog> closes itself instead; a focused text field is only blurred),
+ * Esc and Backspace = Back (an open <dialog> closes instead; a text field with content is only
+ * blurred and keeps its text, an empty one steps back; Backspace still types in fields),
  * `/` = focus search, `?` = shortcuts sheet. Events with defaultPrevented are ignored, so a
  * component that handles a key itself just calls preventDefault.
  */
@@ -66,11 +83,20 @@ export function useGlobalShortcuts() {
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
     if (e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return
     const editing = isEditable(e.target)
-    if (e.key === 'Escape') {
-      if (hasOpenDialog()) return
-      if (editing) {
-        ;(e.target as HTMLElement).blur()
+    if (e.key === 'Escape' || (e.key === 'Backspace' && !editing)) {
+      const dialog = topDialog()
+      if (dialog) {
+        // Esc closes it natively; Backspace asks for the same.
+        if (e.key === 'Backspace') {
+          e.preventDefault()
+          closeDialog(dialog)
+        }
         return
+      }
+      if (editing) {
+        const field = e.target as HTMLElement
+        field.blur()
+        if (holdsText(field)) return
       }
       e.preventDefault()
       goBack()

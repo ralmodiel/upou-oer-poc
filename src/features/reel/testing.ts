@@ -1,5 +1,7 @@
 import type { Video } from '../../types'
 
+const still = (name: string) => `https://i.ytimg.com/vi/abcDEF12345/${name}.jpg`
+
 /** Test fixture shaped like a crawled video. */
 export const testVideo: Video = {
   id: 'intro-to-data-science',
@@ -11,7 +13,8 @@ export const testVideo: Video = {
   channel: 'UP Open University',
   publishedAt: '2025-05-10T08:00:00+08:00',
   sourceUrl: 'https://oer.upou.edu.ph/intro-to-data-science/',
-  thumbnail: 'https://i.ytimg.com/vi/abcDEF12345/mqdefault.jpg',
-  backdrop: 'https://i.ytimg.com/vi/abcDEF12345/maxresdefault.jpg',
-  frames: [1, 2, 3].map((n) => `https://i.ytimg.com/vi/abcDEF12345/maxres${n}.jpg`),
+  thumbnail: still('mqdefault'),
+  thumbnails: ['mqdefault', 'mq1', 'mq2', 'mq3'].map(still),
+  backdrop: still('maxresdefault'),
+  frames: ['maxres1', 'maxres2', 'maxres3'].map(still),
 }

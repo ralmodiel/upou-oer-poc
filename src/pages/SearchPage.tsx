@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint, TEXT_LINK } from '../components/browse-ui'
 import { DetailsContext, pageTarget } from '../components/details'
-import { useDocumentTitle, useRovingRow } from '../components/hooks'
+import { useRovingRow } from '../components/hooks'
 import { SearchIcon } from '../components/icons'
 import { slugOfCategory } from '../components/media'
 import Button from '../components/ui/Button'
@@ -11,27 +11,37 @@ import Chip from '../components/ui/Chip'
 import EmptyState from '../components/ui/EmptyState'
 import SectionHeading from '../components/ui/SectionHeading'
 import { getCategories, getCategory, searchVideos, videos } from '../data/catalog'
+import { useSearchHistory } from '../lib/history'
+import { pageTitle, useSeo } from '../lib/seo'
 import { focusSearch } from '../lib/shortcuts'
-import { isGenericTag, tagKey } from '../lib/tags'
+import { isGenericTag, isOrgTag, POPULAR_SERIES, POPULAR_TOPICS, tagKey } from '../lib/tags'
 
 const PAGE_SIZE = 24
+// A query counts as committed (for recommendations) once it has rested this long.
+const COMMIT_MS = 1200
 // How far each query was expanded, so Back from the player shows the same page length.
 const expanded = new Map<string, number>()
 
-/** Most used tags, de-duplicated by case and by series prefix ("TechTips Series 1"). */
+const hasResults = (query: string) => searchVideos(query, { limit: 1 }).length > 0
+
+/**
+ * Curated subjects that exist in this catalog, topped up with the most used tags
+ * (de-duplicated by case and by series prefix: "TechTips Series 1").
+ */
 function popularTags(limit: number) {
+  const picked = POPULAR_TOPICS.filter(hasResults).slice(0, limit)
+  if (picked.length === limit) return picked
   const counts = new Map<string, { tag: string; n: number }>()
   for (const video of videos) {
     for (const raw of video.tags) {
       const tag = raw.trim()
       const key = tagKey(tag)
-      if (!tag || tag.length > 28 || isGenericTag(tag)) continue
+      if (!tag || tag.length > 28 || isGenericTag(tag) || isOrgTag(tag)) continue
       const entry = counts.get(key) ?? { tag, n: 0 }
       entry.n++
       counts.set(key, entry)
     }
   }
-  const picked: string[] = []
   for (const { tag } of [...counts.values()].sort((a, b) => b.n - a.n)) {
     if (picked.some((p) => tagKey(tag).startsWith(tagKey(p)))) continue
     picked.push(tag)
@@ -97,7 +107,24 @@ export default function SearchPage() {
     return `?${next}`
   }
 
-  useDocumentTitle(q ? `“${q}” · Search · UPOU OER` : 'Search · UPOU OER')
+  useSeo({
+    title: pageTitle(q ? `“${q}” · Search` : 'Search'),
+    description: 'Search every UPOU OER video by title, topic or tag.',
+    noindex: true,
+  })
+
+  // The header searches as you type, so a query is recorded once it rests; choosing a
+  // collection filter commits it at once.
+  const { record } = useSearchHistory()
+  useEffect(() => {
+    if (!q) return
+    if (slug) {
+      record(q)
+      return
+    }
+    const timer = window.setTimeout(() => record(q), COMMIT_MS)
+    return () => clearTimeout(timer)
+  }, [q, slug, record])
 
   // Filter chips: one Tab stop, entered at the active filter.
   const activeFacet = category ? facets.findIndex((f) => f.name === category.name) + 1 : 0
@@ -264,6 +291,7 @@ export default function SearchPage() {
 
 function Suggestions() {
   const topics = useMemo(() => popularTags(12), [])
+  const series = useMemo(() => POPULAR_SERIES.filter(hasResults), [])
   const categories = getCategories()
   return (
     <div className="mt-10 space-y-8">
@@ -276,6 +304,17 @@ function Suggestions() {
           </li>
         ))}
       </ChipGroup>
+      {series.length > 0 && (
+        <ChipGroup title="Series">
+          {series.map((name) => (
+            <li key={name}>
+              <Chip to={`/search?q=${encodeURIComponent(name)}`} active={false} title={name}>
+                {name}
+              </Chip>
+            </li>
+          ))}
+        </ChipGroup>
+      )}
       <ChipGroup
         title="Collections"
         link={{ to: '/collections', label: `All collections (${categories.length})` }}

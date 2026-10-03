@@ -4,12 +4,18 @@ import CollectionChips from '../components/CollectionChips'
 import ContinueWatching from '../components/ContinueWatching'
 import Featured from '../components/Featured'
 import HowItWorks from '../components/HowItWorks'
+import Recommended from '../components/Recommended'
 import Section from '../components/Section'
+import { onIdle, useFrozen, useMediaQuery } from '../components/browse-hooks'
 import { GridHint } from '../components/browse-ui'
-import { useDocumentTitle } from '../components/hooks'
+import { forYou, moreLikeThis, reasonsFor, warmRecommender } from '../components/recs'
 import EmptyState from '../components/ui/EmptyState'
-import { getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
+import LinkButton from '../components/ui/LinkButton'
+import { getCategories, getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
+import { isEmptyProfile, useProfile, type Profile } from '../lib/history'
+import { homeSeo, useSeo } from '../lib/seo'
 import { useWatchHistory, type HistoryEntry } from '../lib/storage'
+import type { Video } from '../types'
 import '../components/browse.css'
 
 // History as last rendered here. Coming Back from the player, the first frame reuses it so
@@ -54,8 +60,65 @@ function useSectionCount(total: number) {
   return Math.min(count, total)
 }
 
+interface HomeRecs {
+  limit: number
+  pending: boolean
+  forYou: Video[]
+  reasons: ReadonlyMap<string, string>
+  /** The last watched video and titles like it. */
+  because?: { video: Video; list: Video[]; reasons: ReadonlyMap<string, string> }
+}
+
+const NO_RECS: HomeRecs = { limit: 0, pending: false, forYou: [], reasons: new Map() }
+// As last computed, so Back lands on the same layout at once.
+let lastRecs: HomeRecs | null = null
+
+function computeRecs(profile: Profile, limit: number): HomeRecs {
+  const picked = forYou(profile, limit)
+  const watched = getVideo(profile.watched[0]?.id)
+  // Neither already watched nor already recommended above.
+  const exclude = [...picked.map((v) => v.id), ...profile.watched.map((e) => e.id)]
+  const because = watched ? moreLikeThis(watched, { profile, limit, exclude }) : []
+  return {
+    limit,
+    pending: false,
+    forYou: picked,
+    reasons: reasonsFor(picked, profile),
+    because:
+      watched && because.length
+        ? { video: watched, list: because, reasons: reasonsFor(because, profile, watched) }
+        : undefined,
+  }
+}
+
+// Personalised sections are computed once per visit, after the first paint (the recommender
+// indexes the catalog on first use). The profile is frozen at mount so saving a card here
+// does not reshuffle the grids.
+function useHomeRecommendations(limit: number): HomeRecs {
+  const profile = useFrozen(useProfile(), limit)
+  const empty = isEmptyProfile(profile)
+  const [recs, setRecs] = useState(() => (lastRecs?.limit === limit ? lastRecs : null))
+  useEffect(() => {
+    if (empty) return onIdle(warmRecommender, 4000)
+    return onIdle(() => {
+      const next = computeRecs(profile, limit)
+      lastRecs = next
+      setRecs(next)
+    })
+  }, [empty, profile, limit])
+  if (empty) return NO_RECS
+  return recs ?? { ...NO_RECS, limit, pending: true }
+}
+
+// Phones: the strongest collections only, four cards each, then a link to the rest.
+const PHONE_SECTIONS = 7
+const PHONE_CARDS = 4
+const CARDS = 8
+
+const shortTitle = (title: string) => (title.length > 48 ? `${title.slice(0, 46).trim()}…` : title)
+
 export default function BrowsePage() {
-  useDocumentTitle('UPOU OER · Open Educational Resources from UP Open University')
+  useSeo(homeSeo(videos.length, getCategories().length, getFeatured()[0]?.backdrop))
   const entries = useShownHistory()
   const recent = useMemo(
     () => entries.map((e) => getVideo(e.id)).filter((v) => v !== undefined),
@@ -70,7 +133,11 @@ export default function BrowsePage() {
       .slice(0, 4)
   }, [featured])
   const rows = getRows()
-  const sectionCount = useSectionCount(rows.length)
+  const wide = useMediaQuery('(min-width: 48rem)')
+  const shownRows = wide ? rows : rows.slice(0, PHONE_SECTIONS)
+  const cards = wide ? CARDS : PHONE_CARDS
+  const sectionCount = useSectionCount(shownRows.length)
+  const recs = useHomeRecommendations(cards)
 
   if (!videos.length) {
     return (
@@ -83,19 +150,63 @@ export default function BrowsePage() {
     )
   }
 
+  const collections = getCategories().length
   return (
     <>
-      <h1 className="sr-only">Browse UPOU OER videos</h1>
       <GridHint />
+      <Featured videos={featured} alsoNew={alsoNew} intro={<Intro />} />
       <HowItWorks />
-      <Featured videos={featured} alsoNew={alsoNew} />
-      <div className="mt-10 space-y-2 sm:mt-12">
+      <div className="space-y-2">
+        <Recommended
+          title="Recommended for you"
+          description="Picked from what you watched, searched and saved in this browser."
+          videos={recs.forYou}
+          reasons={recs.reasons}
+          pending={recs.pending}
+          cards={cards}
+        />
         <ContinueWatching videos={recent} />
         <CollectionChips />
-        {rows.slice(0, sectionCount).map((row) => (
-          <Section key={row.id} row={row} />
+        {recs.because && (
+          <Recommended
+            title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
+            videos={recs.because.list}
+            reasons={recs.because.reasons}
+            cards={cards}
+          />
+        )}
+        {shownRows.slice(0, sectionCount).map((row) => (
+          <Section key={row.id} row={row} limit={wide ? undefined : PHONE_CARDS} />
         ))}
+        {!wide && sectionCount === shownRows.length && (
+          <section
+            aria-label="More collections"
+            className="border-t border-line px-(--gutter) py-10 text-center"
+          >
+            <p className="text-sm text-ink-2">
+              {rows.length - shownRows.length} more collections, plus everything in these.
+            </p>
+            <LinkButton to="/collections" className="mt-4">
+              All {collections} collections
+            </LinkButton>
+          </section>
+        )}
       </div>
     </>
+  )
+}
+
+/** Visible page title: the full meaning of OER, for first-time visitors (and search engines). */
+function Intro() {
+  return (
+    <div className="px-(--gutter) pt-6 sm:pt-8">
+      <h1 className="font-display text-xl leading-snug text-balance text-ink sm:text-2xl">
+        Open Educational Resources from the University of the Philippines Open University
+      </h1>
+      <p className="mt-1 text-sm text-ink-2">
+        {videos.length.toLocaleString('en')} free videos: lectures, webinars and student work.
+        Browse by collection or search everything.
+      </p>
+    </div>
   )
 }

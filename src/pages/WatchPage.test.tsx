@@ -28,6 +28,9 @@ function renderAt(entries: string[], index = entries.length - 1) {
   return { router, ...view }
 }
 
+const setClipboard = (writeText: () => Promise<void>) =>
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+
 beforeEach(() => setCatalog([testVideo, ...similar]))
 afterEach(() => vi.useRealTimers())
 
@@ -36,11 +39,9 @@ describe('WatchPage', () => {
     vi.useFakeTimers()
     renderAt([`/watch/${testVideo.id}`])
 
-    const stage = screen.getByRole('region', { name: 'Promo reel' })
+    const stage = screen.getByRole('region', { name: 'Preview' })
     expect(stage).toHaveFocus()
-    expect(
-      within(stage).getByRole('group', { name: `Promo reel: ${testVideo.title}` }),
-    ).toBeVisible()
+    expect(within(stage).getByRole('group', { name: `Preview: ${testVideo.title}` })).toBeVisible()
     expect(screen.queryByTitle(`${testVideo.title} (YouTube video)`)).not.toBeInTheDocument()
     expect(document.title).toBe(`${testVideo.title} · UPOU OER`)
 
@@ -53,7 +54,7 @@ describe('WatchPage', () => {
       expect.stringMatching(/^https:\/\/www\.youtube-nocookie\.com\/embed\/abcDEF12345\?/),
     )
     expect(frame).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
-    expect(screen.queryByRole('group', { name: /Promo reel/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /Preview/ })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Video player' })).toHaveFocus()
     fireEvent.load(frame)
     expect(frame).not.toHaveFocus()
@@ -80,7 +81,11 @@ describe('WatchPage', () => {
       'href',
       slug,
     )
-    expect(screen.getByRole('heading', { level: 1, name: testVideo.title })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: testVideo.title })).not.toHaveAttribute(
+      'data-long',
+    )
+    // The collection is named by the breadcrumb, not repeated under the title.
+    expect(screen.getAllByText(testVideo.category)).toHaveLength(1)
     expect(screen.getByRole('link', { name: /Watch on YouTube/ })).toHaveAttribute(
       'href',
       'https://www.youtube.com/watch?v=abcDEF12345',
@@ -104,9 +109,20 @@ describe('WatchPage', () => {
     )
   })
 
-  it('saves to My List and copies the link', async () => {
+  it('trims very long titles in the tab and steps the heading down', () => {
+    const title = 'A very long title about open and distance learning '.repeat(4).trim()
+    setCatalog([{ ...testVideo, id: 'long', title }, ...similar])
+    renderAt(['/watch/long'])
+    // lib/seo keeps the words and drops the suffix when "title · UPOU OER" would not fit.
+    expect(document.title).toMatch(/^A very long title .*\S…$/)
+    expect(document.title.length).toBeLessThanOrEqual(65)
+    expect(screen.getByRole('heading', { level: 1, name: title })).toHaveAttribute('data-long')
+  })
+
+  it('saves to My List and shows the copied link state for two seconds', async () => {
+    vi.useFakeTimers()
     const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    setClipboard(writeText)
     renderAt([`/watch/${testVideo.id}`])
 
     const save = screen.getByRole('button', { name: 'Save to My List' })
@@ -115,8 +131,24 @@ describe('WatchPage', () => {
     expect(JSON.parse(localStorage.getItem('upou:my-list') ?? '[]')).toEqual([testVideo.id])
 
     fireEvent.click(screen.getByRole('button', { name: 'Share' }))
-    expect(await screen.findByText('Link copied')).toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(0))
     expect(writeText).toHaveBeenCalledWith(window.location.href)
+    expect(screen.getByRole('button', { name: 'Link copied' })).toBeInTheDocument()
+    expect(screen.getByText('Copied to clipboard')).toBeInTheDocument()
+
+    await act(() => vi.advanceTimersByTimeAsync(2000))
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
+    expect(screen.queryByText('Copied to clipboard')).not.toBeInTheDocument()
+  })
+
+  it('falls back to a read-only link field when neither clipboard nor share sheet works', async () => {
+    setClipboard(() => Promise.reject(new Error('denied')))
+    renderAt([`/watch/${testVideo.id}`])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    const field = await screen.findByRole('textbox', { name: 'Page link' })
+    expect(field).toHaveValue(window.location.href)
+    expect(field).toHaveAttribute('readonly')
   })
 
   it('Back returns to the previous page, or home (replacing the entry) on a direct load', async () => {

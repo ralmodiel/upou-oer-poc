@@ -72,11 +72,14 @@
 
 /* `dark:` follows the applied theme, not the OS setting. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+/* Mouse / trackpad devices: keyboard hints ("press / to search") only make sense there. */
+@custom-variant pointer-fine (@media (hover: hover) and (pointer: fine));
 
 @layer base {
   :root {
     color-scheme: light;
-    --gutter: clamp(1rem, 4vw, 4rem);
+    /* Page gutter; beyond 1600px of content it grows, so the site stays centred at that width. */
+    --gutter: max(clamp(1rem, 4vw, 4rem), (100vw - 100rem) / 2);
     --header-h: 3.5rem;
     --tabbar-h: 3.75rem;
   }
@@ -142,6 +145,7 @@
   h2 {
     text-wrap: balance;
   }
+  /* The one keyboard focus ring (components may swap it for a ring of their own with outline-none). */
   :focus-visible {
     outline: 2px solid var(--color-maroon);
     outline-offset: 2px;
@@ -149,6 +153,11 @@
   ::selection {
     background-color: var(--color-maroon-soft);
   }
+}
+
+/* Unlayered so it beats transition utilities: the focus ring appears at once, no colour fade. */
+:focus-visible {
+  transition: none;
 }
 
 @utility scrollbar-none {

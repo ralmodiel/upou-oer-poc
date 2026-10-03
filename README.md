@@ -75,7 +75,8 @@ npm run dev        # http://localhost:5280
 | Script              | What it does                                      |
 | ------------------- | ------------------------------------------------- |
 | `npm run dev`       | Start the dev server                              |
-| `npm run build`     | Type-check and build to `dist/`                   |
+| `npm run build`     | Type-check, build, write SEO shells and sitemap   |
+| `npm run seo`       | Re-run the SEO generator on an existing `dist/`   |
 | `npm run preview`   | Serve the production build locally                |
 | `npm run typecheck` | `tsc -b`                                          |
 | `npm run lint`      | ESLint                                            |
@@ -107,6 +108,39 @@ kept out of the home sections. The crawler is a local tool and is not part of th
 (`scripts/` is ignored by git). Replacement data must match `CatalogRecord`; malformed records are
 skipped with a console warning, and the catalog test checks ids, dates and image hosts. Component
 tests swap in fixtures with `setCatalog()` from `src/data/testing.ts`.
+
+## Recommendations
+
+"Up next" on the watch page and "Recommended for you" on the home page come from a small
+content-based engine in `src/lib/recommend.ts`. It runs entirely in the browser: no server, no
+tracking.
+
+- **Index.** On first use the app builds a TF-IDF index over every video's text. `src/lib/text.ts`
+  tokenizes titles (with bigrams), tags, category, channel and description, drops English and
+  Filipino function words and stems English plurals, -ing and -ed. The build takes tens of
+  milliseconds for 2,124 videos and is reused until the catalog changes; a query takes about 1 ms.
+- **Up next** (`recommendFor(video, { profile, limit })`) ranks by cosine similarity, plus boosts for
+  the same category, shared topic tags and the same series (titles with a common prefix such as
+  "FASTLearn Episode 29 –" or "Chronic Heart Failure:"); publish date breaks ties. A profile reorders
+  near-ties and demotes what was already watched, and at most four videos of another category
+  appear in the first eight.
+- **Recommended for you** (`recommendForProfile(profile)`) builds a taste vector from the watch
+  history (half-life of seven days), the last ten searches and My List, skips what was already
+  watched and spreads the result across categories and series. An empty profile gives an empty
+  list, so the page can fall back to the latest videos.
+- **Reasons.** `explain(video, candidate, profile)` returns a short eyebrow such as "Same series",
+  "Shares topics: Climate Change", "Also about PowerPoint" or "Because you watched “…”".
+- **Transcripts (optional).** Without transcripts the engine uses the metadata above. To add them,
+  put caption files in `tmp/transcripts/` (yt-dlp names such as `<youtubeId>.en.vtt` work) and run
+  `node scripts/text/ingest-transcripts.mjs && node scripts/text/build-recs.mjs`. The first writes
+  plain text to `tmp/text/<youtubeId>.txt`; the second scores transcript + metadata with the same
+  tokenizer and writes each covered video's top neighbors to `src/data/recs.json`, which the engine
+  merges into its scores (the shipped file is an empty `{}`). `node scripts/text/make-id-list.mjs`
+  writes the catalog's watch URLs to `tmp/ids.txt` for the caption download. `tmp/` and `scripts/`
+  are not committed.
+- **Stored in the browser.** Watch history (`upou:history`), committed searches (`upou:searches`)
+  and My List (`upou:my-list`) live in `localStorage` on the device, at most the last 20 history
+  entries and searches. Nothing leaves the device.
 
 ## Project structure
 
@@ -146,13 +180,44 @@ How the build adapts to Pages:
 
 - **Base path:** the workflow passes `BASE_PATH=/<repo>/`, which Vite uses for asset URLs and
   React Router uses as its `basename`. Local builds keep `/`.
-- **Deep links:** Pages has no rewrite rules, so the build also writes `404.html` as a copy of
-  `index.html`. Unknown paths such as `/watch/<id>` boot the app, which then routes normally.
+- **Deep links:** `/collections/<slug>/` and `/watch/<id>/` are real files (see [SEO](#seo)). For
+  anything else Pages has no rewrite rules, so the build also writes `404.html` as a copy of
+  `index.html`; unknown paths boot the app, which then routes normally.
 - **Security headers:** Pages cannot send custom headers, so the CSP ships as a `<meta>` tag. A
   `<meta>` CSP cannot set `frame-ancestors`; hosts that support headers should add one.
 
 Any other static host works with `npm run build`; configure it to serve `index.html` for
 unknown paths.
+
+## SEO
+
+The app renders in the browser, so the build also writes what crawlers and link previews need.
+`tools/seo/generate.mjs` runs after `vite build` as part of `npm run build` (`npm run seo` re-runs
+it on an existing `dist/`) and takes a few seconds:
+
+- **Static shells.** `dist/index.html`, `dist/collections/index.html`, one
+  `dist/collections/<slug>/index.html` per collection and one `dist/watch/<id>/index.html` per
+  video (about 2,160 files, 16 MB). Each is the built `index.html` with that page's `<title>`,
+  meta description, canonical URL, robots, Open Graph and Twitter tags, JSON-LD (`WebSite` with a
+  `SearchAction`, `CollectionPage` + `ItemList`, `VideoObject`, `BreadcrumbList`) and a plain-HTML
+  summary inside `#root` (title, facts, links to YouTube, the source page and the collection) that
+  React replaces on mount. `404.html` stays the plain app. Because the shells are directories,
+  canonical URLs end with a slash (`/watch/<id>/`); Pages redirects `/watch/<id>` there.
+- **`sitemap.xml`** with every indexable URL (`lastmod` from the publish date) and **`robots.txt`**
+  (allow all, `Disallow` for `/search` and `/my-list`, `Sitemap:` line). `public/robots.txt` is
+  the development default; the generator overwrites it.
+- **At runtime** each page calls `useSeo()` from `src/lib/seo.ts`, which updates the same tags in
+  place as you navigate (tags are reused by their `data-seo` attribute) and restores them on
+  unmount. Search, My List and not-found pages are `noindex`. Titles stay within 65 characters
+  and descriptions within 160; a video without a description gets "Title · Category · UP Open
+  University · published Mon YYYY · Topics: …".
+
+Absolute URLs come from `VITE_SITE_URL`, the site root including the base path (for example
+`https://<user>.github.io/<repo>`). The deploy workflow sets it from the `configure-pages`
+outputs (`origin` + `base_path`); set it yourself on other hosts. Without it, canonicals are
+base-relative, no sitemap is written, and the app falls back to `window.location.origin` at
+runtime. A project site on GitHub Pages lives under `/<repo>/`, where crawlers never read
+`robots.txt`; submit `https://<user>.github.io/<repo>/sitemap.xml` in Search Console instead.
 
 ## License
 

@@ -31,10 +31,12 @@ jobs:
       - id: pages
         uses: actions/configure-pages@v6
 
-      # Typecheck, lint, test, build, and audit. BASE_PATH is "/<repo>/" for project sites.
+      # Typecheck, lint, test, build, and audit. BASE_PATH is "/<repo>/" for project sites;
+      # VITE_SITE_URL makes canonical, sitemap and Open Graph URLs absolute (see README "SEO").
       - run: npm run verify
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          VITE_SITE_URL: ${{ steps.pages.outputs.origin }}${{ steps.pages.outputs.base_path }}
           VITE_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
 
       - uses: actions/upload-pages-artifact@v5

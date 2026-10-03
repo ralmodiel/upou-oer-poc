@@ -49,4 +49,24 @@ describe('BrowsePage', () => {
     expect(strip()).not.toBeInTheDocument()
     expect(await screen.findByRole('region', { name: 'Continue watching' })).toBeInTheDocument()
   })
+
+  // Last: it leaves watch history in this module's "last shown" memory, which the Back test above
+  // must not inherit.
+  it('recommends unwatched titles for a profile, with a reason on each card', async () => {
+    localStorage.setItem('upou:history', JSON.stringify([{ id: 'climate-basics', at: 1 }]))
+    localStorage.setItem('upou:searches', JSON.stringify([{ q: 'art', at: 1 }]))
+    resetStorageCache()
+    renderHome()
+    const section = await screen.findByRole('region', { name: 'Recommended for you' })
+    const cards = await within(section).findAllByRole('article')
+    const titles = cards.map((c) => within(c).getByRole('link', { name: /^Play / }).textContent)
+    expect(titles).not.toContain('Climate Change Basics')
+    expect(
+      within(cards[0]).getByText(/^(Because you watched|Matches your search|More from) /),
+    ).toBeInTheDocument()
+    const because = await screen.findByRole('region', {
+      name: 'Because you watched “Climate Change Basics”',
+    })
+    expect(within(because).getAllByRole('article').length).toBeGreaterThan(0)
+  })
 })

@@ -1,19 +1,30 @@
-import { memo } from 'react'
+import { memo, use } from 'react'
 import { formatDate } from '../lib/format'
 import type { Video } from '../types'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
+import { CardReasons } from './recs'
 import { InfoIcon, PlayIcon } from './icons'
 import { isNew } from './media'
+import { useCardPreview } from './preview'
 import Badge from './ui/Badge'
 
-// Quick actions sit above the stretched link; they appear on hover/focus and stay visible on touch screens.
+// Quick actions sit above the stretched link: quiet at rest, full strength while the card is
+// hovered or focused, and always strong on touch screens.
 const ACTIONS =
-  'relative z-20 -ml-2 flex items-center gap-0.5 opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 group-has-focus-visible/card:opacity-100 [@media(hover:none)]:opacity-100'
+  'relative z-20 -ml-2 flex items-center gap-0.5 text-ink-3 transition-colors duration-200 group-hover/card:text-ink-2 group-focus-within/card:text-ink-2 [@media(hover:none)]:text-ink-2'
 export const ACTION =
-  'inline-flex h-9 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold text-ink-2 transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon [@media(hover:none)]:h-10'
+  'inline-flex h-9 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon [@media(hover:none)]:h-10'
+
+// Instant maroon outline on the thumbnail while the card link has keyboard focus (outline is
+// not in the transition list, unlike ring's box-shadow).
+const FOCUS =
+  'group-has-[[data-card-link]:focus-visible]/card:outline-2 group-has-[[data-card-link]:focus-visible]/card:outline-maroon group-has-[[data-card-link]:focus-visible]/card:outline-offset-2'
+
+// Titles longer than this clamp at two lines in every grid: expose the whole title on hover.
+const CLAMP_HINT = 70
 
 interface Props {
   video: Video
@@ -36,11 +47,22 @@ function VideoCard({
 }: Props) {
   const { id, title } = video
   const tabIndex = active ? 0 : -1
+  const reason = use(CardReasons)?.get(id)
+  const { hostProps, overlay, previewing } = useCardPreview(video)
   // DOM order: eyebrow, title link, media, meta, actions. CSS order puts the media first.
   return (
-    <article className="group/card relative flex flex-col">
-      {showCategory && <p className="eyebrow order-2 mt-3 truncate">{video.category}</p>}
-      <Heading className="order-3 mt-1 line-clamp-2 text-base/snug font-semibold text-ink transition-colors duration-200 group-hover/card:text-maroon">
+    <article {...hostProps} className="group/card relative flex flex-col">
+      {reason ? (
+        <p className="order-2 mt-3 truncate text-xs font-semibold text-forest" title={reason}>
+          {reason}
+        </p>
+      ) : (
+        showCategory && <p className="eyebrow order-2 mt-3 truncate">{video.category}</p>
+      )}
+      <Heading
+        title={title.length > CLAMP_HINT ? title : undefined}
+        className="order-3 mt-1 line-clamp-2 text-base/snug font-semibold text-ink transition-colors duration-200 group-hover/card:text-maroon"
+      >
         {/* Stretched link: a click, tap or Enter anywhere on the card plays the video. */}
         <PlayLink
           video={video}
@@ -55,17 +77,20 @@ function VideoCard({
       <Thumbnail
         video={video}
         sizes={sizes}
-        className="order-1 rounded-card ring-1 ring-black/5 transition-[translate,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-has-[[data-card-link]:focus-visible]/card:ring-2 group-has-[[data-card-link]:focus-visible]/card:ring-maroon group-has-[[data-card-link]:focus-visible]/card:ring-offset-2 group-has-[[data-card-link]:focus-visible]/card:ring-offset-paper motion-reduce:transition-none"
+        className={`order-1 rounded-card ring-1 ring-black/5 transition-[translate,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift motion-reduce:transition-none ${FOCUS}`}
       >
-        {/* Visual cue only: the card link already plays. */}
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100"
-        >
-          <span className="grid size-11 place-items-center rounded-pill bg-surface/95 text-maroon shadow-lift">
-            <PlayIcon className="size-5 translate-x-px" />
+        {overlay}
+        {/* Visual cue only: the card link already plays. Hidden while a preview runs. */}
+        {!previewing && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100"
+          >
+            <span className="grid size-11 place-items-center rounded-pill bg-surface/95 text-maroon shadow-lift">
+              <PlayIcon className="size-5 translate-x-px" />
+            </span>
           </span>
-        </span>
+        )}
       </Thumbnail>
       <p className="order-4 mt-1 flex items-center gap-1.5 text-sm text-ink-3">
         <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>

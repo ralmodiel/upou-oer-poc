@@ -9,15 +9,29 @@ import {
 } from 'react'
 import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router'
 import { getVideo } from '../data/catalog'
-import { FOCUS_SEARCH_EVENT, useAppEvent } from '../lib/shortcuts'
+import { useHelp } from '../lib/howitworks'
+import { FOCUS_SEARCH_EVENT, openShortcuts, useAppEvent } from '../lib/shortcuts'
 import { useMyList } from '../lib/storage'
-import { useScrolledPast } from './hooks'
-import { BookmarkIcon, CloseIcon, GridIcon, HomeIcon, SearchIcon } from './icons'
+import { THEMES, useTheme, type Theme } from '../lib/theme'
+import { useMediaQuery, useScrolledPast } from './hooks'
+import {
+  BookmarkIcon,
+  CloseIcon,
+  GridIcon,
+  HelpIcon,
+  HomeIcon,
+  KeyboardIcon,
+  MonitorIcon,
+  MoonIcon,
+  SearchIcon,
+  SunIcon,
+} from './icons'
 import ThemeToggle from './ThemeToggle'
-import IconButton from './ui/IconButton'
+import Menu, { type MenuSection } from './ui/Menu'
+import { iconButtonClass } from './ui/button-styles'
 
 const NAV_LINK =
-  'relative inline-flex h-10 items-center rounded-pill px-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2.5 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 lg:px-3 lg:after:inset-x-3'
+  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 lg:px-3 lg:after:inset-x-3'
 
 // Saved ids that still exist in the catalog.
 function useSavedCount() {
@@ -52,24 +66,29 @@ export default function Header() {
       }`}
     >
       <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) md:flex-nowrap lg:gap-x-3">
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
-          <Link
-            to="/"
-            aria-label="UPOU OER, home"
-            className="flex items-baseline gap-1 rounded-sm py-2.5 font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
-          >
-            <span className="text-ink">UPOU</span>
-            <span className="text-maroon">OER</span>
-          </Link>
-          <span
-            role="note"
-            title="Proof of concept"
-            aria-label="Proof of concept"
-            className="rounded-pill border border-line bg-surface px-1.5 py-1 text-[0.625rem] leading-none font-semibold tracking-wider text-ink-2 uppercase"
-          >
-            Proof of concept
-          </span>
-          <span className="hidden text-sm text-ink-3 xl:inline">· Open Educational Resources</span>
+        {/* Brand lock-up: wordmark + pill, with the descriptor underneath from md. */}
+        <div className="flex min-w-0 shrink-0 flex-col">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              aria-label="UPOU OER, home"
+              className="flex min-h-10 items-center gap-1 rounded-sm font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
+            >
+              <span className="text-ink">UPOU</span>
+              <span className="text-maroon">OER</span>
+            </Link>
+            <span
+              role="note"
+              title="Proof of concept"
+              aria-label="Proof of concept"
+              className="rounded-pill border border-line bg-surface px-1.5 py-1 text-[0.625rem] leading-none font-semibold tracking-wider text-ink-2 uppercase"
+            >
+              Proof of concept
+            </span>
+          </div>
+          <p className="-mt-1.5 hidden text-[0.6875rem] leading-none tracking-wide text-ink-3 md:block">
+            Open Educational Resources
+          </p>
         </div>
         <nav aria-label="Main" className="ml-3 hidden items-center gap-0.5 md:flex lg:ml-6">
           <NavLink to="/" end className={NAV_LINK}>
@@ -84,12 +103,60 @@ export default function Header() {
           </NavLink>
         </nav>
         <SearchBox />
-        <ThemeToggle compact className="lg:hidden" />
+        {/* Phones: one tap flips light/dark. Tablets: theme lives in the Help menu. Desktop: all three. */}
+        <ThemeToggle compact className="ml-auto md:hidden" />
         <div className="hidden lg:block">
           <ThemeToggle />
         </div>
+        <HelpMenu />
       </div>
     </header>
+  )
+}
+
+const THEME_ICONS: Record<Theme, typeof SunIcon> = {
+  light: SunIcon,
+  dark: MoonIcon,
+  system: MonitorIcon,
+}
+
+// Help and shortcuts without scrolling to the footer; below lg it also holds the theme choice.
+function HelpMenu() {
+  const wide = useMediaQuery('(min-width: 64rem)')
+  const { theme, setTheme } = useTheme()
+  const help = useHelp()
+
+  const sections: MenuSection[] = [
+    {
+      items: [
+        { label: 'How it works', icon: <HelpIcon />, onSelect: help },
+        { label: 'Keyboard shortcuts', icon: <KeyboardIcon />, onSelect: openShortcuts, hint: '?' },
+      ],
+    },
+  ]
+  if (!wide) {
+    sections.push({
+      title: 'Theme',
+      items: THEMES.map(({ value, label }) => {
+        const Icon = THEME_ICONS[value]
+        return {
+          label,
+          icon: <Icon />,
+          checked: theme === value,
+          onSelect: () => setTheme(value),
+        }
+      }),
+    })
+  }
+
+  return (
+    <Menu
+      label={wide ? 'Help' : 'Help and theme'}
+      sections={sections}
+      triggerClassName={iconButtonClass('ghost', 'sm')}
+    >
+      <HelpIcon />
+    </Menu>
   )
 }
 
@@ -126,8 +193,8 @@ function SearchBox() {
     }
   }
 
-  // On phones the field is a second header row that opens on demand (the search page has its own
-  // field); from md up it is always shown.
+  // On phones the field is a second header row that opens on demand (`/`; the Search tab and the
+  // search page have their own); from md up it is always shown.
   const expanded = open || (value !== '' && !onSearchPage)
 
   const go = (term: string) => {
@@ -192,61 +259,52 @@ function SearchBox() {
   }
 
   return (
-    <>
-      <IconButton
-        label="Search"
-        icon={<SearchIcon />}
-        onClick={requestFocus}
-        className={`ml-auto md:hidden ${expanded || onSearchPage ? 'invisible' : ''}`}
-      />
-      <form
-        role="search"
-        onSubmit={onSubmit}
-        className={`${expanded ? 'flex' : 'hidden md:flex'} order-last min-w-0 basis-full pb-2.5 md:order-none md:ml-auto md:w-44 md:basis-auto md:pb-0 lg:w-72 xl:w-80`}
-      >
-        <label htmlFor={inputId} className="sr-only">
-          Search videos
-        </label>
-        <div className="relative w-full">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3" />
-          <input
-            ref={input}
-            id={inputId}
-            type="search"
-            value={value}
-            onChange={onChange}
-            onKeyDown={(e) => {
-              if (e.key !== 'Escape') return
-              // Handled here, so the app-wide Esc = Back stays out of it.
+    <form
+      role="search"
+      onSubmit={onSubmit}
+      className={`${expanded ? 'flex' : 'hidden md:flex'} order-last min-w-0 basis-full pb-2.5 md:order-none md:ml-auto md:w-40 md:basis-auto md:pb-0 lg:w-56 xl:w-80`}
+    >
+      <label htmlFor={inputId} className="sr-only">
+        Search videos
+      </label>
+      <div className="relative w-full">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3" />
+        <input
+          ref={input}
+          id={inputId}
+          type="search"
+          value={value}
+          onChange={onChange}
+          onKeyDown={(e) => {
+            if (e.key !== 'Escape') return
+            // With a query: leave the field but keep the query and its results. Empty: the
+            // app-wide Esc = Back takes over.
+            if (value) {
               e.preventDefault()
-              if (value) clear()
-              else {
-                setOpen(false)
-                e.currentTarget.blur()
-              }
-            }}
-            onBlur={() => {
-              if (!value.trim()) setOpen(false)
-            }}
-            placeholder="Search videos"
-            autoComplete="off"
-            spellCheck={false}
-            enterKeyHint="search"
-            className="h-10 w-full rounded-pill border border-line bg-surface pr-10 pl-10 text-sm text-ink transition-colors placeholder:text-ink-3 hover:border-ink-3 focus:border-maroon [&::-webkit-search-cancel-button]:appearance-none"
-          />
-          {value && (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={clear}
-              className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 hover:bg-surface-2 hover:text-ink"
-            >
-              <CloseIcon className="size-4" />
-            </button>
-          )}
-        </div>
-      </form>
-    </>
+              e.currentTarget.blur()
+            } else setOpen(false)
+          }}
+          onBlur={() => {
+            if (!value.trim()) setOpen(false)
+          }}
+          placeholder="Search videos"
+          autoComplete="off"
+          spellCheck={false}
+          enterKeyHint="search"
+          className="h-10 w-full rounded-pill border border-line bg-surface pr-10 pl-10 text-sm text-ink transition-colors placeholder:text-ink-3 hover:border-ink-3 focus:border-maroon [&::-webkit-search-cancel-button]:appearance-none"
+        />
+        {value && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={clear}
+            className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 hover:bg-surface-2 hover:text-ink"
+          >
+            <CloseIcon className="size-4" />
+          </button>
+        )}
+      </div>
+    </form>
   )
 }
 

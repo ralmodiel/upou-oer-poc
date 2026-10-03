@@ -132,6 +132,28 @@ export const ShareIcon = (props: IconProps) => (
   </Icon>
 )
 
+export const MoreIcon = (props: IconProps) => (
+  <Icon {...props} stroke="none">
+    <circle cx="5" cy="12" r="1.9" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.9" fill="currentColor" />
+    <circle cx="19" cy="12" r="1.9" fill="currentColor" />
+  </Icon>
+)
+
+export const HelpIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.4 9.3a2.7 2.7 0 1 1 3.8 2.5c-.8.4-1.2 1-1.2 1.8v.4M12 17.3v.1" />
+  </Icon>
+)
+
+export const KeyboardIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="2.5" y="6" width="19" height="12" rx="2" />
+    <path d="M6.5 10h.1M10 10h.1M13.5 10h.1M17 10h.1M6.5 14h.1M9.5 14h5M17 14h.1" />
+  </Icon>
+)
+
 export const FilmIcon = (props: IconProps) => (
   <Icon {...props}>
     <rect x="3" y="4.5" width="18" height="15" rx="2" />

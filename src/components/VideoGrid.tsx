@@ -21,22 +21,10 @@ const LAYOUTS = {
   },
 } as const
 
-const MOVES: Record<string, 'next' | 'prev' | 'down' | 'up' | 'first' | 'last'> = {
-  ArrowRight: 'next',
-  ArrowLeft: 'prev',
-  ArrowDown: 'down',
-  ArrowUp: 'up',
-  Home: 'first',
-  End: 'last',
-}
-
 const itemOf = (list: HTMLElement, target: EventTarget) => {
   const item = (target as HTMLElement).closest('li')
   return item?.parentElement === list ? item : null
 }
-
-const columnsOf = (list: HTMLElement) =>
-  Math.max(1, getComputedStyle(list).gridTemplateColumns.split(' ').filter(Boolean).length)
 
 interface Props {
   videos: readonly Video[]
@@ -46,7 +34,9 @@ interface Props {
 }
 
 // Roving tabindex: only one card per grid is in the Tab order (its link, then its Save and
-// Details buttons); Arrow keys, Home and End move between cards and Tab leaves the grid.
+// Details buttons), so Tab leaves the grid. The arrow keys move between cards through spatial
+// navigation (lib/spatial.ts, which treats each card as one target); Home and End jump to the
+// first and last card.
 export default function VideoGrid({ videos, layout = 'page', showCategory }: Props) {
   const { list, sizes, heading } = LAYOUTS[layout]
   const eyebrow = showCategory ?? layout !== 'section'
@@ -54,25 +44,14 @@ export default function VideoGrid({ videos, layout = 'page', showCategory }: Pro
   const active = Math.min(current, videos.length - 1)
 
   const onKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
-    const move = MOVES[e.key]
-    if (!move || e.altKey || e.ctrlKey || e.metaKey) return
+    if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey) return
     const ul = e.currentTarget
-    const item = itemOf(ul, e.target)
-    if (!item) return
-    const items = Array.from(ul.children) as HTMLElement[]
-    const from = items.indexOf(item)
-    const cols = columnsOf(ul)
-    const to = {
-      next: from + 1,
-      prev: from - 1,
-      down: from + cols,
-      up: from - cols,
-      first: 0,
-      last: items.length - 1,
-    }[move]
-    if (to === from || to < 0 || to >= items.length) return
+    if (!itemOf(ul, e.target)) return
+    const item = e.key === 'Home' ? ul.firstElementChild : ul.lastElementChild
+    const link = item?.querySelector<HTMLElement>('[data-card-link]')
+    if (!link || link === e.target) return
     e.preventDefault()
-    items[to].querySelector<HTMLElement>('[data-card-link]')?.focus()
+    link.focus()
   }
 
   // Remember the card the user reached (by keyboard or pointer) as the grid's entry point.

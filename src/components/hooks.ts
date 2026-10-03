@@ -1,10 +1,28 @@
 import {
+  useCallback,
   useEffect,
   useState,
   useSyncExternalStore,
   type FocusEvent,
   type KeyboardEvent,
 } from 'react'
+
+/** True while the media `query` matches; re-renders when that flips. */
+export function useMediaQuery(query: string) {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = window.matchMedia(query)
+      list.addEventListener('change', onChange)
+      return () => list.removeEventListener('change', onChange)
+    },
+    [query],
+  )
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false,
+  )
+}
 
 /** Sets document.title while mounted and restores the previous title afterwards. */
 export function useDocumentTitle(title: string) {
@@ -41,16 +59,11 @@ export function useScrolledPast(threshold: number) {
   )
 }
 
-const ROW_MOVES: Record<string, 'next' | 'prev' | 'first' | 'last'> = {
-  ArrowRight: 'next',
-  ArrowLeft: 'prev',
-  Home: 'first',
-  End: 'last',
-}
-
 /**
- * Roving tabindex for a <ul> of chips: one item in the Tab order (`tabIndexOf(i)`), Left/Right,
- * Home and End move between items. `count` clamps the entry point when the list shrinks.
+ * Roving tabindex for a <ul> of chips: one item in the Tab order (`tabIndexOf(i)`); Home and End
+ * jump to the ends, the arrow keys are spatial navigation's (lib/spatial.ts) and any focus inside
+ * the row (by key or pointer) becomes its entry point. `count` clamps that entry point when the
+ * list shrinks.
  */
 export function useRovingRow(count: number, initial = 0) {
   const [current, setCurrent] = useState(initial)
@@ -62,13 +75,12 @@ export function useRovingRow(count: number, initial = 0) {
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
-    const move = ROW_MOVES[e.key]
-    if (!move || e.altKey || e.ctrlKey || e.metaKey) return
+    if ((e.key !== 'Home' && e.key !== 'End') || e.altKey || e.ctrlKey || e.metaKey) return
     const from = itemIndex(e.currentTarget, e.target)
     if (from < 0) return
     const last = e.currentTarget.children.length - 1
-    const to = { next: from + 1, prev: from - 1, first: 0, last }[move]
-    if (to === from || to < 0 || to > last) return
+    const to = e.key === 'Home' ? 0 : last
+    if (to === from) return
     e.preventDefault()
     e.currentTarget.children[to].querySelector<HTMLElement>('a, button')?.focus()
   }

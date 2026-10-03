@@ -3,6 +3,7 @@ import { isYouTubeId } from '../lib/youtube'
 import type { Video } from '../types'
 import {
   GENERAL_CATEGORY,
+  factsOf,
   getCategories,
   getCategory,
   getCategoryByName,
@@ -53,6 +54,18 @@ describe('catalog helpers', () => {
     expect(summaryOf(list[0])).toBe(
       "An open educational video from UP Open University's Research collection. Topics: Climate.",
     )
+  })
+
+  it('states facts for a video: publish date, collection size, channel', () => {
+    setCatalog(list)
+    const facts = factsOf(list[0])
+    expect(facts.map((f) => f.label)).toEqual([
+      'Published Mar 1, 2026',
+      'Research (3 videos)',
+      'UP Open University',
+    ])
+    expect(facts[0].dateTime).toBe('2026-03-01')
+    expect(facts[1].to).toBe('/collections/research')
   })
 
   it('ranks similar videos by category and shared tags', () => {
@@ -106,14 +119,14 @@ describe('catalog API', () => {
     make('g3', { category: 'General', publishedAt: '2025-03-01' }),
   ]
 
-  it('lists categories by size, with unique slugs and the newest video as cover', () => {
+  it('lists categories by size (General last), with unique slugs and the newest video as cover', () => {
     setCatalog(fixture)
     expect(getCategories().map((c) => [c.slug, c.count, c.cover.id])).toEqual([
       ['research', 4, 'a'],
-      ['general', 3, 'g3'],
       ['arts-design', 2, 'd'],
       ['arts-design-2', 1, 'e'],
       ['law', 1, 'f'],
+      ['general', 3, 'g3'],
     ])
     expect(getCategory('arts-design-2')?.name).toBe('Arts/Design')
     expect(getCategory('nope')).toBeUndefined()

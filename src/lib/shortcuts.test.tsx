@@ -27,6 +27,8 @@ function renderAt(entries: string[]) {
   return router
 }
 
+const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+
 describe('useGlobalShortcuts', () => {
   it('Esc goes back when the app has history', async () => {
     const router = renderAt(['/', '/other'])
@@ -40,22 +42,43 @@ describe('useGlobalShortcuts', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 
-  it('Esc inside a text field only blurs it', async () => {
+  it('Backspace is Back outside fields', async () => {
+    const router = renderAt(['/', '/other'])
+    await userEvent.keyboard('{Backspace}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  it('Esc in a field with text only blurs it and keeps the text', async () => {
     const router = renderAt(['/', '/field'])
     const field = screen.getByRole('textbox', { name: 'Field' })
-    await userEvent.click(field)
-    expect(field).toHaveFocus()
+    await userEvent.type(field, 'climate')
+    await userEvent.keyboard('{Backspace}')
+    expect(field).toHaveValue('climat')
     await userEvent.keyboard('{Escape}')
     expect(field).not.toHaveFocus()
+    expect(field).toHaveValue('climat')
+    await settle()
     expect(router.state.location.pathname).toBe('/field')
   })
 
-  it('Esc leaves an open dialog to itself', async () => {
+  it('Esc in an empty field goes back', async () => {
+    const router = renderAt(['/', '/field'])
+    await userEvent.click(screen.getByRole('textbox', { name: 'Field' }))
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  it('Esc leaves an open dialog to itself and Backspace closes it', async () => {
     const router = renderAt(['/', '/other'])
     const dialog = document.createElement('dialog')
     dialog.open = true
     document.body.append(dialog)
     await userEvent.keyboard('{Escape}')
+    expect(router.state.location.pathname).toBe('/other')
+    expect(dialog.open).toBe(true)
+    await userEvent.keyboard('{Backspace}')
+    expect(dialog.open).toBe(false)
+    await settle()
     expect(router.state.location.pathname).toBe('/other')
     dialog.remove()
   })

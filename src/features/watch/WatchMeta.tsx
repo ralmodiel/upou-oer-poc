@@ -1,43 +1,27 @@
-import { Link } from 'react-router'
+import { ExternalLinkIcon, PlayIcon } from '../../components/icons'
 import LinkButton from '../../components/ui/LinkButton'
-import type { Category } from '../../data/catalog'
 import { formatDate } from '../../lib/format'
 import { watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
-import { ExternalIcon, PlayIcon } from './icons'
 import SaveButton from './SaveButton'
 import ShareButton from './ShareButton'
-
-const Dot = () => (
-  <span aria-hidden="true" className="text-ink-3">
-    ·
-  </span>
-)
+import './watch.css'
 
 const NewTab = () => <span className="sr-only"> (opens in a new tab)</span>
 
-/** Category · date · channel, then the action row. */
-export default function WatchMeta({ video, category }: { video: Video; category?: Category }) {
+/** Date · channel (the breadcrumb already names the collection), then the action row. */
+export default function WatchMeta({ video }: { video: Video }) {
   const date = formatDate(video.publishedAt)
   return (
     <>
-      <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-2">
-        {category && (
-          <>
-            <Link to={`/collections/${category.slug}`} className="eyebrow hover:underline">
-              {category.name}
-            </Link>
-            <Dot />
-          </>
-        )}
+      <ul className="watch-meta mt-3 flex flex-wrap items-center text-sm text-ink-2">
         {date && (
-          <>
+          <li>
             <time dateTime={video.publishedAt}>{date}</time>
-            <Dot />
-          </>
+          </li>
         )}
-        <span>{video.channel}</span>
-      </p>
+        <li>{video.channel}</li>
+      </ul>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <LinkButton
           variant="secondary"
@@ -45,7 +29,7 @@ export default function WatchMeta({ video, category }: { video: Video; category?
           href={watchUrl(video.youtubeId)}
           external
           icon={<PlayIcon />}
-          iconEnd={<ExternalIcon className="text-ink-3" />}
+          iconEnd={<ExternalLinkIcon className="text-ink-3" />}
         >
           Watch on YouTube
           <NewTab />
@@ -55,7 +39,7 @@ export default function WatchMeta({ video, category }: { video: Video; category?
           size="sm"
           href={video.sourceUrl}
           external
-          iconEnd={<ExternalIcon className="text-ink-3" />}
+          iconEnd={<ExternalLinkIcon className="text-ink-3" />}
         >
           View on oer.upou.edu.ph
           <NewTab />

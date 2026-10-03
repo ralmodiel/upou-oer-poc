@@ -3,13 +3,22 @@ import type { CategoryRow } from '../data/catalog'
 import VideoGrid from './VideoGrid'
 import SectionHeading from './ui/SectionHeading'
 
+interface Props {
+  row: CategoryRow
+  /** Show only the first `limit` videos (phones). */
+  limit?: number
+}
+
 /** One home section: a category heading, a "See all" link and a capped grid of its newest videos. */
-function Section({ row }: { row: CategoryRow }) {
+function Section({ row, limit }: Props) {
   const headingId = useId()
+  const videos = limit ? row.videos.slice(0, limit) : row.videos
   return (
     <section
       aria-labelledby={headingId}
-      className="lazy-section border-t border-line px-(--gutter) pt-6 pb-10"
+      className={`lazy-section border-t border-line px-(--gutter) pt-6 pb-10 ${
+        videos.length <= 4 ? 'lazy-section-short' : ''
+      }`}
     >
       <SectionHeading
         id={headingId}
@@ -19,7 +28,7 @@ function Section({ row }: { row: CategoryRow }) {
         seeAllContext={row.title}
       />
       <div className="mt-5">
-        <VideoGrid videos={row.videos} layout="section" />
+        <VideoGrid videos={videos} layout="section" />
       </div>
     </section>
   )

@@ -1,0 +1,6 @@
+# Development default. Production builds rewrite this file (tools/seo/generate.mjs) with the
+# base path and the sitemap URL.
+User-agent: *
+Allow: /
+Disallow: /search
+Disallow: /my-list

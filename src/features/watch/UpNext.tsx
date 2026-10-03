@@ -2,10 +2,10 @@ import { Link } from 'react-router'
 import SectionHeading from '../../components/ui/SectionHeading'
 import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
-import type { Video } from '../../types'
+import type { UpNextItem } from './recommendations'
 
-/** Compact list of similar videos; each row is one link, so it is keyboard operable as is. */
-export default function UpNext({ items }: { items: readonly Video[] }) {
+/** Compact list of recommended videos; each row is one link, so it is keyboard operable as is. */
+export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
   if (!items.length) return null
   return (
     <section>
@@ -14,7 +14,7 @@ export default function UpNext({ items }: { items: readonly Video[] }) {
         aria-labelledby="up-next-heading"
         className="mt-3 divide-y divide-line border-y border-line"
       >
-        {items.map((v) => (
+        {items.map(({ video: v, reason }) => (
           <li key={v.id}>
             <Link
               to={`/watch/${v.id}`}
@@ -30,12 +30,16 @@ export default function UpNext({ items }: { items: readonly Video[] }) {
                 className="aspect-video w-28 shrink-0 rounded-lg bg-surface-2 object-cover ring-1 ring-black/5 sm:w-36"
               />
               <span className="min-w-0">
-                <span className="eyebrow block">{v.category}</span>
+                <span className="eyebrow block truncate">{reason || v.category}</span>
                 <span className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink group-hover:text-maroon">
                   {v.title}
                 </span>
-                <span className="mt-1 block text-xs text-ink-3">
-                  {[formatDate(v.publishedAt), v.channel !== DEFAULT_CHANNEL && v.channel]
+                <span className="mt-1 block truncate text-xs text-ink-3">
+                  {[
+                    formatDate(v.publishedAt),
+                    reason && v.category,
+                    v.channel !== DEFAULT_CHANNEL && v.channel,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>

@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { getRows } from '../data/catalog'
 import { setCatalog } from '../data/testing'
+import { useSpatialNavigation } from '../lib/spatial'
 import CollectionChips from './CollectionChips'
 import ContinueWatching from './ContinueWatching'
 import DetailModal from './DetailModal'
@@ -83,9 +84,29 @@ describe('Section and VideoCard', () => {
   })
 })
 
+// The app shell's spatial navigation owns the arrow keys; jsdom has no layout, so lay the cards
+// out in one row by hand.
+function SpatialShell({ children }: { children: ReactNode }) {
+  useSpatialNavigation()
+  return children
+}
+function layOutCardsInARow() {
+  document.querySelectorAll('article').forEach((card, i) => {
+    const left = i * 320
+    card.getBoundingClientRect = () =>
+      ({ top: 100, left, width: 300, height: 200, right: left + 300, bottom: 300 }) as DOMRect
+  })
+}
+
 describe('VideoGrid keyboard (roving tabindex)', () => {
   it('puts one card in the Tab order and moves between cards with the arrow keys', async () => {
-    renderAt('/', <VideoGrid videos={research} />)
+    renderAt(
+      '/',
+      <SpatialShell>
+        <VideoGrid videos={research} />
+      </SpatialShell>,
+    )
+    layOutCardsInARow()
     const play = (title: string) => screen.getByRole('link', { name: `Play ${title}` })
     expect(play('Climate Change Basics')).toHaveAttribute('tabindex', '0')
     expect(play('Climate Policy in the Philippines')).toHaveAttribute('tabindex', '-1')

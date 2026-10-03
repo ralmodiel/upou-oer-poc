@@ -20,17 +20,19 @@
   --line: var(--color-line, #e6e1dd);
   --maroon: var(--color-maroon, #8d0c34);
   --maroon-2: var(--color-maroon-2, #7f001f);
-  --maroon-soft: var(--color-maroon-soft, #f9e6ed);
   --forest: var(--color-forest, #00563f);
   --amber: var(--color-amber, #f5a71d);
+  --gold: var(--color-gold, #fcb51b);
+  --on-accent: var(--color-on-accent, #ffffff);
   --radius: var(--radius-card, 14px);
   --serif: var(--font-display, 'Instrument Serif', Georgia, 'Times New Roman', serif);
   --sans: var(--font-sans, 'Instrument Sans', system-ui, sans-serif);
   /* Fixed colours over the stills: the montage is dark whatever the theme. */
   --night: #1b1a17;
   --light: #faf8f6;
-  --tint: #8d0c34;
   --motion: 1;
+  /* Blur effects switch off for previews and reduced motion. */
+  --fx: 1;
   --o: 600s;
   --out: calc(var(--reel-ms) - var(--tout));
 
@@ -47,19 +49,11 @@
 }
 
 /* Seeded accent: shapes use --accent, text on paper --accent-text, text over stills --accent-hi. */
-.reel[data-accent='maroon'] {
-  --accent: var(--maroon);
-  --accent-text: var(--maroon);
-  --accent-hi: #e8628a;
-  --accent-on: #ffffff;
-  --hot: #f7b545;
-}
-
 .reel[data-accent='forest'] {
   --accent: var(--forest);
   --accent-text: var(--forest);
   --accent-hi: #5fc59c;
-  --accent-on: #ffffff;
+  --accent-on: var(--on-accent);
   --hot: #5fc59c;
 }
 
@@ -68,6 +62,22 @@
   --accent-text: var(--ink);
   --accent-hi: #f7b545;
   --accent-on: #373637;
+  --hot: #f7b545;
+}
+
+.reel[data-accent='gold'] {
+  --accent: var(--gold);
+  --accent-text: var(--ink);
+  --accent-hi: #fcc75a;
+  --accent-on: #373637;
+  --hot: #fcc75a;
+}
+
+.reel[data-accent='ink'] {
+  --accent: var(--ink);
+  --accent-text: var(--ink);
+  --accent-hi: var(--light);
+  --accent-on: var(--paper);
   --hot: #f7b545;
 }
 
@@ -161,8 +171,11 @@
   animation: reel-fade-in 700ms var(--ease) var(--t1) both;
 }
 
+/* Exactly 16:9, so `cover` crops the letterbox bars of the 640px 4:3 stills and nothing else shows. */
 .reel[data-lowres][data-template='cinematic'] .reel-stage {
-  inset: 9cqh 12cqw;
+  inset: 9cqh 0;
+  width: calc(82cqh * 16 / 9);
+  margin-inline: auto;
   border-radius: var(--radius);
   box-shadow: 0 10px 30px -12px rgb(27 26 23 / 0.6);
 }
@@ -341,7 +354,11 @@
   align-items: center;
 }
 
+/* A soft charcoal scrim keeps the hook readable over bright stills. */
 .reel[data-template='cinematic'] .reel-hook {
+  padding: 0.35em 0.8em;
+  border-radius: calc(var(--radius) / 2);
+  background: rgb(27 26 23 / 0.5);
   font-family: var(--serif);
   font-size: clamp(0.85rem, min(2.8cqw, 5cqh), 3.6rem);
   font-style: italic;
@@ -482,7 +499,7 @@
 }
 
 .reel[data-template='split'] .reel-word.is-hot {
-  color: var(--maroon);
+  color: var(--accent-text);
 }
 
 .reel[data-template='split'] .reel-hook {
@@ -502,27 +519,16 @@
   background: var(--accent);
 }
 
-/* ---------- Template: Kinetic (giant serif over maroon-duotone stills) ---------- */
+/* ---------- Template: Kinetic (giant serif over charcoal-duotone stills) ---------- */
 
 .reel[data-template='kinetic'] .reel-kb img {
-  filter: grayscale(1) contrast(1.15) brightness(0.95);
+  filter: grayscale(1) contrast(1.1) brightness(0.9);
 }
 
 .reel[data-template='kinetic'] .reel-shade {
-  background: var(--tint);
-  mix-blend-mode: multiply;
-}
-
-.reel[data-template='kinetic'] .reel-shade::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    100deg,
-    rgb(27 26 23 / 0.55) 10%,
-    rgb(27 26 23 / 0.15) 60%,
-    transparent
-  );
+  background:
+    linear-gradient(100deg, rgb(27 26 23 / 0.6) 10%, rgb(27 26 23 / 0.2) 60%, transparent),
+    rgb(55 54 55 / 0.45);
 }
 
 .reel[data-template='kinetic'] .reel-titleblock {
@@ -650,7 +656,11 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(52cqw 40cqh at 50% 50%, var(--maroon-soft), transparent 70%);
+  background: radial-gradient(
+    52cqw 40cqh at 50% 50%,
+    color-mix(in srgb, var(--accent) 14%, transparent),
+    transparent 70%
+  );
   animation: reel-glow 1400ms var(--ease) both;
 }
 
@@ -685,7 +695,7 @@
 .reel-streak {
   width: min(28cqw, 22rem);
   height: 2px;
-  background: var(--maroon);
+  background: var(--accent);
   animation: reel-streak 900ms var(--ease) 80ms both;
 }
 
@@ -699,7 +709,7 @@
   animation: reel-rise-in 600ms var(--ease) 700ms both;
 }
 
-/* Split: a maroon block wipes across and leaves the wordmark behind. */
+/* Split: an ink block wipes across and leaves the wordmark behind. */
 .reel[data-template='split'] .reel-wordmark {
   overflow: hidden;
 }
@@ -709,7 +719,7 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: var(--maroon);
+  background: var(--ink);
   animation: reel-block 900ms var(--ease-io) 150ms both;
 }
 
@@ -762,7 +772,7 @@
   inset: 0;
   background: radial-gradient(
     60cqw 80cqh at calc(50% + var(--pdx)) calc(50% + var(--pdy)),
-    var(--maroon-soft),
+    color-mix(in srgb, var(--accent) 10%, transparent),
     transparent 70%
   );
   animation: reel-gone var(--out) var(--ease-in) var(--tout) forwards;
@@ -947,7 +957,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, var(--maroon), var(--accent-hi));
+  background: var(--maroon);
   transform-origin: left;
   animation: reel-progress var(--reel-ms) linear both;
 }
@@ -1040,9 +1050,92 @@
     reel-scan 1.2s var(--ease-io) infinite;
 }
 
+/* ---------- Preview variant (card hover/focus): silent, no chrome, lighter effects ---------- */
+
+.reel[data-variant='preview'] {
+  --fx: 0;
+}
+
+.reel[data-variant='preview'] .reel-tx {
+  box-shadow: none;
+}
+
+.reel[data-variant='preview'] :is(.reel-tags, .reel-index) {
+  display: none;
+}
+
+/* Lower minimum sizes: these stages are 160–480px wide. */
+.reel[data-variant='preview'] .reel-kicker {
+  font-size: clamp(0.45rem, min(var(--kicker-size, 1.3cqw), 2.4cqh), 1.5rem);
+}
+
+.reel[data-variant='preview'] .reel-title {
+  font-size: clamp(0.65rem, calc(min(8cqw, 14cqh) * var(--title-scale)), 15rem);
+}
+
+.reel[data-variant='preview'][data-template='split'] .reel-title {
+  font-size: clamp(0.6rem, calc(min(5cqw, 9cqh) * var(--title-scale)), 10rem);
+}
+
+.reel[data-variant='preview'] .reel-hook {
+  font-size: clamp(0.55rem, min(2cqw, 3.6cqh), 2.6rem);
+}
+
+.reel[data-variant='preview'][data-template='cinematic'] .reel-hook {
+  font-size: clamp(0.6rem, min(2.8cqw, 5cqh), 3.6rem);
+}
+
+.reel[data-variant='preview'][data-template='split'] .reel-hook {
+  font-size: clamp(0.55rem, min(1.55cqw, 2.9cqh), 2rem);
+}
+
+.reel[data-variant='preview'][data-template='kinetic'] .reel-hook {
+  font-size: clamp(0.55rem, min(1.9cqw, 3.4cqh), 2.4rem);
+}
+
+.reel[data-variant='preview'] .reel-wordmark {
+  font-size: clamp(1rem, min(10cqw, 17cqh), 12rem);
+}
+
+.reel[data-variant='preview'] .reel-ident-sub {
+  font-size: clamp(0.4rem, min(1.2cqw, 2.2cqh), 1.3rem);
+}
+
+.reel[data-variant='preview'] .reel-end-title {
+  font-size: clamp(0.65rem, calc(min(4.8cqw, 8.8cqh) * var(--title-scale)), 9rem);
+}
+
+.reel[data-variant='preview'] .reel-eyebrow {
+  font-size: clamp(0.4rem, min(1.1cqw, 2cqh), 1.3rem);
+}
+
+.reel[data-variant='preview'] .reel-end-meta {
+  font-size: clamp(0.5rem, min(1.4cqw, 2.5cqh), 1.6rem);
+}
+
+@container (max-width: 300px) {
+  .reel[data-variant='preview'] :is(.reel-story, .reel-ident-sub, .reel-end-meta) {
+    display: none;
+  }
+}
+
 /* ---------- Small stages (phones): fewer, larger things ---------- */
 
 @container (max-width: 560px) {
+  /* The title sits on a solid scrim and keeps to three lines. */
+  .reel[data-template='cinematic'] .reel-titleblock {
+    padding: 0.5em 0.7em;
+    border-radius: calc(var(--radius) / 2);
+    background: rgb(27 26 23 / 0.72);
+  }
+
+  .reel:is([data-template='cinematic'], [data-template='split']) .reel-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
   /* The controls take the bottom band (3cqh + 2.5rem), so copy keeps clear of it. */
   .reel[data-template='split'] :is(.reel-stage, .reel-frame) {
     top: calc(50% - 0.75rem);
@@ -1077,7 +1170,8 @@
   }
 
   .reel[data-lowres][data-template='cinematic'] .reel-stage {
-    inset: 6cqh 8cqw;
+    inset: 6cqh 0;
+    width: calc(88cqh * 16 / 9);
   }
 
   /* Kinetic: at most four title lines, and the hook sits above the controls. */
@@ -1087,6 +1181,16 @@
 
   .reel[data-template='kinetic'] .reel-title {
     font-size: min(calc(var(--kw) * 0.96cqw), calc(var(--kh-s) * 1cqh));
+  }
+
+  /* Never below 20px on the watch stage; an over-long line ellipsizes instead. */
+  .reel:not([data-variant='preview'])[data-template='kinetic'] .reel-title {
+    font-size: max(1.25rem, min(calc(var(--kw) * 0.96cqw), calc(var(--kh-s) * 1cqh)));
+  }
+
+  .reel[data-template='kinetic'] .reel-line {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .reel[data-template='kinetic'] .reel-line:nth-child(n + 5) {
@@ -1142,6 +1246,44 @@
     display: none;
   }
 
+  /* Split stacks: full-width stills on top, copy on the paper band below, controls up top. */
+  .reel[data-template='split'] :is(.reel-stage, .reel-frame) {
+    top: 0;
+    right: 0;
+    left: 0;
+    width: auto;
+    height: 58cqh;
+    aspect-ratio: auto;
+    translate: none;
+    border-radius: 0;
+  }
+
+  .reel[data-template='split'] .reel-frame {
+    display: none;
+  }
+
+  .reel[data-template='split'] .reel-copy {
+    top: auto;
+    right: 5cqw;
+    bottom: 0;
+    left: 5cqw;
+    height: 42cqh;
+    gap: 0.25rem;
+  }
+
+  .reel[data-template='split'] .reel-hook {
+    display: none;
+  }
+
+  .reel[data-template='split'] .reel-title {
+    -webkit-line-clamp: 2;
+  }
+
+  .reel[data-template='split'] .reel-controls {
+    top: 2.5cqh;
+    bottom: auto;
+  }
+
   /* The byline keeps only "category · year". */
   .reel-end-meta {
     max-width: 100%;
@@ -1164,6 +1306,7 @@
 @media (prefers-reduced-motion: reduce) {
   .reel {
     --motion: 0;
+    --fx: 0;
   }
 
   .reel-tx {
@@ -1283,7 +1426,7 @@
   from {
     opacity: 0;
     transform: scale(calc(1 + var(--motion) * 0.05));
-    filter: blur(calc(var(--motion) * 10px));
+    filter: blur(calc(var(--fx) * 10px));
   }
 }
 
@@ -1291,7 +1434,7 @@
   to {
     opacity: 0;
     transform: translate3d(0, calc(var(--motion) * -0.6em), 0);
-    filter: blur(calc(var(--motion) * 6px));
+    filter: blur(calc(var(--fx) * 6px));
   }
 }
 
@@ -1299,7 +1442,7 @@
   from {
     opacity: 0;
     transform: translate3d(0, calc(var(--motion) * 0.45em), 0);
-    filter: blur(calc(var(--motion) * 12px));
+    filter: blur(calc(var(--fx) * 12px));
   }
 }
 
@@ -1317,7 +1460,7 @@
   from {
     opacity: 0;
     transform: scale(calc(1 + var(--motion) * 1.1));
-    filter: blur(calc(var(--motion) * 14px));
+    filter: blur(calc(var(--fx) * 14px));
   }
   55% {
     opacity: 1;

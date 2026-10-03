@@ -1,6 +1,7 @@
 import records from './catalog.json'
+import { formatDate } from '../lib/format'
 import type { Video } from '../types'
-import { expandCatalog } from './expand'
+import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 
 /** A home section for one category; `videos` is capped, `count` is the category total. */
 export interface CategoryRow {
@@ -105,11 +106,18 @@ function groups(): Map<string, Group> {
   })
 }
 
-/** All categories, largest first. */
+const isGeneral = (name: string) => Number(name === GENERAL_CATEGORY)
+
+/** All categories, largest first; General (posts without a subject) last. */
 export function getCategories(): Category[] {
   return cached('categories', () =>
     [...groups().values()]
-      .sort((a, b) => b.videos.length - a.videos.length || a.name.localeCompare(b.name))
+      .sort(
+        (a, b) =>
+          isGeneral(a.name) - isGeneral(b.name) ||
+          b.videos.length - a.videos.length ||
+          a.name.localeCompare(b.name),
+      )
       .map(({ slug, name, videos: list }) => ({
         slug,
         name,
@@ -168,6 +176,37 @@ export function summaryOf(v: Video): string {
   if (v.description) return v.description
   const topics = v.tags.slice(0, 3).join(' · ')
   return `An open educational video from ${v.channel}'s ${v.category} collection.${topics ? ` Topics: ${topics}.` : ''}`
+}
+
+export interface Fact {
+  label: string
+  /** Route for the collection fact. */
+  to?: string
+  /** ISO instant for the publish-date fact. */
+  dateTime?: string
+}
+
+const plural = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`
+
+/**
+ * What is known about a video, for a meta line: "Published Nov 25, 2024",
+ * "Health Sciences (165 videos)", "UP Open University". Most source pages have no description.
+ */
+export function factsOf(v: Video): Fact[] {
+  const facts: Fact[] = []
+  const date = formatDate(v.publishedAt)
+  if (date) facts.push({ label: `Published ${date}`, dateTime: v.publishedAt })
+  const category = getCategoryByName(v.category)
+  facts.push(
+    category
+      ? {
+          label: `${category.name} (${plural(category.count, 'video')})`,
+          to: `/collections/${category.slug}`,
+        }
+      : { label: v.category },
+  )
+  facts.push({ label: v.channel || DEFAULT_CHANNEL })
+  return facts
 }
 
 /** Ranks other videos by shared category and tags. */

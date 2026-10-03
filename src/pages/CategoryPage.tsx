@@ -2,12 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint } from '../components/browse-ui'
-import { useDocumentTitle } from '../components/hooks'
 import Breadcrumbs from '../components/ui/Breadcrumbs'
 import Button from '../components/ui/Button'
 import LinkButton from '../components/ui/LinkButton'
 import SectionHeading from '../components/ui/SectionHeading'
-import { getCategory, getCategoryVideos, type CategorySort } from '../data/catalog'
+import {
+  GENERAL_CATEGORY,
+  getCategory,
+  getCategoryVideos,
+  type CategorySort,
+} from '../data/catalog'
+import { collectionSeo, pageTitle, useSeo } from '../lib/seo'
 
 const PAGE_SIZE = 24
 const SORTS: { value: CategorySort; label: string }[] = [
@@ -32,7 +37,15 @@ export default function CategoryPage() {
   const grid = useRef<HTMLDivElement>(null)
   const focusAt = useRef(-1)
 
-  useDocumentTitle(`${category?.name ?? 'Collection not found'} · Collections · UPOU OER`)
+  useSeo(
+    category
+      ? collectionSeo(category, getCategoryVideos(slug))
+      : {
+          title: pageTitle('Collection not found'),
+          description: 'There is no collection at this address.',
+          noindex: true,
+        },
+  )
 
   // After "Load more", focus the first new card so keyboard and screen-reader users land on it.
   useEffect(() => {
@@ -89,7 +102,9 @@ export default function CategoryPage() {
         as="h1"
         className="mt-4"
         title={category.name}
-        description={`${all.length} ${all.length === 1 ? 'video' : 'videos'}`}
+        description={`${all.length} ${all.length === 1 ? 'video' : 'videos'}${
+          category.name === GENERAL_CATEGORY ? ' without a subject category' : ''
+        }`}
       >
         <div
           role="group"

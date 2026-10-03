@@ -1,11 +1,11 @@
 import CategoryCard from '../components/CategoryCard'
-import { useDocumentTitle } from '../components/hooks'
 import SectionHeading from '../components/ui/SectionHeading'
 import { getCategories, videos } from '../data/catalog'
+import { collectionsSeo, useSeo } from '../lib/seo'
 
 export default function CollectionsPage() {
-  useDocumentTitle('Collections · UPOU OER')
   const categories = getCategories()
+  useSeo(collectionsSeo(categories))
   return (
     <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
       <SectionHeading

@@ -1,14 +1,11 @@
-// ThemeToggle: light / dark / system. Default: a labelled segmented control; `compact`: a single
-// icon button that cycles through the three (phone header).
-import { useTheme, type Theme } from '../lib/theme'
+// ThemeToggle: light / dark / system. Default: a labelled segmented control. `compact`: one icon
+// button that flips the effective theme (light <-> dark), so the first tap always changes
+// something; "system" comes back through the Help menu (Header), which lists THEMES too.
+import { THEMES, useTheme, type ResolvedTheme, type Theme } from '../lib/theme'
 import { MonitorIcon, MoonIcon, SunIcon } from './icons'
 import IconButton from './ui/IconButton'
 
-const OPTIONS: { value: Theme; label: string; Icon: typeof SunIcon }[] = [
-  { value: 'light', label: 'Light', Icon: SunIcon },
-  { value: 'dark', label: 'Dark', Icon: MoonIcon },
-  { value: 'system', label: 'System', Icon: MonitorIcon },
-]
+const ICONS: Record<Theme, typeof SunIcon> = { light: SunIcon, dark: MoonIcon, system: MonitorIcon }
 
 interface Props {
   compact?: boolean
@@ -19,15 +16,13 @@ export default function ThemeToggle({ compact = false, className = '' }: Props) 
   const { theme, resolved, setTheme } = useTheme()
 
   if (compact) {
-    const index = OPTIONS.findIndex((o) => o.value === theme)
-    const current = OPTIONS[index]
-    const next = OPTIONS[(index + 1) % OPTIONS.length]
-    const now = theme === 'system' ? `System (${resolved})` : current.label
+    const next: ResolvedTheme = resolved === 'dark' ? 'light' : 'dark'
+    const Icon = resolved === 'dark' ? MoonIcon : SunIcon
     return (
       <IconButton
-        label={`Theme: ${now}. Switch to ${next.label}`}
-        icon={<current.Icon />}
-        onClick={() => setTheme(next.value)}
+        label={`Theme: ${resolved}. Switch to ${next}`}
+        icon={<Icon />}
+        onClick={() => setTheme(next)}
         className={className}
       />
     )
@@ -39,7 +34,8 @@ export default function ThemeToggle({ compact = false, className = '' }: Props) 
       aria-label="Theme"
       className={`inline-flex h-10 shrink-0 items-center gap-0.5 rounded-pill border border-line bg-surface p-0.5 ${className}`}
     >
-      {OPTIONS.map(({ value, label, Icon }) => {
+      {THEMES.map(({ value, label }) => {
+        const Icon = ICONS[value]
         const selected = theme === value
         return (
           <button

@@ -1,16 +1,20 @@
 import { useMemo } from 'react'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint } from '../components/browse-ui'
-import { useDocumentTitle } from '../components/hooks'
 import { BookmarkIcon } from '../components/icons'
 import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
 import SectionHeading from '../components/ui/SectionHeading'
 import { getVideo } from '../data/catalog'
+import { pageTitle, useSeo } from '../lib/seo'
 import { useMyList } from '../lib/storage'
 
 export default function MyListPage() {
-  useDocumentTitle('My List · UPOU OER')
+  useSeo({
+    title: pageTitle('My List'),
+    description: 'Videos you saved for later, kept in this browser.',
+    noindex: true,
+  })
   const { ids } = useMyList()
   const saved = useMemo(() => ids.map((id) => getVideo(id)).filter((v) => v !== undefined), [ids])
 

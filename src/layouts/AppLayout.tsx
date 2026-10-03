@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import Header, { TabBar } from '../components/Header'
 import ShortcutsSheet from '../components/ShortcutsSheet'
 import { useGlobalShortcuts } from '../lib/shortcuts'
+import { useSpatialNavigation } from '../lib/spatial'
 import '../components/browse.css'
 
 // Move focus (not just scroll) so the next Tab starts inside the main content.
@@ -15,6 +16,7 @@ function skipToMain(e: MouseEvent<HTMLAnchorElement>) {
 
 export default function AppLayout() {
   useGlobalShortcuts()
+  useSpatialNavigation()
 
   return (
     // Bottom padding keeps the footer clear of the phone tab bar.

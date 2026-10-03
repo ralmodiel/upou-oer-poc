@@ -6,7 +6,7 @@ import type { Video } from '../../types'
 
 export type Template = 'cinematic' | 'split' | 'kinetic'
 export type Transition = 'fade' | 'slide' | 'zoom' | 'wipe' | 'iris'
-export type Accent = 'maroon' | 'forest' | 'amber'
+export type Accent = 'forest' | 'amber' | 'gold' | 'ink'
 
 // Beat times (ms) inside the 10 s reel.
 export const SHOT_AT = [1500, 3500, 5500] as const
@@ -18,8 +18,8 @@ export const OUT_AT = 9500
 const TEMPLATES: readonly Template[] = ['cinematic', 'split', 'kinetic']
 const TRANSITIONS: readonly Transition[] = ['fade', 'slide', 'zoom', 'wipe', 'iris']
 const ENDINGS = ['iris', 'fade', 'rise'] as const
-// Accent colours from the UPOU logos; reel.css maps each name to the theme tokens.
-const ACCENTS: readonly Accent[] = ['maroon', 'forest', 'amber']
+// Accent colours from the UPOU logos (maroon stays reserved for the wordmark, progress and Skip).
+const ACCENTS: readonly Accent[] = ['forest', 'amber', 'gold', 'ink']
 /** Longest title the reel sets in type; longer ones are cut at a word boundary with an ellipsis. */
 export const REEL_TITLE_MAX = 140
 // Root notes (A1–C2) for the audio sting.
@@ -41,6 +41,8 @@ export interface Line {
 
 export interface Shot {
   src: string
+  /** 320px version of the same still, for preview stages. */
+  small: string
   tx: Transition
   style: CSSProperties
 }
@@ -51,7 +53,7 @@ export interface ReelPlan {
   side: 'left' | 'right'
   motion: 'slam' | 'slide'
   ending: (typeof ENDINGS)[number]
-  /** Frames are YouTube's 320px stills: the reel frames them instead of blowing them up. */
+  /** No 1280px stills (640px or 320px ones): the reel frames them instead of blowing them up. */
   lowRes: boolean
   style: CSSProperties
   /** Title as shown in the reel (clamped to REEL_TITLE_MAX). */
@@ -73,8 +75,6 @@ export interface ReelPlan {
 const css = (vars: Vars) => vars as CSSProperties
 const ms = (n: number) => `${Math.round(n)}ms`
 const pct = (n: number) => `${n.toFixed(2)}%`
-// tidyTag now lives in lib/tags; kept here for existing importers.
-export { tidyTag }
 
 export const TICK_STYLES = TICK_AT.map((t) => css({ '--d': ms(t) }))
 export const INDEX_STYLES = SHOT_AT.map((t) => css({ '--d': ms(t) }))
@@ -230,6 +230,8 @@ export function buildReelPlan(video: Video): ReelPlan {
   const category = video.category.trim()
 
   const frames = video.frames.length ? video.frames : [video.backdrop]
+  // The thumbnail set is the original plus the three stills at 320px.
+  const smallFrames = video.thumbnails?.slice(1) ?? []
   const lowRes = !frames.some((src) => /maxres/.test(src))
   let prev: Transition | undefined
   let drift = 1
@@ -246,6 +248,7 @@ export function buildReelPlan(video: Video): ReelPlan {
     const hideAt = (SHOT_AT[i + 1] ?? END_AT) + 1200
     return {
       src: frames[i % frames.length],
+      small: smallFrames[i % smallFrames.length] ?? frames[i % frames.length],
       tx,
       style: css({ '--s': ms(at), '--o': ms(hideAt), ...kb.vars, ...transitionVars(tx, rand) }),
     }

@@ -55,3 +55,49 @@ html:has(dialog[data-details][open]) {
     scale: 0.98;
   }
 }
+
+/* Phones show four cards per section: two rows. */
+.lazy-section-short {
+  contain-intrinsic-size: auto 30rem;
+}
+
+/* Hero and quick-look backdrops: a blurred, muted still (never a colour cast over footage)
+   that drifts slowly once, then rests. */
+.backdrop-img {
+  scale: 1.1;
+  filter: blur(32px) saturate(0.35);
+  transform-origin: 50% 40%;
+}
+[data-theme='dark'] .backdrop-img {
+  filter: blur(32px) saturate(0.35) brightness(0.75);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .backdrop-img[data-loaded] {
+    animation: backdrop-drift 28s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+  @keyframes backdrop-drift {
+    to {
+      scale: 1.18;
+      translate: -1.5% 1%;
+    }
+  }
+}
+
+/* Preview reel over a card's thumbnail (the reel sizes itself to this box). */
+.card-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: var(--color-surface-2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card-preview {
+    animation: card-preview-in 250ms var(--ease-out-soft) both;
+  }
+  @keyframes card-preview-in {
+    from {
+      opacity: 0;
+    }
+  }
+}

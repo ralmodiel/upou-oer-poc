@@ -2,11 +2,13 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { resetStorageCache } from '../lib/storage'
+import { resetTrail } from '../lib/trail'
 
 afterEach(() => {
   cleanup()
   localStorage.clear()
   resetStorageCache()
+  resetTrail()
 })
 
 // jsdom gaps

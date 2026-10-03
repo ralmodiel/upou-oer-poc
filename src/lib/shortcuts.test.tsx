@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -18,6 +18,7 @@ function renderAt(entries: string[]) {
           { path: '/', element: <p>Home</p> },
           { path: '/field', element: <input aria-label="Field" /> },
           { path: '/other', element: <p>Other</p> },
+          { path: '/watch/:id', element: <p>Video</p> },
         ],
       },
     ],
@@ -38,6 +39,24 @@ describe('useGlobalShortcuts', () => {
 
   it('Esc goes home when the page was opened directly', async () => {
     const router = renderAt(['/other'])
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  it('from the player, Back steps over the videos watched in a row to where the first was opened', async () => {
+    const router = renderAt(['/'])
+    await act(() => router.navigate('/other'))
+    await act(() => router.navigate('/watch/a'))
+    await act(() => router.navigate('/watch/b'))
+    await act(() => router.navigate('/watch/c'))
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/other'))
+    expect(router.state.historyAction).toBe('POP')
+  })
+
+  it('from the player with only videos behind (opened from a link), Back goes home', async () => {
+    const router = renderAt(['/watch/a'])
+    await act(() => router.navigate('/watch/b'))
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useEffectEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { stepsBackTo, trailIndex, useTrail } from './trail'
 
 // Window events keep the shell, the header search and pages decoupled.
 export const FOCUS_SEARCH_EVENT = 'upou:focus-search'
@@ -57,18 +58,33 @@ function closeDialog(dialog: HTMLDialogElement) {
   else dialog.close()
 }
 
-/** Back = previous in-app page when there is one, otherwise home (deep links, replaced entries). */
+const isWatch = (path: string) => path.startsWith('/watch/')
+
+/**
+ * Back = previous in-app page when there is one, otherwise home (deep links, replaced entries).
+ * From the player it steps over the videos watched in a row to the page the first one was opened
+ * from (the home, usually); with only videos behind, it goes home.
+ */
 export function useGoBack() {
   const navigate = useNavigate()
-  const { key } = useLocation()
+  const { key, pathname } = useLocation()
   return useCallback(() => {
     // The browser router keeps the entry index in history.state (0 = first page of this visit,
     // also after a replace); without it (memory router in tests) fall back to the location key.
     const idx = (window.history.state as { idx?: number } | null)?.idx
     const hasPrevious = idx === undefined ? key !== 'default' : idx > 0
+    if (isWatch(pathname)) {
+      const steps = stepsBackTo((path) => !isWatch(path))
+      if (steps !== null) return void navigate(-steps)
+      // Pages from before the trail began (a reload without storage): the one before them.
+      const known = trailIndex()
+      const unknownBefore = idx === undefined ? hasPrevious && known <= 0 : idx > known
+      if (unknownBefore) return void navigate(-(Math.max(known, 0) + 1))
+      return void navigate('/', { replace: !hasPrevious })
+    }
     if (hasPrevious) void navigate(-1)
     else void navigate('/', { replace: true })
-  }, [key, navigate])
+  }, [key, navigate, pathname])
 }
 
 /**
@@ -79,6 +95,7 @@ export function useGoBack() {
  * component that handles a key itself just calls preventDefault.
  */
 export function useGlobalShortcuts() {
+  useTrail()
   const goBack = useGoBack()
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
     if (e.defaultPrevented || e.repeat || e.altKey || e.ctrlKey || e.metaKey) return

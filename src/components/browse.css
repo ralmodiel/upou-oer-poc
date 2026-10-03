@@ -5,24 +5,19 @@ html:has(dialog[data-details][open]) {
 }
 
 /* Home sections below the fold are laid out only when scrolled near. The size estimate
-   follows the eight-card grid: four rows on phones down to two rows from lg. */
+   follows the grid: two rows of two cards on phones, one row of three or four from md. */
 .lazy-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 54rem;
+  contain-intrinsic-size: auto 30rem;
 }
 @media (width >= 48rem) {
   .lazy-section {
-    contain-intrinsic-size: auto 46rem;
-  }
-}
-@media (width >= 64rem) {
-  .lazy-section {
-    contain-intrinsic-size: auto 36rem;
+    contain-intrinsic-size: auto 25rem;
   }
 }
 @media (width >= 80rem) {
   .lazy-section {
-    contain-intrinsic-size: auto 42rem;
+    contain-intrinsic-size: auto 29rem;
   }
 }
 
@@ -56,11 +51,6 @@ html:has(dialog[data-details][open]) {
   }
 }
 
-/* Phones show four cards per section: two rows. */
-.lazy-section-short {
-  contain-intrinsic-size: auto 30rem;
-}
-
 /* Hero and quick-look backdrops: a blurred, fully grey still (no colour cast beside the brand
    bands; a flash frame must never wash the page) that drifts slowly once, then rests. */
 .backdrop-img {
@@ -91,12 +81,25 @@ html:has(dialog[data-details][open]) {
   filter: blur(2px) grayscale(1) brightness(0.8);
 }
 
-/* Home rhythm: tinted bands alternate with paper (forest-soft, paper, maroon-soft, paper, ...). */
-.home-bands > section:nth-of-type(4n + 1) {
-  background-color: var(--color-forest-soft);
+/* Home rhythm: every third section is a tinted band, forest-soft and maroon-soft in turn, with
+   paper between (two paper sections meet at a hairline). Dark mode mixes the tints a little
+   toward paper so a long page stays calm. */
+.home-bands > section {
+  --band-forest: var(--color-forest-soft);
+  --band-maroon: var(--color-maroon-soft);
 }
-.home-bands > section:nth-of-type(4n + 3) {
-  background-color: var(--color-maroon-soft);
+[data-theme='dark'] .home-bands > section {
+  --band-forest: color-mix(in oklab, var(--color-forest-soft) 70%, var(--color-paper));
+  --band-maroon: color-mix(in oklab, var(--color-maroon-soft) 70%, var(--color-paper));
+}
+.home-bands > section:nth-of-type(6n + 1) {
+  background-color: var(--band-forest);
+}
+.home-bands > section:nth-of-type(6n + 4) {
+  background-color: var(--band-maroon);
+}
+.home-bands > section:nth-of-type(3n + 3) {
+  border-top: 1px solid var(--color-line);
 }
 
 /* Preview reel over a card's thumbnail (the reel sizes itself to this box). Transparent, so the

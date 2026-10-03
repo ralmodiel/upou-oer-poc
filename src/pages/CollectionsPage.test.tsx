@@ -1,11 +1,21 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fixtureVideos, manyVideos } from '../components/test-fixtures'
 import { setCatalog } from '../data/testing'
 import CategoryPage from './CategoryPage'
 import CollectionsPage from './CollectionsPage'
+
+// Width queries answer from `wide` (the hooks keep one MediaQueryList per query).
+let wide = false
+const baseMatchMedia = window.matchMedia
+window.matchMedia = (query: string) => {
+  const list = baseMatchMedia(query)
+  return Object.defineProperty(list, 'matches', {
+    get: () => wide && query.includes('min-width'),
+  })
+}
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -25,8 +35,26 @@ const playLinks = () =>
 
 describe('CollectionsPage', () => {
   beforeEach(() => setCatalog(fixtureVideos))
+  afterEach(() => {
+    wide = false
+  })
 
-  it('lists every collection with cover, count and sample titles', () => {
+  it('on phones lists every collection as a compact row: cover, name, count', () => {
+    renderAt('/collections')
+    expect(screen.getByRole('heading', { level: 1, name: 'Collections' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('article')).toHaveLength(0)
+    const research = screen.getByRole('link', { name: /^Research/ })
+    expect(research).toHaveAttribute('href', '/collections/research')
+    expect(research).toHaveTextContent('3 videos')
+    expect(research.querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining('climate-basics'),
+    )
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+  })
+
+  it('from md up shows mosaic cards with cover, count and sample titles', () => {
+    wide = true
     renderAt('/collections')
     expect(screen.getByRole('heading', { level: 1, name: 'Collections' })).toBeInTheDocument()
     const cards = screen.getAllByRole('article')

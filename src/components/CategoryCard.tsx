@@ -2,8 +2,14 @@ import { memo, type SyntheticEvent } from 'react'
 import { Link } from 'react-router'
 import { GENERAL_CATEGORY, getCategoryVideos, type Category } from '../data/catalog'
 import type { Video } from '../types'
+import { TitleTile } from './Thumbnail'
+import { useNear } from './browse-hooks'
+import { ChevronRightIcon } from './icons'
 import { imagesOf } from './media'
 import { MARK, toneOf } from './tones'
+
+// Covers below the first row load once they come within a quarter screen of the viewport.
+const NEAR = '25% 0px'
 
 // The large tile is two thirds of the card: one, two, three or four cards per row (the content
 // stops growing at 1600px, so do the tiles).
@@ -14,6 +20,9 @@ const SIDE_SIZES =
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
+}
+const markFailed = (e: SyntheticEvent<HTMLImageElement>) => {
+  e.currentTarget.dataset.failed = ''
 }
 // A missing large still falls back to the small one; if that fails too, the well stays.
 const retryOrHide = (e: SyntheticEvent<HTMLImageElement>, small: string) => {
@@ -27,16 +36,25 @@ const retryOrHide = (e: SyntheticEvent<HTMLImageElement>, small: string) => {
 function Tile({
   video,
   sizes,
+  load,
   className = '',
 }: {
   video: Video
   sizes: string
+  load: boolean
   className?: string
 }) {
-  // Canonical stills: a mosaic of three shows any odd rotating frame at once (no image when every
-  // one is flagged).
+  // Canonical stills: a mosaic of three shows any odd rotating frame at once (a title tile when
+  // every image is flagged).
   const images = imagesOf(video, true)
-  if (!images) return <div className={`bg-surface-2 ${className}`} />
+  if (!load) return <div className={`bg-surface-2 ${className}`} />
+  if (!images) {
+    return (
+      <div className={`relative ${className}`}>
+        <TitleTile video={video} />
+      </div>
+    )
+  }
   const { small, srcSet } = images
   return (
     <div className={`overflow-hidden bg-surface-2 ${className}`}>
@@ -55,8 +73,22 @@ function Tile({
   )
 }
 
+/**
+ * Up to `count` of a collection's newest videos with a usable image: a cover is made of stills, so
+ * a video whose every image is flagged stays out (its title tile only when no video has a still).
+ */
+function coverVideos(slug: string, count: number): Video[] {
+  const list = getCategoryVideos(slug)
+  const picked: Video[] = []
+  for (const video of list) {
+    if (imagesOf(video, true)) picked.push(video)
+    if (picked.length === count) break
+  }
+  return picked.length ? picked : list.slice(0, 1)
+}
+
 /** 16:9 cover from the newest three stills: a large one and two stacked beside it. */
-function Mosaic({ videos }: { videos: readonly Video[] }) {
+function Mosaic({ videos, load }: { videos: readonly Video[]; load: boolean }) {
   const [main, ...rest] = videos
   if (!main) return <div className="aspect-video bg-surface-2" />
   const layout = rest.length >= 2 ? 'grid-cols-3 grid-rows-2' : rest.length ? 'grid-cols-2' : ''
@@ -65,23 +97,34 @@ function Mosaic({ videos }: { videos: readonly Video[] }) {
       <Tile
         video={main}
         sizes={MAIN_SIZES}
+        load={load}
         className={rest.length >= 2 ? 'col-span-2 row-span-2' : ''}
       />
       {rest.slice(0, 2).map((v) => (
-        <Tile key={v.id} video={v} sizes={SIDE_SIZES} />
+        <Tile key={v.id} video={v} sizes={SIDE_SIZES} load={load} />
       ))}
     </div>
   )
 }
 
-/** A collection: its brand bar, a mosaic of its newest stills, name, count and those titles. */
-function CategoryCard({ category }: { category: Category }) {
-  const { slug, name, count } = category
+const countOf = ({ name, count }: Category) =>
+  `${count} ${count === 1 ? 'video' : 'videos'}${name === GENERAL_CATEGORY ? ' · no subject category' : ''}`
+
+/**
+ * A collection: its brand bar, a mosaic of its newest stills, name, count and those titles.
+ * `eager` (the first row) loads the stills at once; other cards load them as they come near.
+ */
+function CategoryCard({ category, eager = true }: { category: Category; eager?: boolean }) {
+  const { slug, name } = category
   const newest = getCategoryVideos(slug).slice(0, 3)
+  const [ref, near] = useNear<HTMLElement>(eager, NEAR)
   return (
-    <article className="group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-[translate,scale,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 has-[a:focus-visible]:outline-3 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus motion-safe:has-[a:focus-visible]:scale-102 motion-reduce:transition-none">
+    <article
+      ref={ref}
+      className="group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-[translate,scale,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 has-[a:focus-visible]:outline-3 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus motion-safe:has-[a:focus-visible]:scale-102 motion-reduce:transition-none"
+    >
       <span aria-hidden="true" className={`h-1.5 shrink-0 ${MARK[toneOf(slug)]}`} />
-      <Mosaic videos={newest} />
+      <Mosaic videos={coverVideos(slug, 3)} load={near} />
       <div className="flex flex-1 flex-col p-4 sm:p-5">
         <h2
           title={name}
@@ -91,10 +134,7 @@ function CategoryCard({ category }: { category: Category }) {
             {name}
           </Link>
         </h2>
-        <p className="mt-1 text-sm text-ink-3">
-          {count} {count === 1 ? 'video' : 'videos'}
-          {name === GENERAL_CATEGORY && ' · no subject category'}
-        </p>
+        <p className="mt-1 text-sm text-ink-3">{countOf(category)}</p>
         <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm text-ink-2">
           {newest.map((v) => (
             <li key={v.id} className="truncate">
@@ -108,3 +148,50 @@ function CategoryCard({ category }: { category: Category }) {
 }
 
 export default memo(CategoryCard)
+
+/**
+ * Phone list row: the collection's brand bar, a small cover, name, count and a chevron; the whole
+ * row is the link (64px tall).
+ */
+export const CategoryListItem = memo(function CategoryListItem({
+  category,
+  eager,
+}: {
+  category: Category
+  eager: boolean
+}) {
+  const { slug, name } = category
+  const [ref, near] = useNear<HTMLAnchorElement>(eager, NEAR)
+  const [cover] = coverVideos(slug, 1)
+  const small = cover && imagesOf(cover, true)?.small
+  return (
+    <Link
+      ref={ref}
+      to={`/collections/${slug}`}
+      className="flex min-h-16 items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-2 focus-visible:outline-3 focus-visible:-outline-offset-3"
+    >
+      <span aria-hidden="true" className={`h-11 w-1 shrink-0 rounded-pill ${MARK[toneOf(slug)]}`} />
+      <span
+        aria-hidden="true"
+        className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
+      >
+        {cover && !small && <TitleTile video={cover} />}
+        {small && near && (
+          <img
+            src={small}
+            alt=""
+            decoding="async"
+            onLoad={markLoaded}
+            onError={markFailed}
+            className="size-full object-cover opacity-0 transition-opacity duration-300 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
+          />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 leading-snug font-semibold text-ink">{name}</span>
+        <span className="block truncate text-sm text-ink-3">{countOf(category)}</span>
+      </span>
+      <ChevronRightIcon className="size-5 shrink-0 text-ink-3" />
+    </Link>
+  )
+})

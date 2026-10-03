@@ -2,10 +2,12 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode, type ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { getRows } from '../data/catalog'
+import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
 import { useSpatialNavigation } from '../lib/spatial'
+import CategoryCard from './CategoryCard'
 import CollectionChips from './CollectionChips'
 import RecentlyViewed from './RecentlyViewed'
 import DetailModal from './DetailModal'
@@ -97,6 +99,39 @@ function layOutCardsInARow() {
       ({ top: 100, left, width: 300, height: 200, right: left + 300, bottom: 300 }) as DOMRect
   })
 }
+
+describe('Videos whose every image is flagged', () => {
+  // Fixture videos share one YouTube id: the newest gets its own, with every image flagged.
+  const flagged = { ...research[0], youtubeId: 'flaggedAll1' }
+  const others = research.slice(1)
+  beforeEach(() => {
+    setCatalog([flagged, ...fixtureVideos.slice(1)])
+    setFrameFlags({ [flagged.youtubeId]: 0b1111 })
+  })
+  afterEach(() => {
+    setFrameFlags({})
+    setCatalog(fixtureVideos)
+  })
+
+  it('show their title on the brand band: no image, never the flagged thumbnail or poster', () => {
+    renderAt('/', <VideoGrid videos={[flagged, ...others]} />)
+    const card = screen.getByRole('link', { name: `Play ${flagged.title}` }).closest('article')!
+    expect(card.querySelector('img')).toBeNull()
+    const tile = card.querySelector('[data-title-tile]')!
+    expect(tile).toHaveTextContent(flagged.title)
+    expect(tile).toHaveAttribute('aria-hidden', 'true')
+    expect(tile.className).toMatch(/(^| )bg-band-(maroon|forest|gold)( |$)/)
+    // The others keep their stills.
+    expect(document.querySelectorAll('[data-title-tile]')).toHaveLength(1)
+  })
+
+  it('stay out of collection covers while other videos have stills', () => {
+    const category = { slug: 'research', name: 'Research', count: 3, cover: flagged }
+    renderAt('/', <CategoryCard category={category} />)
+    expect(screen.getByRole('article').querySelectorAll('img')).toHaveLength(2)
+    expect(document.querySelector('[data-title-tile]')).toBeNull()
+  })
+})
 
 describe('VideoGrid keyboard (roving tabindex)', () => {
   it('puts one card in the Tab order and moves between cards with the arrow keys', async () => {

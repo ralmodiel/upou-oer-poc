@@ -8,6 +8,7 @@ import { REEL_MS } from '../features/reel/PromoReel'
 import { DECODE_CAP_MS } from '../features/reel/preload'
 import { testVideo } from '../features/reel/testing'
 import { FINE_POINTER_QUERY } from '../lib/pointer'
+import { warmRecommender, warmRecommenderAsync } from '../lib/recommend'
 import WatchPage from './WatchPage'
 
 // Nine look-alikes in the same category, so "Up next" has more than it shows.
@@ -177,6 +178,35 @@ describe('WatchPage', () => {
       'href',
       slug,
     )
+  })
+
+  it('stands in with the collection until the recommender is built, then swaps in place', async () => {
+    renderAt([`/watch/${testVideo.id}`])
+    const list = screen.getByRole('list', { name: 'Up next' })
+    const rows = within(list).getAllByRole('link')
+    // Stand-ins: the collection eyebrow, no reasons yet.
+    expect(rows).toHaveLength(8)
+    expect(list.querySelectorAll('.eyebrow')).toHaveLength(8)
+
+    // Focus on the list holds the swap; it happens once focus leaves, in the same rows.
+    act(() => rows[0].focus())
+    await act(() => warmRecommenderAsync())
+    expect(document.activeElement).toBe(rows[0])
+    expect(list.querySelectorAll('.eyebrow')).toHaveLength(8)
+    act(() => rows[0].blur())
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const after = within(list).getAllByRole('link')
+    after.forEach((row, i) => expect(row).toBe(rows[i]))
+    expect(list.querySelectorAll('.eyebrow')).toHaveLength(0)
+    expect(after.map((a) => a.getAttribute('href'))).not.toContain(`/watch/${testVideo.id}`)
+  })
+
+  it('shows the picks at once when the recommender is ready', () => {
+    warmRecommender()
+    renderAt([`/watch/${testVideo.id}`])
+    const list = screen.getByRole('list', { name: 'Up next' })
+    expect(within(list).getAllByRole('link')).toHaveLength(8)
+    expect(list.querySelectorAll('.eyebrow')).toHaveLength(0)
   })
 
   it('shares one unflagged poster between the stage, the reel and the backdrop', async () => {

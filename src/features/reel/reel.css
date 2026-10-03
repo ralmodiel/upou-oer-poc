@@ -5,6 +5,8 @@
   Per-element timing comes from inline custom properties set by plan.ts:
   --s shot start, --d entrance, --o exit, --w word, --lw line, --g chip; --ko, --ks*, --kx*, --ky*
   frame each still's Ken Burns move (a repeated still comes back with the mirrored crop).
+  Stills keep their own colours: no filters or full-frame tints, only light, local gradients
+  behind type.
   Sizes use container units, so the reel fits whatever 16:9 stage it is given (320–1600 px).
 */
 
@@ -28,7 +30,7 @@
   --radius: var(--radius-card, 14px);
   --serif: var(--font-display, 'Instrument Serif', Georgia, 'Times New Roman', serif);
   --sans: var(--font-sans, 'Instrument Sans', system-ui, sans-serif);
-  /* Fixed colours over the stills: the montage is dark whatever the theme. */
+  /* Fixed colours for type over the stills, whatever the theme. */
   --night: #1b1a17;
   --light: #faf8f6;
   --motion: 1;
@@ -100,17 +102,7 @@
   margin: 0;
 }
 
-:is(
-  .reel-stage,
-  .reel-shot,
-  .reel-tx,
-  .reel-kb,
-  .reel-shade,
-  .reel-copy,
-  .reel-ident,
-  .reel-end,
-  .reel-vignette
-) {
+:is(.reel-stage, .reel-shot, .reel-tx, .reel-kb, .reel-shade, .reel-copy, .reel-ident, .reel-end) {
   position: absolute;
   inset: 0;
 }
@@ -128,7 +120,7 @@
 
 .reel-tx {
   overflow: hidden;
-  background: linear-gradient(140deg, #2b2a28, var(--night));
+  background: var(--surface-2);
   transform-origin: var(--tx-origin, 50% 50%);
   animation: reel-tx-fade 700ms var(--ease) var(--s) both;
 }
@@ -136,7 +128,7 @@
 .reel-tx[data-tx='slide'] {
   animation-name: reel-tx-slide;
   animation-duration: 760ms;
-  box-shadow: 0 0 5cqmax 1cqmax rgb(27 26 23 / 0.6);
+  box-shadow: 0 0 5cqmax 1cqmax rgb(27 26 23 / 0.3);
 }
 
 .reel-tx[data-tx='zoom'] {
@@ -156,6 +148,13 @@
   animation: reel-kb var(--kb-ms, 3400ms) linear var(--s) both;
 }
 
+/* One still: zoom and drift ease differently, the drift trailing, so the long move curves. */
+.reel[data-single] .reel-kb {
+  animation:
+    reel-zoom var(--kb-ms) cubic-bezier(0.3, 0, 0.4, 1) var(--s) both,
+    reel-glide var(--kb-ms) cubic-bezier(0.55, 0, 0.45, 1) var(--s) both;
+}
+
 /*
   The first shot waits in place under the ident instead of transitioning in: the ident dissolves
   straight into it, and being painted early it counts as the page's largest paint (LCP).
@@ -167,6 +166,7 @@
 .reel-kb img,
 .reel-end-art img,
 .reel-backfill img,
+.reel-fill-shot img,
 .reel-cover img {
   display: block;
   width: 100%;
@@ -186,7 +186,7 @@
   height: 25%;
   transform-origin: 0 0;
   transform: translate(-6cqw, -6cqh) scale(4.48);
-  filter: blur(4px) saturate(1.1);
+  filter: blur(4px);
   animation: reel-fade-in 700ms var(--ease) var(--t1) both;
 }
 
@@ -204,8 +204,7 @@
 .reel-ident,
 .reel-rule,
 .reel-backfill,
-.reel-vignette,
-.reel-grain,
+.reel-fill,
 .reel-progress {
   pointer-events: none;
 }
@@ -276,6 +275,11 @@
   font-style: italic;
 }
 
+/* One still has no cuts to keep time: its highlighted word takes its colour on the second beat. */
+.reel[data-single] .reel-word.is-hot {
+  animation: reel-hot 700ms var(--ease) calc(var(--t2) - var(--lead)) both;
+}
+
 .reel-story {
   display: flex;
   flex-direction: column;
@@ -330,10 +334,24 @@
 
 /* ---------- Template: Cinematic (full-bleed stills, hairline frame, centred serif) ---------- */
 
+/* A light gradient behind the centred copy only; the title carries its own shadow. */
 .reel[data-template='cinematic'] .reel-shade {
-  background:
-    radial-gradient(ellipse 66% 58% at 50% 54%, rgb(27 26 23 / 0.62), transparent 78%),
-    linear-gradient(to top, rgb(27 26 23 / 0.55), rgb(27 26 23 / 0.25) 45%, rgb(27 26 23 / 0.35));
+  background: radial-gradient(
+    ellipse 56% 46% at 50% 52%,
+    rgb(27 26 23 / 0.36),
+    rgb(27 26 23 / 0.14) 55%,
+    transparent 78%
+  );
+}
+
+.reel:is([data-template='cinematic'], [data-template='kinetic']) .reel-title {
+  text-shadow:
+    0 0.02em 0.12em rgb(27 26 23 / 0.4),
+    0 0.04em 0.5em rgb(27 26 23 / 0.45);
+}
+
+.reel:is([data-template='cinematic'], [data-template='kinetic']) :is(.reel-kicker, .reel-tags) {
+  text-shadow: 0 1px 0.6em rgb(27 26 23 / 0.6);
 }
 
 .reel[data-template='cinematic'] .reel-rule {
@@ -400,6 +418,7 @@
 /* ---------- Template: Split (framed stills beside ink type on paper) ---------- */
 
 .reel[data-template='split'] {
+  --plain: var(--ink);
   --panel-from: inset(0 100% 0 0);
   --kicker-size: 1.1cqw;
 }
@@ -408,7 +427,7 @@
   --panel-from: inset(0 0 0 100%);
 }
 
-.reel[data-template='split'] :is(.reel-shade, .reel-vignette) {
+.reel[data-template='split'] .reel-shade {
   display: none;
 }
 
@@ -549,16 +568,80 @@
   background: var(--accent);
 }
 
-/* ---------- Template: Kinetic (giant serif over charcoal-duotone stills) ---------- */
+/* ---------- Slides and title cards: whole, in the split frame, over a light blurred copy ---------- */
 
-.reel[data-template='kinetic'] .reel-kb img {
-  filter: grayscale(1) contrast(1.1) brightness(0.9);
+/* The fill behind slides is always light, so these reels keep the light palette in both themes. */
+.reel[data-slides] {
+  --paper: #faf8f6;
+  --surface: #ffffff;
+  --surface-2: #f2eeeb;
+  --ink: #373637;
+  --ink-2: #5c5a5c;
+  --line: #e6e1dd;
+  --maroon: #8d0c34;
+  --maroon-2: #7f001f;
+  --forest: #00563f;
+  --amber: #f5a71d;
+  --gold: #fcb51b;
+  --on-accent: #ffffff;
+  --float-ms: calc(var(--tend) + 1200ms - var(--t1) + var(--lead));
 }
 
+/* Below the accent plate (z-index -1). */
+.reel-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+
+.reel-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(250 248 246 / 0.7);
+}
+
+/* Laid out at a quarter of the stage and scaled up, so the blur runs on a small layer. */
+.reel-fill-shot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 25%;
+  transform-origin: 0 0;
+  transform: translate(-6cqw, -6cqh) scale(4.48);
+  filter: blur(6px);
+  animation:
+    reel-fade-in 700ms var(--ease) var(--s) both,
+    reel-hide 1ms linear var(--o) forwards;
+}
+
+/* The first one is there from the start, under the ident (or the card image in previews). */
+.reel-fill-shot:first-child {
+  animation: reel-hide 1ms linear var(--o) forwards;
+}
+
+/* Slides do not zoom: the frame floats a little instead. */
+.reel[data-slides] .reel-stage {
+  animation:
+    reel-panel 950ms var(--ease) calc(var(--t1) - 150ms - var(--lead)) both,
+    reel-float var(--float-ms) var(--ease-io) calc(var(--t1) - var(--lead)) both;
+}
+
+.reel[data-slides] .reel-frame {
+  animation:
+    reel-fade-in 800ms var(--ease) calc(var(--t1) + 400ms - var(--lead)) both,
+    reel-float var(--float-ms) var(--ease-io) calc(var(--t1) - var(--lead)) both;
+}
+
+/* ---------- Template: Kinetic (giant serif over natural-colour stills) ---------- */
+
+/* Light gradients only where the type sits: the title band up top, the hook bottom left. */
 .reel[data-template='kinetic'] .reel-shade {
   background:
-    linear-gradient(100deg, rgb(27 26 23 / 0.6) 10%, rgb(27 26 23 / 0.2) 60%, transparent),
-    rgb(55 54 55 / 0.45);
+    linear-gradient(to bottom, rgb(27 26 23 / 0.42), rgb(27 26 23 / 0.12) 45%, transparent 64%),
+    radial-gradient(ellipse 55% 40% at 18% 100%, rgb(27 26 23 / 0.36), transparent 70%);
 }
 
 .reel[data-template='kinetic'] .reel-titleblock {
@@ -576,7 +659,6 @@
   font-size: min(calc(var(--kw) * 1cqw), calc(var(--kh) * 1cqh));
   line-height: 0.95;
   letter-spacing: -0.015em;
-  text-shadow: none;
 }
 
 .reel[data-template='kinetic'] .reel-line {
@@ -848,21 +930,11 @@
   inset: 0;
   overflow: hidden;
   border-radius: inherit;
-  background: linear-gradient(150deg, #2b2a28, var(--night));
+  background: var(--surface-2);
 }
 
 .reel-end-art img {
   animation: reel-push calc(var(--reel-ms) - var(--tend)) linear var(--tend) both;
-}
-
-/* Dims to the player's loading look (backdrop at 50% over night) as the art grows. */
-.reel-end-art::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--night);
-  opacity: 0;
-  animation: reel-dim var(--out) var(--ease-in) var(--tout) forwards;
 }
 
 .reel-end-copy {
@@ -969,33 +1041,7 @@
   display: none;
 }
 
-/* ---------- Finish: vignette and grain over the stills, progress bar ---------- */
-
-.reel-vignette {
-  z-index: 8;
-  background: radial-gradient(
-    ellipse 80% 75% at 50% 48%,
-    transparent 55%,
-    rgb(27 26 23 / 0.45) 100%
-  );
-  animation: reel-window calc(var(--tend) - var(--t1) + 600ms) linear calc(var(--t1) - 300ms) both;
-}
-
-.reel-grain {
-  position: absolute;
-  inset: -10%;
-  z-index: 9;
-  opacity: 0.07;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 220px 220px;
-  animation:
-    reel-grain 500ms steps(1) infinite,
-    reel-gone var(--out) var(--ease-in) var(--tout) forwards;
-}
-
-.reel[data-lowres] .reel-grain {
-  opacity: 0.12;
-}
+/* ---------- Progress bar ---------- */
 
 .reel-progress {
   position: absolute;
@@ -1139,11 +1185,6 @@
   box-shadow: none;
 }
 
-/* A card has no player to hand off to: the art grows back into the thumbnail undimmed. */
-.reel[data-variant='preview'] .reel-end-art::after {
-  animation: none;
-}
-
 /*
   Cards open on footage: no ident, the thumbnail as is while decoding, then the card's own image
   (.reel-cover) over the first pan until it dissolves into the reel at the (earlier) first beat.
@@ -1271,6 +1312,15 @@
     display: none;
   }
 
+  /* Previews have no controls to keep clear of. */
+  .reel[data-variant='preview'][data-slides] :is(.reel-stage, .reel-frame) {
+    top: 50%;
+  }
+
+  .reel[data-variant='preview'][data-slides] .reel-copy {
+    bottom: 4cqh;
+  }
+
   .reel[data-template='cinematic'] .reel-rule {
     inset: 3.5cqh 2.5cqw;
   }
@@ -1355,9 +1405,10 @@
 
   /*
     Split stacks: full-width stills on top, copy on the paper band below, controls up top.
+    Slides stay whole beside the copy instead.
     `[data-side]` outranks the side-specific offsets above, which would otherwise win here.
   */
-  .reel[data-template='split'][data-side] :is(.reel-stage, .reel-frame) {
+  .reel[data-template='split'][data-side]:not([data-slides]) :is(.reel-stage, .reel-frame) {
     top: 0;
     right: 0;
     left: 0;
@@ -1368,11 +1419,16 @@
     border-radius: 0;
   }
 
-  .reel[data-template='split'] .reel-frame {
+  /* The band crops photos wide: keep the upper part, where faces are. */
+  .reel[data-template='split']:not([data-slides]) .reel-kb img {
+    object-position: 50% 30%;
+  }
+
+  .reel[data-template='split']:not([data-slides]) .reel-frame {
     display: none;
   }
 
-  .reel[data-template='split'][data-side] .reel-copy {
+  .reel[data-template='split'][data-side]:not([data-slides]) .reel-copy {
     top: auto;
     right: 5cqw;
     bottom: 0;
@@ -1385,11 +1441,20 @@
     display: none;
   }
 
-  .reel[data-template='split'] .reel-title {
+  .reel[data-template='split']:not([data-slides]) .reel-title {
     -webkit-line-clamp: 2;
   }
 
-  .reel[data-template='split'] .reel-controls {
+  /* Beside a slide the column is narrow: the kicker keeps to two tighter lines. */
+  .reel[data-slides] .reel-kicker {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    letter-spacing: 0.12em;
+  }
+
+  .reel[data-template='split']:not([data-slides]) .reel-controls {
     top: 2.5cqh;
     bottom: auto;
   }
@@ -1426,7 +1491,6 @@
 
   .reel-kb,
   .reel-copy,
-  .reel-grain,
   .reel-end-art img,
   .reel-live::after,
   .reel-wm span span {
@@ -1456,7 +1520,8 @@
     animation-name: reel-end-fade !important;
   }
 
-  .reel[data-template='split'] .reel-stage {
+  .reel[data-template='split'] .reel-stage,
+  .reel[data-slides] .reel-frame {
     animation-name: reel-fade-in;
   }
 }
@@ -1527,6 +1592,33 @@
   }
   to {
     transform: translate3d(var(--kx1), var(--ky1), 0) scale(var(--ks1));
+  }
+}
+
+@keyframes reel-zoom {
+  from {
+    scale: var(--ks0);
+  }
+  to {
+    scale: var(--ks1);
+  }
+}
+
+@keyframes reel-glide {
+  from {
+    translate: var(--kx0) var(--ky0);
+  }
+  to {
+    translate: var(--kx1) var(--ky1);
+  }
+}
+
+@keyframes reel-float {
+  from {
+    transform: translate3d(var(--float-x0), var(--float-y0), 0) scale(0.985);
+  }
+  to {
+    transform: translate3d(var(--float-x1), var(--float-y1), 0);
   }
 }
 
@@ -1625,6 +1717,13 @@
   to {
     opacity: 0;
     transform: translate3d(calc(var(--motion) * -6cqw), 0, 0);
+  }
+}
+
+@keyframes reel-hot {
+  from {
+    color: var(--plain, var(--light));
+    -webkit-text-stroke-color: var(--plain, var(--light));
   }
 }
 
@@ -1744,12 +1843,6 @@
   }
 }
 
-@keyframes reel-dim {
-  to {
-    opacity: 0.5;
-  }
-}
-
 @keyframes reel-grow {
   from {
     transform: translate(var(--pdx), var(--pdy)) scale(var(--ps));
@@ -1826,24 +1919,6 @@
   to {
     opacity: 0;
     transform: scale(2.6);
-  }
-}
-
-@keyframes reel-grain {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  20% {
-    transform: translate3d(-4%, 3%, 0);
-  }
-  40% {
-    transform: translate3d(3%, -4%, 0);
-  }
-  60% {
-    transform: translate3d(-5%, -2%, 0);
-  }
-  80% {
-    transform: translate3d(4%, 4%, 0);
   }
 }
 

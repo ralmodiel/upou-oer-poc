@@ -8,6 +8,7 @@ import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { FactsLine, LONG_TITLE } from './browse-ui'
 import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, PlayIcon } from './icons'
+import { imagesOf } from './media'
 import { useCardPreview } from './preview'
 import IconButton from './ui/IconButton'
 import { PRESSED, buttonClass } from './ui/button-styles'
@@ -36,7 +37,10 @@ const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
 function Featured({ videos, alsoNew, start }: Props) {
   const headingId = useId()
   const count = videos.length
-  const first = start ?? Math.floor(LOAD_PICK * count)
+  // A random slide per load among those with an image: a title tile opens the page only when no
+  // featured video has one (the others stay one press away).
+  const pool = videos.flatMap((v, i) => (imagesOf(v, true) ? [i] : []))
+  const first = start ?? (pool.length ? pool[Math.floor(LOAD_PICK * pool.length)] : 0)
   const [index, setIndex] = useState(first)
   const video = videos[Math.min(index, count - 1)]
   if (!video) return null

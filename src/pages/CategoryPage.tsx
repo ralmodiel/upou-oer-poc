@@ -105,7 +105,7 @@ export default function CategoryPage() {
         tone={toneOf(slug)}
         eyebrow="Collection"
         title={category.name}
-        aside={<MosaicBackdrop videos={getCategoryVideos(slug).slice(0, 4)} scrim="bg-paper/30" />}
+        aside={<MosaicBackdrop videos={getCategoryVideos(slug).slice(0, 12)} scrim="bg-paper/30" />}
       >
         {all.length} {all.length === 1 ? 'video' : 'videos'}
         {category.name === GENERAL_CATEGORY ? ' without a subject category' : ''}

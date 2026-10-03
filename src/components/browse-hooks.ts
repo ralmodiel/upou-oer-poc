@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { startTransition, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 const lists = new Map<string, MediaQueryList>()
 const listOf = (query: string) => {
@@ -43,4 +43,26 @@ export function onIdle(fn: () => void, timeout = 2000): () => void {
   }
   const id = window.setTimeout(fn, 150)
   return () => clearTimeout(id)
+}
+
+/**
+ * [ref, near]: near turns true, and stays true, once the element comes within `margin` of the
+ * viewport (an IntersectionObserver rootMargin); `eager` starts it true.
+ */
+export function useNear<T extends Element>(eager: boolean, margin: string) {
+  const ref = useRef<T>(null)
+  const [near, setNear] = useState(eager)
+  useEffect(() => {
+    const el = ref.current
+    if (near || !el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) startTransition(() => setNear(true))
+      },
+      { rootMargin: margin },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [near, margin])
+  return [ref, near] as const
 }

@@ -3,6 +3,7 @@ import { yearOf } from '../../lib/format'
 import { pick, seededRandom } from '../../lib/seed'
 import { isGenericTag, tagKey, tidyTag } from '../../lib/tags'
 import type { Video } from '../../types'
+import { reelImages, type Still } from './stills'
 
 export type Template = 'cinematic' | 'split' | 'kinetic'
 export type Transition = 'fade' | 'slide' | 'zoom' | 'wipe' | 'iris'
@@ -45,6 +46,8 @@ export interface Shot {
   src: string
   /** 320px version of the same still, for preview stages. */
   small: string
+  /** A slide or title card: shown whole, without a zoom, over a light blurred copy of itself. */
+  slide: boolean
   tx: Transition
   style: CSSProperties
 }
@@ -59,6 +62,8 @@ export interface ReelPlan {
   lowRes: boolean
   /** Every shot is the same still: one long move replaces the three cuts. */
   single: boolean
+  /** Some shot is a slide or title card: the split frame, so no type ever covers its own text. */
+  slides: boolean
   /** Kinetic long titles enter a line at a time (`line`), everything else word by word. */
   unit: 'word' | 'line'
   style: CSSProperties
@@ -185,8 +190,60 @@ const reframe = (m: Move, tighter: number): Move => ({
   angle: m.angle + Math.PI,
 })
 
-// The single-still move runs twice as long, so it zooms less and keeps title cards whole.
-const gentle = (m: Move): Move => ({ ...m, s0: 1 + (m.s0 - 1) * 0.7, s1: 1 + (m.s1 - 1) * 0.7 })
+// Slides and title cards stay whole. 640px stills are 4:3 with the 16:9 picture letterboxed, so
+// they keep a sliver of zoom that hides the bars' soft edges.
+const still = (src: string) => (/\/sd[1-3]\.jpg$/.test(src) ? 1.02 : 1)
+
+const holdVars = (src: string): Vars => ({
+  '--ko': '50% 50%',
+  '--ks0': still(src),
+  '--ks1': still(src),
+  '--kx0': '0%',
+  '--ky0': '0%',
+  '--kx1': '0%',
+  '--ky1': '0%',
+})
+
+/**
+ * One still under the whole montage: a slow push-in about a point in the upper middle (where
+ * faces usually are) that drifts to one side as it settles. It opens on the full frame, so the
+ * card image or loading cover it follows hands over without a jump. Zoom and drift ease
+ * differently (reel.css) and the drift always trails the zoom, so the path curves and the edges
+ * stay covered.
+ */
+function longMoveVars(rand: () => number, src: string): Vars {
+  const s0 = still(src)
+  const s1 = s0 + 0.1 + rand() * 0.1
+  const ox = 0.32 + rand() * 0.36
+  const oy = 0.28 + rand() * 0.18
+  // Room to shift at the final scale (fractions of the frame): right is ox·(s−1), left (1−ox)·(s−1).
+  const right = rand() < 0.5
+  const kx = (0.35 + rand() * 0.5) * (right ? ox : -(1 - ox)) * (s1 - 1)
+  // Mostly downward (the top of the frame, where heads are, comes in), sometimes a little up.
+  const ky = (rand() * 0.6 - 0.15) * (rand() < 0.5 ? oy : 1 - oy) * (s1 - 1)
+  return {
+    '--ko': `${pct(ox * 100)} ${pct(oy * 100)}`,
+    '--ks0': s0,
+    '--ks1': s1.toFixed(3),
+    '--kx0': '0%',
+    '--ky0': '0%',
+    '--kx1': pct(kx * 100),
+    '--ky1': pct(ky * 100),
+  }
+}
+
+// The split panel holding slides floats a little across the montage, as slides cannot zoom.
+function floatVars(rand: () => number): Vars {
+  const way = rand() < 0.5 ? -1 : 1
+  const dx = way * (0.5 + rand() * 0.4)
+  const dy = (rand() < 0.5 ? -1 : 1) * (0.3 + rand() * 0.3)
+  return {
+    '--float-x0': `${(-dx).toFixed(2)}cqw`,
+    '--float-y0': `${(-dy).toFixed(2)}cqh`,
+    '--float-x1': `${dx.toFixed(2)}cqw`,
+    '--float-y1': `${dy.toFixed(2)}cqh`,
+  }
+}
 
 function moveVars({ s0, s1, ox, oy, angle }: Move): Vars {
   const dx = Math.cos(angle)
@@ -243,15 +300,18 @@ export function buildReelPlan(video: Video): ReelPlan {
   const rand = seededRandom(seed)
   // Framing has its own sequence, so the rest of the plan stays as it was.
   const frameRand = seededRandom(`${seed}:framing`)
-  const frames = video.frames.length ? video.frames : [video.backdrop]
-  const sources = SHOT_AT.map((_, i) => frames[i % frames.length])
+  // Face-safe stills only, best first (none: no shots, and callers skip the reel).
+  const stills: Still[] = reelImages(video).stills
+  const sources = stills.length ? SHOT_AT.map((_, i) => stills[i % stills.length]) : []
+  const frames = sources.map((s) => s.src)
   // One still three times would stutter: it gets a single slow move under the whole montage.
-  const single = new Set(sources).size === 1
+  const single = new Set(frames).size === 1
   // The original thumbnail standing in for all three stills is often a title card with its own
-  // type: it goes in the split template's frame, beside the reel's title rather than under it.
-  const card = single && !/\/(maxres|sd|mq)[1-3]\.jpg$/.test(sources[0])
+  // type: like a slide it goes in the split template's frame, beside the reel's title.
+  const card = single && !/\/(maxres|sd|mq)[1-3]\.jpg$/.test(frames[0])
+  const slides = card || sources.some((s) => s.slide)
   const seeded = pick(rand, TEMPLATES)
-  const template = card ? 'split' : seeded
+  const template = slides ? 'split' : seeded
   const accent = pick(rand, ACCENTS)
   const side = rand() < 0.5 ? 'left' : 'right'
   const motion = rand() < 0.5 ? 'slam' : 'slide'
@@ -259,41 +319,50 @@ export function buildReelPlan(video: Video): ReelPlan {
   const rootHz = pick(rand, NOTES)
   const category = video.category.trim()
 
-  // The thumbnail set is the original plus the three stills at 320px.
-  const smallFrames = video.thumbnails?.slice(1) ?? []
   const lowRes = !frames.some((src) => /maxres/.test(src))
   // Repeats crop tighter; the split panel is half the stage, so it can go deeper.
   const tighter = lowRes ? 0.05 : template === 'split' ? 0.24 : 0.16
   const moves: Move[] = []
   let prev: Transition | undefined
   let drift = 1
-  const shots = SHOT_AT.map((at, i): Shot => {
-    const tx = pick(
-      rand,
-      TRANSITIONS.filter((t) => t !== prev),
-    )
-    prev = tx
-    const fresh = kenBurns(rand, frameRand)
-    const first = sources.indexOf(sources[i])
-    const move = first < i ? reframe(moves[first], tighter) : single ? gentle(fresh) : fresh
-    moves.push(move)
-    // Text drifts against the first pan for a touch of parallax.
-    if (i === 0) drift = Math.cos(move.angle) >= 0 ? -1 : 1
-    // Hide once fully covered (longest cover transition is the 1.1 s end-card iris).
-    const hideAt = (single ? END_AT : (SHOT_AT[i + 1] ?? END_AT)) + 1200
-    return {
-      src: sources[i],
-      small: smallFrames[i % smallFrames.length] ?? sources[i],
-      tx,
-      style: css({
-        '--s': ms(at),
-        '--o': ms(hideAt),
-        ...(single && { '--kb-ms': ms(hideAt - at) }),
-        ...moveVars(move),
-        ...transitionVars(tx, rand),
-      }),
-    }
-  }).slice(0, single ? 1 : undefined)
+  const shots = sources
+    .map((source, i): Shot => {
+      const at = SHOT_AT[i]
+      const tx = pick(
+        rand,
+        TRANSITIONS.filter((t) => t !== prev),
+      )
+      prev = tx
+      const fresh = kenBurns(rand, frameRand)
+      const first = frames.indexOf(source.src)
+      const move = first < i ? reframe(moves[first], tighter) : fresh
+      moves.push(move)
+      const slide = slides && (card || !!source.slide)
+      const kb = slide
+        ? holdVars(source.src)
+        : single
+          ? longMoveVars(frameRand, source.src)
+          : moveVars(move)
+      // Text drifts against the first pan for a touch of parallax.
+      if (i === 0)
+        drift = parseFloat(String(kb['--kx1'])) > parseFloat(String(kb['--kx0'])) ? -1 : 1
+      // Hide once fully covered (longest cover transition is the 1.1 s end-card iris).
+      const hideAt = (single ? END_AT : (SHOT_AT[i + 1] ?? END_AT)) + 1200
+      return {
+        src: source.src,
+        small: source.small,
+        slide,
+        tx,
+        style: css({
+          '--s': ms(at),
+          '--o': ms(hideAt),
+          ...(single && { '--kb-ms': ms(hideAt - at) }),
+          ...kb,
+          ...transitionVars(tx, rand),
+        }),
+      }
+    })
+    .slice(0, single ? 1 : undefined)
 
   // Hook: description first; otherwise the topics themselves (facts, no boilerplate), and the
   // chips take the rest. A video with neither shows its title and kicker alone.
@@ -366,6 +435,7 @@ export function buildReelPlan(video: Video): ReelPlan {
     ending,
     lowRes,
     single,
+    slides,
     unit: byLine ? 'line' : 'word',
     style: css({
       '--t1': ms(SHOT_AT[0]),
@@ -375,6 +445,7 @@ export function buildReelPlan(video: Video): ReelPlan {
       '--tout': ms(OUT_AT),
       '--dim': ms(hookIn - 150),
       '--drift': drift,
+      ...(slides && floatVars(frameRand)),
       '--title-scale': titleScale,
       // Kinetic type fills the width (serif glyphs ≈ 0.52em) within ~50% of the height;
       // phone stages show at most four lines (reel.css hides the rest).

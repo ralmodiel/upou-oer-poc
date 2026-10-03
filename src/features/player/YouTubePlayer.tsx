@@ -6,9 +6,9 @@ import { reelImages } from '../reel/stills'
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 
 /**
- * The player's first frame: the poster at half strength over night (night alone when every image
- * is flagged). The stage keeps it under the reel as well, so the reel's closing move lands on it
- * and the swap has nothing to load.
+ * The player's first frame: the poster in its own colours (night alone when every image is
+ * flagged). The stage keeps it under the reel as well, so the reel's closing move lands on it and
+ * the swap has nothing to load.
  */
 export function PlayerPoster({ video }: { video: Video }) {
   const [failed, setFailed] = useState(false)
@@ -26,7 +26,7 @@ export function PlayerPoster({ video }: { video: Video }) {
           alt=""
           onLoad={check}
           onError={() => setFailed(true)}
-          className="size-full object-cover opacity-50"
+          className="size-full object-cover"
         />
       )}
     </div>
@@ -63,7 +63,7 @@ export default function YouTubePlayer({ video }: { video: Video }) {
       {!loaded && (
         <span
           aria-hidden="true"
-          className="absolute top-1/2 left-1/2 size-10 -translate-1/2 animate-spin rounded-full border-[3px] border-white/20 border-t-amber"
+          className="absolute top-1/2 left-1/2 size-10 -translate-1/2 animate-spin rounded-full border-[3px] border-white/30 border-t-amber bg-[#1b1a17]/40"
         />
       )}
       <iframe

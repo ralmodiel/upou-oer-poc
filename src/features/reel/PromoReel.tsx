@@ -82,6 +82,8 @@ export default function PromoReel({
   const doneRef = useRef(false)
   const stills = loaded?.key === video.id ? loaded : null
   const started = stills !== null
+  // No face-safe still (callers skip the reel then): nothing to show, so it ends at once.
+  const empty = plan.shots.length === 0
 
   const complete = () => {
     if (doneRef.current) return
@@ -92,9 +94,13 @@ export default function PromoReel({
   const onTimeUp = useEffectEvent(complete)
   const soundWanted = useEffectEvent(() => soundOn)
 
+  useEffect(() => {
+    if (empty) onTimeUp()
+  }, [empty])
+
   // Sound is set up while the stills decode: starting an AudioContext can stall the main thread.
   useEffect(() => {
-    if (silent) return
+    if (silent || empty) return
     const audio = createReelAudio(plan.rootHz, () => clockRef.current?.elapsed() ?? 0)
     audioRef.current = audio
     audio.setMuted(!soundWanted())
@@ -102,10 +108,11 @@ export default function PromoReel({
       audio.dispose()
       audioRef.current = null
     }
-  }, [plan, silent])
+  }, [plan, silent, empty])
 
   // Decode the stills (capped) before the clock starts; failures fall back to the backdrop or a gradient.
   useEffect(() => {
+    if (!plan.shots.length) return
     const controller = new AbortController()
     const small = preview && (rootRef.current?.clientWidth ?? 0) <= CARD_STAGE_PX
     const shots = plan.shots.map((s) => (small ? s.small : s.src))
@@ -179,6 +186,8 @@ export default function PromoReel({
     audioRef.current?.setMuted(!soundOn)
   }, [soundOn])
 
+  if (empty) return null
+
   return (
     <div
       ref={rootRef}
@@ -194,6 +203,7 @@ export default function PromoReel({
       data-end={plan.ending}
       data-unit={plan.unit}
       data-single={plan.single || undefined}
+      data-slides={plan.slides || undefined}
       data-lowres={(plan.lowRes && !preview) || undefined}
       style={style}
     >
@@ -240,6 +250,19 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
   const framed = plan.lowRes && !preview && plan.template === 'cinematic'
   return (
     <>
+      {/* Slides sit whole in the split frame over a light, blurred copy of the one on screen. */}
+      {plan.slides && (
+        <div className="reel-fill" aria-hidden="true">
+          {plan.shots.map(
+            (shot, i) =>
+              stills.shots[i] && (
+                <div key={i} className="reel-fill-shot" style={shot.style}>
+                  <img src={stills.shots[i]} alt="" draggable={false} />
+                </div>
+              ),
+          )}
+        </div>
+      )}
       {/* Low-res stills are shown framed over a blurred fill instead of blown up. */}
       {framed && stills.backdrop && (
         <div className="reel-backfill" aria-hidden="true">
@@ -248,7 +271,12 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       )}
       <div className="reel-stage" aria-hidden="true">
         {plan.shots.map((shot, i) => (
-          <div key={i} className="reel-shot" style={shot.style}>
+          <div
+            key={i}
+            className="reel-shot"
+            data-slide={shot.slide || undefined}
+            style={shot.style}
+          >
             <div className="reel-tx" data-tx={shot.tx}>
               <div className="reel-kb">
                 {stills.shots[i] && <img src={stills.shots[i]} alt="" draggable={false} />}
@@ -387,17 +415,13 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       </div>
 
       {!preview && (
-        <>
-          <div className="reel-vignette" aria-hidden="true" />
-          <div className="reel-grain" aria-hidden="true" />
-          <div
-            className="reel-progress"
-            role="progressbar"
-            aria-label="Preview progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-        </>
+        <div
+          className="reel-progress"
+          role="progressbar"
+          aria-label="Preview progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
       )}
     </>
   )

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { setCatalog } from '../../data/testing'
 import type { Profile } from '../../lib/history'
 import { testVideo } from '../reel/testing'
-import { titleKey, upNextFor } from './recommendations'
+import { titleKey, upNextFor, upNextPlaceholder } from './recommendations'
 
 const profile: Profile = { watched: [], searches: [], saved: [] }
 const talk = 'Public Health Preparedness Amidst Pandemic: Nursing Experience'
@@ -52,5 +52,34 @@ describe('upNextFor', () => {
     const copy = clone('copy', testVideo.title, '2025-01-01')
     setCatalog([testVideo, copy, clone('other', 'Another title')])
     expect(upNextFor(testVideo, profile).map((i) => i.video.id)).not.toContain('copy')
+  })
+})
+
+describe('upNextPlaceholder', () => {
+  it("stands in with the collection's newest, one row per talk, then the newest overall", () => {
+    const cuts = ['Ms. A, RN', 'Dr. C'].map((who, i) =>
+      clone(`cut-${i}`, `${talk} | ${who}`, `2025-0${i + 1}-01`),
+    )
+    const mates = Array.from({ length: 4 }, (_, i) =>
+      clone(`mate-${i}`, `Lecture ${i} on data`, `2024-0${i + 1}-01`),
+    )
+    const elsewhere = Array.from({ length: 6 }, (_, i) => ({
+      ...clone(`else-${i}`, `Talk ${i} on soils`, `2023-0${i + 1}-01`),
+      category: 'Agriculture',
+    }))
+    setCatalog([testVideo, ...cuts, ...mates, ...elsewhere])
+
+    const ids = upNextPlaceholder(testVideo).map((i) => i.video.id)
+    expect(ids).toEqual([
+      'cut-1',
+      'mate-3',
+      'mate-2',
+      'mate-1',
+      'mate-0',
+      'else-5',
+      'else-4',
+      'else-3',
+    ])
+    expect(upNextPlaceholder(testVideo).every((i) => i.reason === '')).toBe(true)
   })
 })

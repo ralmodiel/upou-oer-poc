@@ -14,7 +14,6 @@ import EscHint from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
 import { useInputModality } from '../features/watch/modality'
 import UpNext from '../features/watch/UpNext'
-import { upNextFor } from '../features/watch/recommendations'
 import WatchBackdrop from '../features/watch/WatchBackdrop'
 import WatchMeta from '../features/watch/WatchMeta'
 import WatchTags from '../features/watch/WatchTags'
@@ -46,10 +45,6 @@ function Watch({ video }: { video: Video }) {
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
   const profile = useProfile()
-  // Picked once per video (this component is keyed by id) with the profile at that moment, so
-  // the list is not re-ranked while watching. Rendered with the page: a later arrival would
-  // shift the footer on short pages.
-  const [upNext] = useState(() => upNextFor(video, profile))
   const category = getCategoryByName(video.category)
   // The stage is focused by script, so its focus ring waits for keyboard use (see modality.ts).
   const keyboard = useInputModality() === 'keyboard'
@@ -166,7 +161,7 @@ function Watch({ video }: { video: Video }) {
           </div>
 
           <aside className="pt-10 lg:col-span-4 lg:pt-16">
-            <UpNext items={upNext} />
+            <UpNext video={video} profile={profile} />
             {category && (
               <Link to={`/collections/${category.slug}`} className="watch-more mt-5">
                 <span>

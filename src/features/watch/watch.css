@@ -213,6 +213,18 @@
   }
 }
 
+/*
+  Up next rows share one height whatever their text: a line of reason (0.75rem × 1.375), at most two
+  of title (0.875rem × 1.375 each), a line of facts (1rem) and two 0.25rem gaps. The stand-in list
+  and the picks that replace it then line up row for row.
+*/
+.watch-next-text {
+  display: flex;
+  min-height: 4.9375rem;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* Up next: the hovered or focused row's thumbnail takes a gold frame. */
 .watch-next img {
   transition: box-shadow 0.2s;

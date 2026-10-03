@@ -31,19 +31,23 @@ const hide = (e: SyntheticEvent<HTMLImageElement>) => {
 export function MosaicBackdrop({
   videos,
   scrim,
+  count = 4,
   className = '',
 }: {
   videos: readonly Video[]
   scrim: string
+  count?: number
   className?: string
 }) {
+  // Only videos with a usable still: one whose every image is flagged would leave a blank tile.
+  const shown = videos.filter((v) => imagesOf(v, true)).slice(0, count)
   return (
     <div
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
     >
       <div className="backdrop-mosaic flex h-full gap-0.5">
-        {videos.map((video) => {
+        {shown.map((video) => {
           const images = imagesOf(video, true)
           return (
             <div key={video.id} className="aspect-video h-full shrink-0 bg-surface-2">

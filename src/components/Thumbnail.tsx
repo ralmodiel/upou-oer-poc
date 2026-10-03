@@ -1,6 +1,7 @@
 import type { ImgHTMLAttributes, ReactNode, SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { imagesOf } from './media'
+import { imagesOf, slugOfCategory } from './media'
+import { BAND, toneOf, type Tone } from './tones'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
@@ -14,6 +15,43 @@ const retryOrFail = (img: HTMLImageElement, fallback: string) => {
     return
   }
   img.dataset.failed = ''
+}
+
+// Title tiles use the collection's band colour; charcoal would read as a dark box among stills.
+const TILE_TONE: Record<Tone, Tone> = {
+  maroon: 'maroon',
+  forest: 'forest',
+  gold: 'gold',
+  charcoal: 'maroon',
+}
+
+/**
+ * Stand-in for a video with no usable image (every still flagged): its title in the display serif
+ * on the collection's brand band under a short rule, like the reel's type-only cards; never a blank
+ * or dark box. Below 8rem wide it shows the title's first letter instead. Decorative: the card
+ * names the video already.
+ */
+export function TitleTile({ video, className = '' }: { video: Video; className?: string }) {
+  const band = BAND[TILE_TONE[toneOf(slugOfCategory(video.category))]]
+  return (
+    <div
+      aria-hidden="true"
+      data-title-tile=""
+      className={`absolute inset-0 overflow-hidden select-none @container ${band.fill} ${band.text} ${className}`}
+    >
+      <div className="flex size-full flex-col justify-end p-[7cqi] @max-[8rem]:hidden">
+        <span
+          className={`mb-[4cqi] h-[clamp(2px,0.9cqi,5px)] w-[min(16cqi,4rem)] shrink-0 rounded-pill ${band.rule}`}
+        />
+        <span className="line-clamp-3 font-display text-[length:clamp(0.75rem,9.5cqi,2.25rem)] leading-[1.08] text-balance">
+          {video.title}
+        </span>
+      </div>
+      <span className="hidden size-full place-items-center font-display text-[length:50cqi] leading-none @max-[8rem]:grid">
+        {video.title.charAt(0)}
+      </span>
+    </div>
+  )
 }
 
 interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'fetchPriority'> {
@@ -32,8 +70,8 @@ interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'f
 
 /**
  * 16:9 still on a surface-2 well that shows the collection's initial underneath, so a slow or
- * missing image never reads as a blank block (a canonical slot whose every image is flagged shows
- * the well alone). Lazy images fade in; eager ones (LCP) paint at once.
+ * missing image never reads as a blank block; a video whose every image is flagged gets its title
+ * tile instead. Lazy images fade in; eager ones (LCP) paint at once.
  */
 export default function Thumbnail({
   video,
@@ -55,6 +93,7 @@ export default function Thumbnail({
       >
         {video.category.charAt(0)}
       </span>
+      {!images && <TitleTile video={video} />}
       {images && (
         <img
           key={video.id}

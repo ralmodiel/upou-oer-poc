@@ -2,11 +2,13 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FocusEvent,
   type PointerEvent,
 } from 'react'
+import { reelImages } from '../features/reel/stills'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
@@ -87,8 +89,9 @@ export function useCardPreview(video: Video) {
     setPhase('idle')
   }, [id])
 
-  // Without usable stills a video keeps its static thumbnail.
-  const hasStills = video.frames.length > 0
+  // Without usable stills (none, or every one flagged) a video keeps its static image: its reel
+  // would play on type alone, on a dark stage.
+  const hasStills = useMemo(() => reelImages(video).stills.length > 0, [video])
   const start = useCallback(() => {
     if (prefersReducedMotion() || done.current || !hasStills) return
     claim(id, stop)

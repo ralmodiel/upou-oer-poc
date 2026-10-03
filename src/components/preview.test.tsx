@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
 import VideoGrid from './VideoGrid'
 import { stopPreview } from './preview'
@@ -53,6 +54,25 @@ const previewIn = (i: number) => cardLink(i).closest('article')!.querySelector('
 
 describe('card previews', () => {
   beforeEach(() => mediaQueries(false))
+
+  it('never starts for a video whose every still is flagged (it would play on type alone)', () => {
+    // Fixture videos share one YouTube id: flag the stills of a copy with its own.
+    const flagged = { ...withStills[0], youtubeId: 'flaggedAll1' }
+    setFrameFlags({ [flagged.youtubeId]: 0b1110 })
+    try {
+      const router = createMemoryRouter([
+        { path: '/', element: <VideoGrid videos={[flagged, withStills[1]]} /> },
+        { path: '/watch/:id', element: <p>Player</p> },
+      ])
+      render(<RouterProvider router={router} />)
+      act(() => cardLink(0).focus())
+      expect(previews()).toHaveLength(0)
+      act(() => cardLink(1).focus())
+      expect(previews()).toHaveLength(1)
+    } finally {
+      setFrameFlags({})
+    }
+  })
 
   it('mounts the reel for the focused card only, and unmounts it on blur', async () => {
     renderGrid()

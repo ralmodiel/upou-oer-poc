@@ -10,10 +10,12 @@ import Section from '../components/Section'
 import { onIdle, useFrozen, useMediaQuery } from '../components/browse-hooks'
 import { GridHint, ManageLink } from '../components/browse-ui'
 import { forYou, moreLikeThis, reasonsFor } from '../components/recs'
+import { ChevronRightIcon } from '../components/icons'
 import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
 import { getCategories, getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
 import { isEmptyProfile, useProfile, type Profile } from '../lib/history'
+import { pickSources } from '../lib/privacy'
 import { warmRecommenderAsync } from '../lib/recommend'
 import { homeSeo, useSeo } from '../lib/seo'
 import { historyAllowed, usePrefs, useWatchHistory, type HistoryEntry } from '../lib/storage'
@@ -64,7 +66,8 @@ function useRestoring() {
 }
 
 interface HomeRecs {
-  limit: number
+  /** What the recs were computed for: card count and which parts of the profile were used. */
+  key: string
   pending: boolean
   forYou: Video[]
   reasons: ReadonlyMap<string, string>
@@ -72,14 +75,19 @@ interface HomeRecs {
   because?: { video: Video; list: Video[]; reasons: ReadonlyMap<string, string> }
 }
 
-const NO_RECS: HomeRecs = { limit: 0, pending: false, forYou: [], reasons: new Map() }
+const NO_RECS: HomeRecs = { key: '', pending: false, forYou: [], reasons: new Map() }
 // As last computed, so Back lands on the same layout at once (a fresh visit computes anew: the
-// profile may have changed since).
+// profile may have changed since; so does a privacy change).
 let lastRecs: HomeRecs | null = null
 
 // `shown`: every title already on the page (featured, also new, recently viewed, category rows),
 // so no recommendation repeats one and the rows never wait for the recommender.
-function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>): HomeRecs {
+function computeRecs(
+  profile: Profile,
+  limit: number,
+  shown: ReadonlySet<string>,
+  key: string,
+): HomeRecs {
   // Only when nothing unshown matches (a tiny catalog) may a section repeat a shown title.
   const orShown = (list: Video[], withShown: () => Video[]) => (list.length ? list : withShown())
   const picked = orShown(forYou(profile, limit, shown), () => forYou(profile, limit))
@@ -99,7 +107,7 @@ function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>
     ),
   )
   return {
-    limit,
+    key,
     pending: false,
     forYou: picked,
     reasons: reasonsFor(picked, profile),
@@ -113,17 +121,20 @@ function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>
 // Personalised sections are computed once per visit, after the first paint: the recommender
 // indexes the catalog in short slices first, and the grids render a frame later, so no task is long.
 // An empty profile skips the recommender entirely. The profile is frozen at mount so saving a
-// card here does not reshuffle the grids.
+// card here does not reshuffle the grids; turning history or searches off, or clearing them
+// (Privacy and history), recomputes at once and never shows the old picks meanwhile.
 function useHomeRecommendations(
   limit: number,
   shown: ReadonlySet<string>,
   restoring: boolean,
   enabled: boolean,
 ): HomeRecs {
-  const profile = useFrozen(useProfile(), limit)
+  const live = useProfile()
+  const key = `${limit}|${live.watched.length > 0}|${live.searches.length > 0}`
+  const profile = useFrozen(live, key)
   // Every personal row switched off (Privacy and history): the recommender never runs.
   const empty = isEmptyProfile(profile) || !enabled
-  const [recs, setRecs] = useState(() => (restoring && lastRecs?.limit === limit ? lastRecs : null))
+  const [recs, setRecs] = useState(() => (restoring && lastRecs?.key === key ? lastRecs : null))
   useEffect(() => {
     if (empty) return
     let frame = 0
@@ -131,7 +142,7 @@ function useHomeRecommendations(
     const cancelIdle = onIdle(() => {
       void warmRecommenderAsync().then(() => {
         if (cancelled) return
-        const next = computeRecs(profile, limit, shown)
+        const next = computeRecs(profile, limit, shown, key)
         lastRecs = next
         frame = requestAnimationFrame(() => setRecs(next))
       })
@@ -141,12 +152,15 @@ function useHomeRecommendations(
       cancelIdle()
       cancelAnimationFrame(frame)
     }
-  }, [empty, profile, limit, shown])
+  }, [empty, profile, limit, shown, key])
   if (empty) return NO_RECS
-  return recs ?? { ...NO_RECS, limit, pending: true }
+  return recs?.key === key ? recs : { ...NO_RECS, key, pending: true }
 }
 
-// Phones: the strongest collections only, four cards each, then a link to the rest.
+// The largest collections only, then a link to all of them: twelve with one row of cards each
+// (three at md, four from lg), seven with two rows of two on phones. "Recommended for you" keeps
+// two rows (eight from lg, six at md); "Because you watched" gets one, like the collections.
+const SECTIONS = 12
 const PHONE_SECTIONS = 7
 const NO_VIDEOS: Video[] = []
 const PHONE_CARDS = 4
@@ -189,7 +203,9 @@ export default function BrowsePage() {
       .slice(0, 4)
   }, [featured])
   const wide = useMediaQuery('(min-width: 48rem)')
-  const cards = wide ? CARDS : PHONE_CARDS
+  const large = useMediaQuery('(min-width: 64rem)')
+  const cards = wide ? (large ? CARDS : 6) : PHONE_CARDS
+  const rowCards = !wide ? PHONE_CARDS : large ? 4 : 3
   // A title already above (featured, also new, recently viewed) is left out of its category
   // row, which takes the next newest instead.
   const rows = getRows(CARDS * 2)
@@ -198,12 +214,12 @@ export default function BrowsePage() {
     [featured, alsoNew, recent],
   )
   const shownRows = useMemo(() => {
-    return (wide ? rows : rows.slice(0, PHONE_SECTIONS)).map((row) => {
+    return rows.slice(0, wide ? SECTIONS : PHONE_SECTIONS).map((row) => {
       const rest = row.videos.filter((v) => !above.has(v.id))
       // A small collection shown almost entirely above keeps its own list rather than going bare.
-      return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, cards) }
+      return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, rowCards) }
     })
-  }, [above, rows, wide, cards])
+  }, [above, rows, wide, rowCards])
   const shown = useMemo(
     () =>
       new Set(
@@ -219,8 +235,12 @@ export default function BrowsePage() {
   // never repeat one across the top rows (unless that would leave a row bare: a tiny catalog).
   const forYouList = useMemo(() => without(recs.forYou, above), [recs.forYou, above])
   const becauseList = useMemo(
-    () => without(recs.because?.list ?? [], new Set([...above, ...forYouList.map((v) => v.id)])),
-    [recs.because, above, forYouList],
+    () =>
+      without(recs.because?.list ?? [], new Set([...above, ...forYouList.map((v) => v.id)])).slice(
+        0,
+        rowCards,
+      ),
+    [recs.because, above, forYouList, rowCards],
   )
 
   if (!videos.length) {
@@ -234,21 +254,20 @@ export default function BrowsePage() {
     )
   }
 
-  const collections = getCategories().length
   return (
     <>
       <GridHint />
       <Intro />
       <Featured videos={featured} alsoNew={alsoNew} />
       <HowItWorks />
-      {/* Sections alternate tinted and paper bands (browse.css). */}
+      {/* Every third section is a tinted band (browse.css). */}
       <div className="home-bands">
         {prefs.recommendations && (
           <Recommended
             title="Recommended for you"
             description={
               <>
-                Picked from what you watched, searched and saved in this browser. <ManageLink />
+                Picked from what you {pickSources(prefs)} in this browser. <ManageLink />
               </>
             }
             videos={forYouList}
@@ -269,24 +288,36 @@ export default function BrowsePage() {
             }
             videos={becauseList}
             reasons={recs.because.reasons}
-            cards={cards}
+            cards={rowCards}
           />
         )}
         {shownRows.map((row) => (
           <Section key={row.id} row={row} eager={restoring} />
         ))}
-        {!wide && (
-          <section aria-label="More collections" className="px-(--gutter) py-10 text-center">
-            <p className="text-sm text-ink-2">
-              {rows.length - shownRows.length} more collections, plus everything in these.
-            </p>
-            <LinkButton to="/collections" className="mt-4">
-              All {collections} collections
-            </LinkButton>
-          </section>
-        )}
+        <MoreCollections shown={shownRows.length} />
       </div>
     </>
+  )
+}
+
+/** After the capped sections: the way to every collection (the chips above list them too). */
+function MoreCollections({ shown }: { shown: number }) {
+  const total = getCategories().length
+  const more = total - shown
+  return (
+    <section aria-label="More collections" className="px-(--gutter) py-10 text-center sm:py-12">
+      <p className="text-sm text-ink-2">
+        {more > 0
+          ? `${more} more ${more === 1 ? 'collection' : 'collections'}, plus everything in these.`
+          : 'Every collection, with all its videos.'}
+      </p>
+      {/* A full-width row for the remote: ↓ from any column of the last grid lands here. */}
+      <div className="mt-4">
+        <LinkButton to="/collections" size="lg" data-spatial="wide" iconEnd={<ChevronRightIcon />}>
+          All {total} collections
+        </LinkButton>
+      </div>
+    </section>
   )
 }
 

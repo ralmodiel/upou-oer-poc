@@ -107,6 +107,21 @@ describe('WatchPage', () => {
     expect(row).toHaveFocus()
   })
 
+  it('tells keyboards and remotes on the player that → reaches Up next', () => {
+    renderAt([`/watch/${testVideo.id}`])
+    const stage = screen.getByRole('region', { name: 'Preview' })
+    expect(screen.queryByText('for Up next', { exact: false })).not.toBeInTheDocument()
+    fireEvent.keyDown(stage, { key: 'Shift' })
+    expect(screen.getByText('for Up next', { exact: false })).toBeInTheDocument()
+    // Gone once focus leaves the player (here for a row of Up next), and for pointers.
+    act(() => document.querySelector<HTMLElement>('.watch-next')!.focus())
+    expect(screen.queryByText('for Up next', { exact: false })).not.toBeInTheDocument()
+    act(() => stage.focus())
+    expect(screen.getByText('for Up next', { exact: false })).toBeInTheDocument()
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByText('for Up next', { exact: false })).not.toBeInTheDocument()
+  })
+
   it('steps into the reel controls with ↓; the stage rings only after keyboard use', () => {
     renderAt([`/watch/${testVideo.id}`])
     const stage = screen.getByRole('region', { name: 'Preview' })
@@ -644,6 +659,33 @@ describe('WatchPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(await screen.findByText('Home')).toBeInTheDocument()
     expect(inApp.router.state.historyAction).toBe('POP')
+  })
+
+  it('keeps a Back in reach once its row has scrolled away under the header', async () => {
+    let report: (entries: Partial<IntersectionObserverEntry>[]) => void = () => {}
+    const original = globalThis.IntersectionObserver
+    globalThis.IntersectionObserver = class {
+      constructor(callback: (entries: Partial<IntersectionObserverEntry>[]) => void) {
+        report = callback
+      }
+      observe() {}
+      disconnect() {}
+    } as unknown as typeof IntersectionObserver
+    try {
+      renderAt(['/', `/watch/${testVideo.id}`])
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1)
+      const away = { isIntersecting: false, boundingClientRect: { top: -40 } as DOMRect }
+      act(() => report([away]))
+      const backs = screen.getAllByRole('button', { name: 'Back' })
+      expect(backs).toHaveLength(2)
+      act(() => report([{ ...away, isIntersecting: true }]))
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1)
+      act(() => report([away]))
+      fireEvent.click(screen.getAllByRole('button', { name: 'Back' })[1])
+      expect(await screen.findByText('Home')).toBeInTheDocument()
+    } finally {
+      globalThis.IntersectionObserver = original
+    }
   })
 
   it('shows a friendly not-found screen for unknown ids', () => {

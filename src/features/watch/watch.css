@@ -447,3 +447,13 @@
   opacity: 1;
   outline-color: #8d0c34;
 }
+
+/* Phones: Back kept in reach under the header once its row has scrolled away (WatchPage). */
+.watch-back-float {
+  position: fixed;
+  top: calc(var(--header-h, 3.5rem) + 0.5rem);
+  left: var(--gutter, 1rem);
+  z-index: 30;
+  background: var(--color-surface);
+  box-shadow: 0 6px 20px -10px rgb(27 26 23 / 0.45);
+}

@@ -10,7 +10,7 @@ import { getCategoryByName, getVideo } from '../data/catalog'
 import YouTubePlayer, { PlayerPoster } from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
 import { reelImages } from '../features/reel/stills'
-import EscHint from '../features/watch/EscHint'
+import EscHint, { UpNextKeyHint } from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
 import { useInputModality } from '../features/watch/modality'
 import AutoplayNext from '../features/watch/AutoplayNext'
@@ -59,6 +59,21 @@ function Watch({ video }: { video: Video }) {
   const category = getCategoryByName(video.category)
   // The stage is focused by script, so its focus ring waits for keyboard use (see modality.ts).
   const keyboard = useInputModality() === 'keyboard'
+  // Focus on the stage or its controls: keyboards and remotes get the → hint for Up next.
+  const [onStage, setOnStage] = useState(true)
+  // Phones: once the Back row has scrolled away under the header, a small Back stays in reach.
+  const backRow = useRef<HTMLDivElement>(null)
+  const [backAway, setBackAway] = useState(false)
+  useEffect(() => {
+    const row = backRow.current
+    if (!row || typeof IntersectionObserver !== 'function') return
+    const observer = new IntersectionObserver(
+      ([entry]) => setBackAway(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      { rootMargin: '-64px 0px 0px 0px' },
+    )
+    observer.observe(row)
+    return () => observer.disconnect()
+  }, [])
   useSeo(videoSeo(video, category))
   for (const origin of ORIGINS) preconnect(origin)
 
@@ -179,15 +194,28 @@ function Watch({ video }: { video: Video }) {
       data-tone={category ? toneOf(category.slug) : undefined}
     >
       <WatchBackdrop video={video} />
-      <div className="mx-auto w-full max-w-[1600px] px-(--gutter)">
+      {/* The gutter already centres the page in 100rem on wide screens (index.css); a max width on
+          top of it would take the gutter twice and shrink the player (1280 px of 1920, 640 of 2560). */}
+      <div className="w-full px-(--gutter)">
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-8">
-            <div className="flex min-h-14 items-center justify-between gap-3 py-2">
+            <div ref={backRow} className="flex min-h-14 items-center justify-between gap-3 py-2">
               <Button variant="secondary" size="sm" icon={<BackIcon />} onClick={goBack}>
                 Back
               </Button>
-              <EscHint />
+              {keyboard && onStage ? <UpNextKeyHint /> : <EscHint />}
             </div>
+            {backAway && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<BackIcon />}
+                onClick={goBack}
+                className="watch-back-float md:hidden"
+              >
+                Back
+              </Button>
+            )}
 
             <div
               ref={stageRef}
@@ -196,6 +224,8 @@ function Watch({ video }: { video: Video }) {
               aria-label={phase === 'reel' ? 'Preview' : 'Video player'}
               onPointerLeave={reclaimFocus}
               onKeyDown={onStageKeyDown}
+              onFocus={() => setOnStage(true)}
+              onBlur={(e) => setOnStage(e.currentTarget.contains(e.relatedTarget))}
               data-kbd={keyboard || undefined}
               className="watch-stage relative aspect-video overflow-hidden bg-surface shadow-lift ring-1 ring-black/5 md:rounded-card"
             >
@@ -266,7 +296,7 @@ function WatchNotFound() {
     <NotFound
       title="Video not found"
       crumbs={[{ label: 'Browse', to: '/' }, { label: 'Video not found' }]}
-      className="mx-auto min-h-dvh w-full max-w-[1600px]"
+      className="min-h-dvh w-full"
     >
       This video may have moved or is no longer in the catalog. Try one of these instead.
     </NotFound>

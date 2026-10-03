@@ -31,3 +31,19 @@ export default function EscHint() {
     </p>
   )
 }
+
+/**
+ * For keyboards and remotes while the player has focus beside Up next (lg+, where ↓ steps into the
+ * player's own controls and then down the page): → reaches the list.
+ */
+export function UpNextKeyHint() {
+  return (
+    <p className="hidden items-center gap-1.5 rounded-pill bg-paper/80 px-2.5 py-1 text-sm text-ink-2 lg:inline-flex">
+      Press
+      <kbd className="rounded-md border border-line bg-surface px-1.5 py-0.5 font-sans text-xs font-semibold text-ink">
+        →
+      </kbd>
+      for Up next
+    </p>
+  )
+}

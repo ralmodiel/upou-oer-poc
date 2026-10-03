@@ -25,9 +25,9 @@ The 10-second generated promo reel stays. It is the product's signature feature.
 | `--color-surface-2`   | `#f2eeeb`             | `#2f2e30`          | chips, wells, skeletons                |
 | `--color-ink`         | `#373637`             | `#f4f1ef`          | primary text (logo charcoal)           |
 | `--color-ink-2`       | `#5c5a5c`             | `#c9c5c7`          | secondary text                         |
-| `--color-ink-3`       | `#6f6c6e`             | `#9b9699`          | tertiary text, placeholders (AA)       |
+| `--color-ink-3`       | `#6b686a`             | `#9b9699`          | tertiary text, placeholders (AA)       |
 | `--color-line`        | `#e6e1dd`             | `#3a383b`          | 1px borders                            |
-| `--color-maroon`      | `#8d0c34`             | `#e8628a`          | primary actions, links, focus          |
+| `--color-maroon`      | `#8d0c34`             | `#ec7097`          | primary actions, links, focus          |
 | `--color-maroon-2`    | `#7f001f`             | `#f28cab`          | hover / pressed                        |
 | `--color-maroon-soft` | `#f9e6ed`             | `#3f1a2a`          | tinted backgrounds                     |
 | `--color-forest`      | `#00563f`             | `#5fc59c`          | category eyebrows, "open/free" accents |
@@ -35,6 +35,17 @@ The 10-second generated promo reel stays. It is the product's signature feature.
 | `--color-amber`       | `#f5a71d`             | `#f7b545`          | highlights, "New" marker (ink text on) |
 | `--color-gold`        | `#fcb51b`             | `#fcc75a`          | featured marker only                   |
 | `--color-overlay`     | `rgb(55 54 55 / 0.6)` | `rgb(0 0 0 / 0.7)` | dialog backdrop                        |
+| `--color-on-accent`   | `#ffffff`             | `#1a191a`          | text on maroon / forest fills          |
+| `--color-charcoal`    | `#373637`             | `#373637`          | text on amber / gold (both themes)     |
+
+Contrast-driven adjustments (checked with a WCAG script): light `ink-3` darkened one step so it
+clears 4.5:1 on `surface-2`; dark `maroon` lightened so it clears 4.5:1 on `surface-2` and
+`maroon-soft`; `on-accent` and `charcoal` added because white fails on the dark-theme maroon and
+forest, and light ink fails on amber. Layout variables that live beside the tokens:
+`--gutter`, `--header-h` (3.5rem, 4rem at `md`) and `--tabbar-h` (3.75rem below `md`, 0 above).
+Tailwind also gets `rounded-card`, `rounded-pill`, `shadow-lift`, `ease-out-soft`,
+`font-display`, `text-title` (page-title scale) and an `eyebrow` utility; `dark:` follows
+`data-theme`, not the OS.
 
 Light is the default. Dark follows `prefers-color-scheme` and a manual toggle (`light` /
 `dark` / `system`) stored in `localStorage` under `upou:theme`; the `<html>` element carries

@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigationType } from 'react-router'
-import EmptyState from '../components/EmptyState'
-import Hero from '../components/Hero'
-import Row from '../components/Row'
+import CollectionChips from '../components/CollectionChips'
+import ContinueWatching from '../components/ContinueWatching'
+import Featured from '../components/Featured'
+import HowItWorks from '../components/HowItWorks'
+import Section from '../components/Section'
+import { GridHint } from '../components/browse-ui'
 import { useDocumentTitle } from '../components/hooks'
-import { featured, getRows, getVideo, latest, similarTo, videos } from '../data/catalog'
-import { useMyList, useWatchHistory, type HistoryEntry } from '../lib/storage'
+import EmptyState from '../components/ui/EmptyState'
+import { getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
+import { useWatchHistory, type HistoryEntry } from '../lib/storage'
+import '../components/browse.css'
 
 // History as last rendered here. Coming Back from the player, the first frame reuses it so
-// the restored scroll position matches the old layout; the new rows then slide in above
+// the restored scroll position matches the old layout; the new strip then appears above
 // and browser scroll anchoring keeps the view in place.
 let lastShown: readonly HistoryEntry[] | null = null
 
@@ -34,24 +39,25 @@ function useShownHistory() {
 }
 
 export default function BrowsePage() {
-  useDocumentTitle('UPOU Networks')
+  useDocumentTitle('UPOU Networks · Open educational videos')
   const entries = useShownHistory()
-  const { ids } = useMyList()
-
-  // Memoized so the memoized rows skip re-rendering when only ?v= changes.
   const recent = useMemo(
     () => entries.map((e) => getVideo(e.id)).filter((v) => v !== undefined),
     [entries],
   )
-  const saved = useMemo(() => ids.map((id) => getVideo(id)).filter((v) => v !== undefined), [ids])
-  const lastWatched = recent[0]
-  const because = useMemo(() => (lastWatched ? similarTo(lastWatched) : []), [lastWatched])
-  // A few titles per collection keep the page light; "See all" opens the rest. Memoized in the catalog.
+  // Catalog getters are memoized, so these identities are stable between renders.
+  const featured = getFeatured()
+  const alsoNew = useMemo(() => {
+    const shown = new Set(featured.map((v) => v.id))
+    return getLatest(12)
+      .filter((v) => !shown.has(v.id))
+      .slice(0, 4)
+  }, [featured])
   const rows = getRows()
 
   if (!videos.length) {
     return (
-      <div className="px-(--gutter) pt-24">
+      <div className="px-(--gutter) py-16">
         <h1 className="sr-only">Browse</h1>
         <EmptyState title="No videos yet">
           <p>The UPOU Networks catalog is being prepared. Please check back soon.</p>
@@ -63,20 +69,14 @@ export default function BrowsePage() {
   return (
     <>
       <h1 className="sr-only">Browse UPOU Networks videos</h1>
-      <Hero videos={featured} />
-      <div className="relative z-10 -mt-14 space-y-2 sm:-mt-24 sm:space-y-4 lg:-mt-32 lg:space-y-6">
-        <Row title="Recently Watched" videos={recent} />
-        <Row title="My List" videos={saved} />
-        <Row title="New on UPOU Networks" videos={latest} />
-        {lastWatched && <Row title={`Because you watched ${lastWatched.title}`} videos={because} />}
+      <GridHint />
+      <HowItWorks />
+      <Featured videos={featured} alsoNew={alsoNew} />
+      <div className="mt-10 space-y-2 sm:mt-12">
+        <ContinueWatching videos={recent} />
+        <CollectionChips />
         {rows.map((row) => (
-          <Row
-            key={row.id}
-            title={row.title}
-            videos={row.videos}
-            seeAll={row.count > row.videos.length ? `/collections/${row.slug}` : undefined}
-            total={row.count}
-          />
+          <Section key={row.id} row={row} />
         ))}
       </div>
     </>

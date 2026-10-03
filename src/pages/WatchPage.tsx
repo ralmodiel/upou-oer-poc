@@ -1,15 +1,21 @@
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { preconnect } from 'react-dom'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { useDocumentTitle } from '../components/hooks'
-import { ExternalLinkIcon } from '../components/icons'
-import { getVideo } from '../data/catalog'
-import { BackIcon } from '../features/player/icons'
-import { useIdle } from '../features/player/useIdle'
+import Breadcrumbs, { type Crumb } from '../components/ui/Breadcrumbs'
+import Button from '../components/ui/Button'
+import LinkButton from '../components/ui/LinkButton'
+import { getCategory, getVideo, similarTo, slugifyCategory } from '../data/catalog'
 import YouTubePlayer from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
+import EscHint from '../features/watch/EscHint'
+import { BackIcon } from '../features/watch/icons'
+import UpNext from '../features/watch/UpNext'
+import WatchMeta from '../features/watch/WatchMeta'
+import WatchTags from '../features/watch/WatchTags'
+import '../features/watch/watch.css'
+import { useGoBack } from '../lib/shortcuts'
 import { useWatchHistory } from '../lib/storage'
-import { watchUrl } from '../lib/youtube'
 import type { Video } from '../types'
 
 const ORIGINS = [
@@ -21,98 +27,123 @@ const ORIGINS = [
 export default function WatchPage() {
   const { id } = useParams()
   const video = getVideo(id)
-  return video ? <Watch key={video.id} video={video} /> : <NotFound />
+  return video ? <Watch key={video.id} video={video} /> : <WatchNotFound />
 }
 
 function Watch({ video }: { video: Video }) {
   const [phase, setPhase] = useState<'reel' | 'player'>('reel')
-  const navigate = useNavigate()
-  const { key } = useLocation()
+  const goBack = useGoBack()
   const { record } = useWatchHistory()
-  const idle = useIdle(3000)
+  const stageRef = useRef<HTMLDivElement>(null)
   for (const origin of ORIGINS) preconnect(origin)
-
-  const goBack = () => {
-    if (key !== 'default') void navigate(-1)
-    // Opened directly: replace the entry so the browser's Back doesn't return to the reel.
-    else void navigate('/', { replace: true })
-  }
-  const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
-    if (e.key === 'Escape' && !e.defaultPrevented) goBack()
-  })
-
-  useEffect(() => {
-    const listener = (e: KeyboardEvent) => onKeyDown(e)
-    window.addEventListener('keydown', listener)
-    return () => window.removeEventListener('keydown', listener)
-  }, [])
-
   useDocumentTitle(`${video.title} · UPOU Networks`)
+
+  // Focus the stage (never the YouTube iframe) when the reel starts and again when the player
+  // appears, so the app shell's Esc = Back handler keeps receiving key events.
+  useEffect(() => {
+    stageRef.current?.focus({ preventScroll: true })
+  }, [phase])
 
   const startPlayer = () => {
     setPhase('player')
     record(video.id)
   }
 
+  // Once the user clicks into the video, the iframe swallows key events; take focus back as
+  // soon as the pointer leaves the stage so Esc works again.
+  const reclaimFocus = () => {
+    const stage = stageRef.current
+    const active = document.activeElement
+    if (stage && active instanceof HTMLIFrameElement && stage.contains(active)) {
+      stage.focus({ preventScroll: true })
+    }
+  }
+
+  const category = getCategory(slugifyCategory(video.category))
+  const upNext = similarTo(video, undefined, 8)
+  // Most source pages have no description; say so instead of padding with metadata.
+  const about =
+    video.description ||
+    `No description was published for this video. It is part of ${video.channel}'s ${video.category} collection.`
+  const crumbs: Crumb[] = [{ label: 'Browse', to: '/' }]
+  if (category) crumbs.push({ label: category.name, to: `/collections/${category.slug}` })
+  crumbs.push({ label: video.title })
+
   return (
-    <div
-      className={`fixed inset-0 overflow-hidden bg-black text-white ${idle && phase === 'reel' ? 'cursor-none' : ''}`}
-    >
-      {phase === 'reel' ? (
-        <PromoReel video={video} onComplete={startPlayer} />
-      ) : (
-        <YouTubePlayer video={video} />
-      )}
-      <header
-        className={`pointer-events-none absolute inset-x-0 top-0 z-20 bg-linear-to-b from-black/80 via-black/35 to-transparent pb-10 transition-opacity duration-300 hover:opacity-100 focus-within:opacity-100 ${idle ? 'opacity-0' : 'opacity-100'}`}
-      >
-        <div className="pointer-events-auto flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6">
-          <button
-            type="button"
-            onClick={goBack}
-            aria-label="Back"
-            className="grid size-11 shrink-0 place-items-center rounded-full transition-colors hover:bg-white/15"
+    <div className="mx-auto w-full max-w-[1600px] px-(--gutter) pb-16">
+      <div className="lg:grid lg:grid-cols-12 lg:gap-10">
+        <div className="lg:col-span-8">
+          <div className="flex min-h-14 items-center justify-between gap-3 py-2">
+            <Button variant="secondary" size="sm" icon={<BackIcon />} onClick={goBack}>
+              Back
+            </Button>
+            <EscHint />
+          </div>
+
+          <div
+            ref={stageRef}
+            tabIndex={-1}
+            role="region"
+            aria-label={phase === 'reel' ? 'Promo reel' : 'Video player'}
+            onPointerLeave={reclaimFocus}
+            className="watch-stage relative aspect-video overflow-hidden bg-surface outline-none ring-1 ring-black/5 focus-visible:ring-2 focus-visible:ring-maroon md:rounded-card"
           >
-            <BackIcon className="size-6" />
-          </button>
-          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-lg">
-            {video.title}
-          </h1>
-          <a
-            href={watchUrl(video.youtubeId)}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open on YouTube"
-            className="flex shrink-0 items-center gap-2 rounded-full border border-white/30 px-3 py-2 text-sm font-medium transition-colors hover:border-white hover:bg-white/10"
-          >
-            <span className="hidden sm:inline">Open on YouTube</span>
-            <ExternalLinkIcon className="size-4" />
-          </a>
+            {phase === 'reel' ? (
+              <PromoReel video={video} onComplete={startPlayer} />
+            ) : (
+              <YouTubePlayer video={video} />
+            )}
+          </div>
+
+          <article className="pt-5">
+            <Breadcrumbs items={crumbs} />
+            <h1 className="mt-3 font-display text-title text-balance text-ink">{video.title}</h1>
+            <WatchMeta video={video} category={category} />
+            <p className="mt-5 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
+              {about}
+            </p>
+            <WatchTags tags={video.tags} />
+          </article>
         </div>
-      </header>
+
+        <aside className="pt-10 lg:col-span-4 lg:pt-16">
+          <UpNext items={upNext} />
+          {category && (
+            <Link
+              to={`/collections/${category.slug}`}
+              className="mt-6 inline-flex min-h-10 items-center gap-2 font-semibold text-maroon hover:underline"
+            >
+              <BackIcon className="size-4" />
+              Back to {category.name}
+              <span className="font-normal text-ink-3">({category.count})</span>
+            </Link>
+          )}
+        </aside>
+      </div>
     </div>
   )
 }
 
-function NotFound() {
+function WatchNotFound() {
   useDocumentTitle('Video not found · UPOU Networks')
   return (
-    <main className="fixed inset-0 grid place-items-center bg-ink-950 px-6 text-center text-white">
-      <div className="max-w-md">
-        <p className="text-sm font-semibold tracking-[0.3em] text-brand-400 uppercase">
-          UPOU Networks
-        </p>
-        <h1 className="mt-4 text-3xl font-bold sm:text-4xl">Video not found</h1>
-        <p className="mt-3 text-neutral-400">
-          This video may have moved or is no longer available.
-        </p>
-        <Link
-          to="/"
-          className="mt-8 inline-flex rounded-md bg-brand-600 px-5 py-3 font-semibold transition-colors hover:bg-brand-500"
-        >
-          Back to Home
-        </Link>
+    <section className="mx-auto max-w-md px-(--gutter) py-16 text-center sm:py-24">
+      <p className="eyebrow">UPOU Networks</p>
+      <h1 className="mt-3 font-display text-title text-ink">Video not found</h1>
+      <p className="mt-3 text-ink-2">
+        This video may have moved or is no longer in the catalog. Try one of these instead.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-2">
+        <LinkButton to="/" size="sm">
+          Browse videos
+        </LinkButton>
+        <LinkButton to="/collections" variant="secondary" size="sm">
+          All collections
+        </LinkButton>
+        <LinkButton to="/search" variant="secondary" size="sm">
+          Search
+        </LinkButton>
       </div>
-    </main>
+    </section>
   )
 }

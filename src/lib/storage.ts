@@ -63,23 +63,33 @@ export function usePersistentState<T>(key: string, fallback: T) {
 }
 
 // Stored values may be hand-edited or from an older version, so keep only well-formed items.
+const MY_LIST_KEY = 'upou:my-list'
 const NO_IDS: string[] = []
 const toIds = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((id) => typeof id === 'string') : NO_IDS
 
+/** Adds a video to the front of My List, or removes it when it is already saved. */
+export function toggleMyList(id: string) {
+  const list = toIds(read<unknown>(MY_LIST_KEY, NO_IDS))
+  write(MY_LIST_KEY, list.includes(id) ? list.filter((x) => x !== id) : [id, ...list])
+}
+
 export function useMyList() {
-  const [raw, setIds] = usePersistentState<unknown>('upou:my-list', NO_IDS)
+  const [raw] = usePersistentState<unknown>(MY_LIST_KEY, NO_IDS)
   const ids = useMemo(() => toIds(raw), [raw])
   const has = useCallback((id: string) => ids.includes(id), [ids])
-  const toggle = useCallback(
-    (id: string) =>
-      setIds((prev: unknown) => {
-        const list = toIds(prev)
-        return list.includes(id) ? list.filter((x) => x !== id) : [id, ...list]
-      }),
-    [setIds],
+  return { ids, has, toggle: toggleMyList }
+}
+
+/** Whether one video is saved: a boolean snapshot, so other list changes don't re-render the caller. */
+export function useInMyList(id: string) {
+  const saved = useSyncExternalStore(
+    subscribe,
+    () => toIds(read<unknown>(MY_LIST_KEY, NO_IDS)).includes(id),
+    () => false,
   )
-  return { ids, has, toggle }
+  const toggle = useCallback(() => toggleMyList(id), [id])
+  return [saved, toggle] as const
 }
 
 export interface HistoryEntry {

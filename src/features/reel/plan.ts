@@ -6,6 +6,7 @@ import type { Video } from '../../types'
 
 export type Template = 'cinematic' | 'split' | 'kinetic'
 export type Transition = 'fade' | 'slide' | 'zoom' | 'wipe' | 'iris'
+export type Accent = 'maroon' | 'forest' | 'amber'
 
 // Beat times (ms) inside the 10 s reel.
 export const SHOT_AT = [1500, 3500, 5500] as const
@@ -17,8 +18,10 @@ export const OUT_AT = 9500
 const TEMPLATES: readonly Template[] = ['cinematic', 'split', 'kinetic']
 const TRANSITIONS: readonly Transition[] = ['fade', 'slide', 'zoom', 'wipe', 'iris']
 const ENDINGS = ['iris', 'fade', 'rise'] as const
-// Accents that sit well beside the crimson brand: crimson, gold, teal, violet, azure.
-const ACCENTS = ['244 71 90', '246 196 83', '45 212 191', '167 139 250', '56 189 248']
+// Accent colours from the UPOU logos; reel.css maps each name to the theme tokens.
+const ACCENTS: readonly Accent[] = ['maroon', 'forest', 'amber']
+/** Longest title the reel sets in type; longer ones are cut at a word boundary with an ellipsis. */
+export const REEL_TITLE_MAX = 140
 // Root notes (A1–C2) for the audio sting.
 const NOTES = [55, 58.27, 61.74, 65.41]
 
@@ -44,11 +47,15 @@ export interface Shot {
 
 export interface ReelPlan {
   template: Template
+  accent: Accent
   side: 'left' | 'right'
   motion: 'slam' | 'slide'
   ending: (typeof ENDINGS)[number]
+  /** Frames are YouTube's 320px stills: the reel frames them instead of blowing them up. */
+  lowRes: boolean
   style: CSSProperties
-  identLine: string
+  /** Title as shown in the reel (clamped to REEL_TITLE_MAX). */
+  title: string
   kicker: string
   kickerStyle: CSSProperties
   titleStyle: CSSProperties
@@ -65,11 +72,21 @@ export interface ReelPlan {
 const css = (vars: Vars) => vars as CSSProperties
 const ms = (n: number) => `${Math.round(n)}ms`
 const pct = (n: number) => `${n.toFixed(2)}%`
-const tidy = (s: string) =>
+/** Title-cases all-lowercase tags such as "open data"; mixed-case tags are left alone. */
+export const tidyTag = (s: string) =>
   s === s.toLowerCase() ? s.replace(/\b[a-z]/g, (c) => c.toUpperCase()) : s
 
 export const TICK_STYLES = TICK_AT.map((t) => css({ '--d': ms(t) }))
 export const INDEX_STYLES = SHOT_AT.map((t) => css({ '--d': ms(t) }))
+
+/** Cuts a long title at a word boundary near `max` chars and adds an ellipsis. */
+export function clampTitle(title: string, max = REEL_TITLE_MAX): string {
+  const clean = title.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.!?–—-]+$/, '')}…`
+}
 
 /** Short teaser from free text: first sentence(s), ellipsized near `max` chars. */
 export function hookFrom(text: string, max = 110): string {
@@ -103,7 +120,7 @@ export function topicsOf(video: Video, max = 6): string[] {
     // Skip series variants such as "TechTips Series 1" once "TechTips" is in.
     if (!key || taken.some((k) => key.startsWith(k) || k.startsWith(key))) continue
     taken.push(key)
-    topics.push(tidy(tag))
+    topics.push(tidyTag(tag))
     if (topics.length === max) break
   }
   return topics
@@ -209,12 +226,11 @@ export function buildReelPlan(video: Video): ReelPlan {
   const side = rand() < 0.5 ? 'left' : 'right'
   const motion = rand() < 0.5 ? 'slam' : 'slide'
   const ending = pick(rand, ENDINGS)
-  const leak = rand() < 0.5 ? 1 : -1
   const rootHz = pick(rand, NOTES)
   const category = video.category.trim()
-  const identLine = rand() < 0.5 || !category ? 'presents' : category
 
   const frames = video.frames.length ? video.frames : [video.backdrop]
+  const lowRes = !frames.some((src) => /maxres/.test(src))
   let prev: Transition | undefined
   let drift = 1
   const shots = SHOT_AT.map((at, i): Shot => {
@@ -245,8 +261,9 @@ export function buildReelPlan(video: Video): ReelPlan {
   }
   hook ||= metadataHook(video, rand)
 
-  const words = video.title.split(/\s+/).filter(Boolean)
-  const chars = video.title.length
+  const title = clampTitle(video.title)
+  const words = title.split(/\s+/).filter(Boolean)
+  const chars = title.length
   const long = words.length > 7 || chars > 48
   const kinetic = template === 'kinetic'
   const firstWord = SHOT_AT[0] + 250
@@ -278,18 +295,20 @@ export function buildReelPlan(video: Video): ReelPlan {
     }
   })
 
-  const titleScale = chars <= 24 ? 1 : chars <= 44 ? 0.8 : chars <= 70 ? 0.64 : 0.54
+  const titleScale =
+    chars <= 24 ? 1 : chars <= 44 ? 0.82 : chars <= 70 ? 0.66 : chars <= 100 ? 0.56 : 0.5
   const maxLine = Math.max(4, ...wordLines.map((l) => l.join(' ').length))
   const year = yearOf(video.publishedAt)
   const yearText = Number.isFinite(year) ? String(year) : ''
 
   return {
     template,
+    accent,
     side,
     motion,
     ending,
+    lowRes,
     style: css({
-      '--accent-rgb': accent,
       '--t1': ms(SHOT_AT[0]),
       '--t2': ms(SHOT_AT[1]),
       '--t3': ms(SHOT_AT[2]),
@@ -297,13 +316,12 @@ export function buildReelPlan(video: Video): ReelPlan {
       '--tout': ms(OUT_AT),
       '--dim': ms(hookIn - 150),
       '--drift': drift,
-      '--leak': leak,
       '--title-scale': titleScale,
-      // Kinetic type fills the width (uppercase heavy glyphs ≈ 0.66em) within ~48% of the height.
-      '--kw': (86 / (maxLine * 0.66)).toFixed(2),
-      '--kh': (48 / (wordLines.length * 0.88)).toFixed(2),
+      // Kinetic type fills the width (serif glyphs ≈ 0.52em) within ~50% of the height.
+      '--kw': (88 / (maxLine * 0.52)).toFixed(2),
+      '--kh': (50 / (wordLines.length * 0.95)).toFixed(2),
     }),
-    identLine,
+    title,
     // Non-breaking around the dot so the year never wraps onto a line of its own.
     kicker: [category, yearText].filter(Boolean).join('\u00a0·\u00a0'),
     kickerStyle: css({ '--d': ms(SHOT_AT[0] + 100) }),

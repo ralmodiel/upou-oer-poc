@@ -1,0 +1,73 @@
+/* Watch page bits that utilities don't cover. */
+
+/*
+  The stage is centred and never outgrows the viewport on short screens (phones on their side);
+  below md it also bleeds into the page gutters.
+*/
+.watch-stage {
+  --stage-cap: calc((100dvh - 8rem) * 16 / 9);
+  width: min(100%, var(--stage-cap));
+  margin-inline: auto;
+}
+
+@media (width < 48rem) {
+  .watch-stage {
+    width: min(100% + 2 * var(--gutter, 1rem), var(--stage-cap));
+    margin-inline: max(calc(-1 * var(--gutter, 1rem)), calc((100% - var(--stage-cap)) / 2));
+  }
+}
+
+.watch-hint {
+  animation: watch-hint 7s ease both;
+}
+
+.watch-toast {
+  animation: watch-toast 2.4s ease both;
+}
+
+@keyframes watch-hint {
+  0% {
+    opacity: 0;
+    translate: 0 2px;
+  }
+  6%,
+  85% {
+    opacity: 1;
+    translate: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes watch-toast {
+  0% {
+    opacity: 0;
+    translate: 0 2px;
+  }
+  10%,
+  80% {
+    opacity: 1;
+    translate: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watch-hint,
+  .watch-toast {
+    animation-name: watch-fade;
+  }
+}
+
+@keyframes watch-fade {
+  0%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

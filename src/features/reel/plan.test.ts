@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { hookFrom, toLines, topicsOf } from './plan'
+import { clampTitle, hookFrom, toLines, topicsOf } from './plan'
 import { testVideo } from './testing'
+
+describe('clampTitle', () => {
+  it('keeps short titles and cuts long ones at a word boundary with an ellipsis', () => {
+    expect(clampTitle('  Types  of Models ')).toBe('Types of Models')
+    const long = clampTitle('alpha beta gamma delta '.repeat(20), 50)
+    expect(long.length).toBeLessThanOrEqual(50)
+    expect(long).toMatch(/^alpha beta gamma delta .* [a-z]+…$/)
+  })
+})
 
 describe('hookFrom', () => {
   it('drops links and "In this video," and keeps abbreviations inside the hook', () => {

@@ -9,61 +9,82 @@ import {
 } from 'react'
 import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router'
 import { getVideo } from '../data/catalog'
+import { FOCUS_SEARCH_EVENT, useAppEvent } from '../lib/shortcuts'
 import { useMyList } from '../lib/storage'
 import { useScrolledPast } from './hooks'
-import { CloseIcon, SearchIcon } from './icons'
+import { BookmarkIcon, CloseIcon, GridIcon, HomeIcon, SearchIcon } from './icons'
+import ThemeToggle from './ThemeToggle'
+import IconButton from './ui/IconButton'
 
 const NAV_LINK =
-  'relative py-1 text-neutral-300 transition-colors duration-200 hover:text-white aria-[current=page]:font-semibold aria-[current=page]:text-white after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-brand-500 after:transition-transform after:duration-300 after:ease-cinematic aria-[current=page]:after:scale-x-100'
+  'relative inline-flex h-10 items-center rounded-pill px-2.5 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2.5 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 lg:px-3 lg:after:inset-x-3'
+
+// Saved ids that still exist in the catalog.
+function useSavedCount() {
+  const { ids } = useMyList()
+  return ids.filter((id) => getVideo(id)).length
+}
+
+function CountBadge({ count, className = '' }: { count: number; className?: string }) {
+  return (
+    <span
+      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-maroon px-1.5 text-[0.6875rem] leading-none font-bold text-on-accent tabular-nums ${className}`}
+    >
+      {count}
+      <span className="sr-only"> saved</span>
+    </span>
+  )
+}
 
 export default function Header() {
-  const scrolled = useScrolledPast(40)
-  const { ids } = useMyList()
-  const saved = ids.filter((id) => getVideo(id)).length
+  const scrolled = useScrolledPast(8)
+  const saved = useSavedCount()
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-linear-to-b from-ink-950/90 via-ink-950/50 to-transparent"
-      />
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 bg-ink-950/95 shadow-lg shadow-black/40 backdrop-blur-md transition-opacity duration-300 ease-cinematic ${scrolled ? 'opacity-100' : 'opacity-0'}`}
-      />
-      <div className="relative flex min-h-14 flex-wrap items-center gap-x-3 px-(--gutter) sm:min-h-16 sm:gap-x-8">
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+    <header
+      className={`sticky top-0 z-40 border-b border-line transition-[background-color,box-shadow] ${
+        scrolled
+          ? 'bg-paper/85 shadow-[0_10px_24px_-20px_rgb(27_26_23/0.45)] backdrop-blur-md'
+          : 'bg-paper'
+      }`}
+    >
+      <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) lg:gap-x-3">
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
           <Link
             to="/"
-            className="py-3 text-base leading-none font-black tracking-tighter uppercase sm:text-2xl"
+            aria-label="UPOU Networks, home"
+            className="flex items-baseline gap-1 rounded-sm py-2 font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
           >
-            <span className="text-brand-500">UPOU</span>{' '}
-            <span className="text-white">Networks</span>
+            <span className="text-ink">UPOU</span>
+            <span className="text-maroon">Networks</span>
           </Link>
           <span
             role="note"
             title="Proof of concept"
             aria-label="Proof of concept"
-            className="rounded-full px-1 py-0.5 text-[10px] leading-none font-semibold tracking-wider text-neutral-300 uppercase ring-1 ring-white/30"
+            className="rounded-pill border border-line bg-surface px-1.5 py-1 text-[0.625rem] leading-none font-semibold tracking-wider text-ink-2 uppercase"
           >
             PoC
           </span>
+          <span className="hidden text-sm text-ink-3 xl:inline">· Open educational videos</span>
         </div>
-        <nav aria-label="Main" className="flex items-center gap-3 text-sm sm:gap-6">
+        <nav aria-label="Main" className="ml-3 hidden items-center gap-0.5 md:flex lg:ml-6">
           <NavLink to="/" end className={NAV_LINK}>
-            Home
+            Browse
+          </NavLink>
+          <NavLink to="/collections" className={NAV_LINK}>
+            Collections
           </NavLink>
           <NavLink to="/my-list" className={NAV_LINK}>
             My List
-            {saved > 0 && (
-              <span className="absolute -top-2 -right-3.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-brand-600 px-1 align-[0.1em] text-[0.6875rem] leading-none font-bold text-white tabular-nums sm:static sm:ml-1.5">
-                {saved}
-                <span className="sr-only"> saved</span>
-              </span>
-            )}
+            {saved > 0 && <CountBadge count={saved} className="ml-1.5" />}
           </NavLink>
         </nav>
         <SearchBox />
+        <ThemeToggle compact className="lg:hidden" />
+        <div className="hidden lg:block">
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   )
@@ -85,6 +106,8 @@ function SearchBox() {
   // Term waiting for the debounce; null when nothing is pending.
   const [pending, setPending] = useState<string | null>(null)
   const [seenKey, setSeenKey] = useState(location.key)
+  // Bumped by anything that wants the field focused; the effect runs once the field is visible.
+  const [focusTick, setFocusTick] = useState(0)
 
   // Follow URL changes that didn't come from typing here (links, back/forward, leaving search).
   if (seenKey !== location.key) {
@@ -100,7 +123,9 @@ function SearchBox() {
     }
   }
 
-  const expanded = open || onSearchPage || value !== ''
+  // On phones the field is a second header row that opens on demand (the search page has its own
+  // field); from md up it is always shown.
+  const expanded = open || (value !== '' && !onSearchPage)
 
   const go = (term: string) => {
     setPending(null)
@@ -118,6 +143,19 @@ function SearchBox() {
     const timer = window.setTimeout(() => search(pending), 250)
     return () => clearTimeout(timer)
   }, [pending])
+
+  const requestFocus = () => {
+    setOpen(true)
+    // Focus now when the field is already visible; the tick covers the phone field that opens first.
+    input.current?.focus()
+    setFocusTick((t) => t + 1)
+  }
+  useAppEvent(FOCUS_SEARCH_EVENT, requestFocus)
+  useEffect(() => {
+    if (!focusTick) return
+    input.current?.focus()
+    input.current?.select()
+  }, [focusTick])
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const next = e.target.value
@@ -137,64 +175,105 @@ function SearchBox() {
     input.current?.focus()
   }
 
-  if (!expanded) {
-    return (
-      <button
-        type="button"
-        aria-label="Search"
-        onClick={() => setOpen(true)}
-        className="-mr-2 ml-auto grid size-10 place-items-center rounded-full text-neutral-200 transition-colors hover:bg-white/10 hover:text-white"
-      >
-        <SearchIcon className="size-5" />
-      </button>
-    )
-  }
-
   return (
-    <form
-      role="search"
-      onSubmit={onSubmit}
-      className="relative order-last basis-full pb-3 transition duration-300 ease-cinematic starting:-translate-y-1 starting:opacity-0 sm:order-none sm:ml-auto sm:w-64 sm:basis-auto sm:origin-right sm:pb-0 sm:starting:translate-y-0 sm:starting:scale-x-90 lg:w-72"
-    >
-      <label htmlFor={inputId} className="sr-only">
-        Search videos
-      </label>
-      <SearchIcon className="pointer-events-none absolute top-5 left-3 z-10 size-4 -translate-y-1/2 text-neutral-400 sm:top-1/2" />
-      <input
-        ref={input}
-        id={inputId}
-        type="search"
-        value={value}
-        onChange={onChange}
-        onKeyDown={(e) => {
-          if (e.key !== 'Escape') return
-          e.preventDefault()
-          if (value) clear()
-          else {
-            setOpen(false)
-            e.currentTarget.blur()
-          }
-        }}
-        onBlur={() => {
-          if (!value.trim()) setOpen(false)
-        }}
-        autoFocus={open}
-        placeholder="Titles, topics, tags"
-        autoComplete="off"
-        spellCheck={false}
-        enterKeyHint="search"
-        className="h-10 w-full rounded-md border border-white/20 bg-ink-950/80 pr-10 pl-9 text-sm text-white backdrop-blur-sm transition-colors placeholder:text-neutral-400 focus:border-white/50 focus-visible:outline-offset-0 [&::-webkit-search-cancel-button]:appearance-none"
+    <>
+      <IconButton
+        label="Search"
+        icon={<SearchIcon />}
+        onClick={requestFocus}
+        className={`ml-auto md:hidden ${expanded ? 'invisible' : ''}`}
       />
-      {value && (
-        <button
-          type="button"
-          aria-label="Clear search"
-          onClick={clear}
-          className="absolute top-5 right-1 z-10 grid size-8 -translate-y-1/2 place-items-center rounded text-neutral-400 hover:text-white sm:top-1/2"
-        >
-          <CloseIcon className="size-4" />
-        </button>
-      )}
-    </form>
+      <form
+        role="search"
+        onSubmit={onSubmit}
+        className={`${expanded ? 'flex' : 'hidden md:flex'} order-last basis-full pb-2.5 md:order-none md:ml-auto md:w-44 md:basis-auto md:pb-0 lg:w-72 xl:w-80`}
+      >
+        <label htmlFor={inputId} className="sr-only">
+          Search videos
+        </label>
+        <div className="relative w-full">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3" />
+          <input
+            ref={input}
+            id={inputId}
+            type="search"
+            value={value}
+            onChange={onChange}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape') return
+              // Handled here, so the app-wide Esc = Back stays out of it.
+              e.preventDefault()
+              if (value) clear()
+              else {
+                setOpen(false)
+                e.currentTarget.blur()
+              }
+            }}
+            onBlur={() => {
+              if (!value.trim()) setOpen(false)
+            }}
+            placeholder="Search videos"
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            className="h-10 w-full rounded-pill border border-line bg-surface pr-10 pl-10 text-sm text-ink transition-colors placeholder:text-ink-3 hover:border-ink-3 focus:border-maroon [&::-webkit-search-cancel-button]:appearance-none"
+          />
+          {value && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={clear}
+              className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 hover:bg-surface-2 hover:text-ink"
+            >
+              <CloseIcon className="size-4" />
+            </button>
+          )}
+        </div>
+      </form>
+    </>
+  )
+}
+
+const TAB =
+  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium text-ink-3 transition-colors hover:text-ink aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-b-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100'
+
+/** Phone navigation (< md): Browse · Collections · Search · My List, pinned to the bottom. */
+export function TabBar() {
+  const saved = useSavedCount()
+  return (
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+    >
+      <ul className="flex h-(--tabbar-h)">
+        <li className="flex flex-1">
+          <NavLink to="/" end className={TAB}>
+            <HomeIcon className="size-6" />
+            Browse
+          </NavLink>
+        </li>
+        <li className="flex flex-1">
+          <NavLink to="/collections" className={TAB}>
+            <GridIcon className="size-6" />
+            Collections
+          </NavLink>
+        </li>
+        <li className="flex flex-1">
+          <NavLink to="/search" className={TAB}>
+            <SearchIcon className="size-6" />
+            Search
+          </NavLink>
+        </li>
+        <li className="flex flex-1">
+          <NavLink to="/my-list" className={TAB}>
+            <span className="relative">
+              <BookmarkIcon className="size-6" />
+              {saved > 0 && <CountBadge count={saved} className="absolute -top-1.5 -right-3" />}
+            </span>
+            My List
+          </NavLink>
+        </li>
+      </ul>
+    </nav>
   )
 }

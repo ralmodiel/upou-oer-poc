@@ -1,25 +1,22 @@
 import { memo, type SyntheticEvent } from 'react'
-import { latest } from '../data/catalog'
+import { formatDate } from '../lib/format'
 import type { Video } from '../types'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
-import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
-
-const NEW_IDS = new Set(latest.slice(0, 5).map((v) => v.id))
+import { InfoIcon, PlayIcon } from './icons'
+import { isNew, srcSetOf } from './media'
+import Badge from './ui/Badge'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
 }
 
-// The hover overlay shows on hover or keyboard focus, and only then takes pointer input.
-const SHOWN =
-  'opacity-0 transition duration-300 ease-cinematic group-hover/card:opacity-100 group-has-focus-visible/card:opacity-100'
-const ACTION =
-  'pointer-events-none size-8 group-hover/card:pointer-events-auto group-has-focus-visible/card:pointer-events-auto sm:size-9'
-// Touch screens have no hover, so More Info stays visible as a corner button there.
-const TOUCH_INFO =
-  '[@media(hover:none)]:pointer-events-auto [@media(hover:none)]:top-1.5 [@media(hover:none)]:right-1.5 [@media(hover:none)]:bottom-auto [@media(hover:none)]:opacity-100'
+// Quick actions sit above the stretched link; they appear on hover/focus and stay visible on touch screens.
+const ACTIONS =
+  'relative z-20 -ml-2 flex items-center gap-0.5 opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 group-has-focus-visible/card:opacity-100 [@media(hover:none)]:opacity-100'
+export const ACTION =
+  'inline-flex h-9 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold text-ink-2 transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon [@media(hover:none)]:h-10'
 
 interface Props {
   video: Video
@@ -27,57 +24,77 @@ interface Props {
   sizes: string
   /** Title level, one below the heading of the list the card sits in. */
   heading?: 'h2' | 'h3' | 'h4'
+  /** False takes the card out of the Tab order (roving tabindex in VideoGrid). */
+  active?: boolean
+  /** Hide the category eyebrow where the surrounding heading already names it. */
+  showCategory?: boolean
 }
 
-function VideoCard({ video, sizes, heading: Heading = 'h3' }: Props) {
+function VideoCard({
+  video,
+  sizes,
+  heading: Heading = 'h3',
+  active = true,
+  showCategory = true,
+}: Props) {
   const { id, title } = video
+  const tabIndex = active ? 0 : -1
+  // DOM order: eyebrow, title link, media, meta, actions. CSS order puts the media first.
   return (
-    <article className="group/card relative flex flex-col-reverse">
-      <Heading className="mt-2 line-clamp-2 text-xs leading-snug text-neutral-400 transition-colors duration-200 group-hover/card:text-neutral-100 sm:text-sm">
+    <article className="group/card relative flex flex-col">
+      {showCategory && <p className="eyebrow order-2 mt-3 truncate">{video.category}</p>}
+      <Heading className="order-3 mt-1 line-clamp-2 text-base/snug font-semibold text-ink transition-colors duration-200 group-hover/card:text-maroon">
         {/* Stretched link: a click, tap or Enter anywhere on the card plays the video. */}
         <PlayLink
           video={video}
           aria-label={`Play ${title}`}
-          className="outline-none after:absolute after:inset-0 after:z-10"
+          tabIndex={tabIndex}
+          data-card-link=""
+          className="outline-none after:absolute after:inset-0 after:z-10 after:rounded-card"
         >
           {title}
         </PlayLink>
       </Heading>
-      <div className="pointer-events-none relative z-20 aspect-video overflow-hidden rounded-md bg-ink-800 ring-brand-400 transition-[scale,box-shadow,z-index] duration-300 ease-cinematic group-hover/card:z-30 group-hover/card:scale-108 group-hover/card:shadow-2xl group-hover/card:shadow-black/70 group-has-focus-visible/card:z-30 group-has-focus-visible/card:scale-108 group-has-focus-visible/card:ring-2 motion-reduce:scale-100!">
+      <div className="relative order-1 aspect-video overflow-hidden rounded-card bg-surface-2 ring-1 ring-black/5 transition-[translate,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-has-[[data-card-link]:focus-visible]/card:ring-2 group-has-[[data-card-link]:focus-visible]/card:ring-maroon group-has-[[data-card-link]:focus-visible]/card:ring-offset-2 group-has-[[data-card-link]:focus-visible]/card:ring-offset-paper motion-reduce:transition-none">
         <img
           src={video.thumbnail}
-          srcSet={`${video.thumbnail} 320w, ${video.backdrop} 1280w`}
+          srcSet={srcSetOf(video)}
           sizes={sizes}
           alt=""
           loading="lazy"
           decoding="async"
           onLoad={markLoaded}
-          className="size-full object-cover opacity-0 transition-opacity duration-500 data-loaded:opacity-100"
+          className="size-full object-cover opacity-0 transition-opacity duration-300 data-loaded:opacity-100"
         />
-        {NEW_IDS.has(id) && (
-          <span className="absolute top-1.5 left-1.5 rounded-sm bg-brand-600 px-1.5 py-1 text-[0.625rem] leading-none font-bold tracking-wider text-white shadow-md">
-            NEW
-          </span>
-        )}
-        <div
-          className={`absolute inset-0 flex items-end gap-1.5 bg-linear-to-t from-ink-950/90 via-ink-950/25 to-transparent p-2 ${SHOWN}`}
+        {/* Visual cue only: the card link already plays. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100"
         >
-          {/* Visual cue only: the card link already plays. */}
-          <span
-            aria-hidden="true"
-            className="grid size-8 place-items-center rounded-full bg-white text-ink-950 sm:size-9"
-          >
-            <PlayIcon className="size-4" />
+          <span className="grid size-11 place-items-center rounded-pill bg-surface/95 text-maroon shadow-lift">
+            <PlayIcon className="size-5 translate-x-px" />
           </span>
-          <MyListButton id={id} title={title} className={ACTION} />
-        </div>
+        </span>
+      </div>
+      <p className="order-4 mt-1 flex items-center gap-1.5 text-sm text-ink-3">
+        <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>
+        {isNew(id) && (
+          <>
+            <span aria-hidden="true">·</span>
+            <Badge tone="amber">New</Badge>
+          </>
+        )}
+      </p>
+      <div className={`order-5 mt-1 ${ACTIONS}`}>
+        <MyListButton id={id} title={title} className={ACTION} tabIndex={tabIndex} />
         <DetailsLink
           id={id}
-          aria-label={`More info: ${title}`}
-          className={`${ACTION} ${SHOWN} ${TOUCH_INFO} absolute right-2 bottom-2 grid place-items-center rounded-full bg-ink-950/60 text-white ring-2 ring-white/50 hover:ring-white`}
+          aria-label={`Details: ${title}`}
+          tabIndex={tabIndex}
+          className={ACTION}
         >
-          <ChevronDownIcon className="size-4 [@media(hover:none)]:hidden" />
-          <InfoIcon className="hidden size-4 [@media(hover:none)]:block" />
+          <InfoIcon className="size-4" />
+          Details
         </DetailsLink>
       </div>
     </article>

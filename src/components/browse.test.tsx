@@ -1,23 +1,25 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode, type ReactNode } from 'react'
-import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryRouter, RouterProvider } from 'react-router'
+import { describe, expect, it } from 'vitest'
+import { getRows } from '../data/catalog'
+import { setCatalog } from '../data/testing'
+import CollectionChips from './CollectionChips'
+import ContinueWatching from './ContinueWatching'
 import DetailModal from './DetailModal'
-import Footer from './Footer'
-import Header from './Header'
-import Hero from './Hero'
-import Row from './Row'
+import Featured from './Featured'
+import Section from './Section'
+import VideoGrid from './VideoGrid'
 import { fixtureVideos } from './test-fixtures'
 
-vi.mock('../data/catalog.json', async () => ({
-  default: (await import('./test-fixtures')).fixtureVideos,
-}))
+setCatalog(fixtureVideos)
 
 function renderAt(path: string, element: ReactNode) {
   const router = createMemoryRouter(
     [
       { path: '/', element },
+      { path: '/collections/:slug', element: <p>Collection</p> },
       { path: '/watch/:id', element: <p>Player</p> },
     ],
     { initialEntries: [path] },
@@ -27,33 +29,153 @@ function renderAt(path: string, element: ReactNode) {
 }
 
 const research = fixtureVideos.slice(0, 3)
+const researchRow = () => getRows().find((r) => r.slug === 'research')!
 
-describe('Row and VideoCard', () => {
-  it('renders one card per video: the card plays, More Info opens details', () => {
-    renderAt('/', <Row title="Research" videos={research} />)
-    const row = screen.getByRole('region', { name: 'Research' })
-    expect(within(row).getAllByRole('article')).toHaveLength(3)
-    expect(within(row).getByRole('link', { name: 'Play Climate Change Basics' })).toHaveAttribute(
+describe('Section and VideoCard', () => {
+  it('renders a heading, a See all link and one card per video', () => {
+    renderAt('/', <Section row={researchRow()} />)
+    const section = screen.getByRole('region', { name: 'Research' })
+    expect(within(section).getAllByRole('article')).toHaveLength(3)
+    expect(within(section).getByRole('link', { name: 'See all (3) in Research' })).toHaveAttribute(
       'href',
-      '/watch/climate-basics',
+      '/collections/research',
     )
-    const info = within(row).getByRole('link', { name: 'More info: Climate Change Basics' })
-    expect(info).toHaveAttribute('href', '/?v=climate-basics')
-    expect(info).not.toHaveAttribute('tabindex')
+    expect(
+      within(section).getByRole('link', { name: 'Play Climate Change Basics' }),
+    ).toHaveAttribute('href', '/watch/climate-basics')
+    expect(
+      within(section).getByRole('link', { name: 'Details: Climate Change Basics' }),
+    ).toHaveAttribute('href', '/?v=climate-basics')
   })
 
   it('plays when the card is clicked', async () => {
-    const router = renderAt('/', <Row title="Research" videos={research} />)
+    const router = renderAt('/', <Section row={researchRow()} />)
     await userEvent.click(screen.getByRole('link', { name: 'Play Ocean Science 101' }))
     expect(router.state.location.pathname).toBe('/watch/ocean-science')
   })
 
-  it('toggles My List with aria-pressed', async () => {
-    renderAt('/', <Row title="Research" videos={research} />)
-    const button = screen.getByRole('button', { name: 'My List: Ocean Science 101' })
+  it('toggles Save with aria-pressed', async () => {
+    renderAt('/', <Section row={researchRow()} />)
+    const button = screen.getByRole('button', { name: 'Save Ocean Science 101' })
     expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(button).toHaveTextContent('Save')
     await userEvent.click(button)
     expect(button).toHaveAttribute('aria-pressed', 'true')
+    expect(button).toHaveTextContent('Saved')
+    expect(JSON.parse(localStorage.getItem('upou:my-list')!)).toEqual(['ocean-science'])
+  })
+
+  it('shows the date and the New marker, and names the category only outside its section', () => {
+    renderAt(
+      '/',
+      <>
+        <Section row={researchRow()} />
+        <VideoGrid videos={research.slice(0, 1)} />
+      </>,
+    )
+    const [inSection, inGrid] = screen
+      .getAllByRole('link', { name: 'Play Climate Change Basics' })
+      .map((link) => link.closest('article')!)
+    expect(within(inSection).getByText('May 1, 2026')).toBeInTheDocument()
+    expect(within(inSection).getByText('New')).toBeInTheDocument()
+    expect(within(inSection).queryByText('Research')).not.toBeInTheDocument()
+    expect(within(inGrid).getByText('Research')).toBeInTheDocument()
+  })
+})
+
+describe('VideoGrid keyboard (roving tabindex)', () => {
+  it('puts one card in the Tab order and moves between cards with the arrow keys', async () => {
+    renderAt('/', <VideoGrid videos={research} />)
+    const play = (title: string) => screen.getByRole('link', { name: `Play ${title}` })
+    expect(play('Climate Change Basics')).toHaveAttribute('tabindex', '0')
+    expect(play('Climate Policy in the Philippines')).toHaveAttribute('tabindex', '-1')
+
+    await userEvent.tab()
+    expect(play('Climate Change Basics')).toHaveFocus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(play('Climate Policy in the Philippines')).toHaveFocus()
+    expect(play('Climate Policy in the Philippines')).toHaveAttribute('tabindex', '0')
+    expect(play('Climate Change Basics')).toHaveAttribute('tabindex', '-1')
+    await userEvent.keyboard('{End}')
+    expect(play('Ocean Science 101')).toHaveFocus()
+    await userEvent.keyboard('{Home}')
+    expect(play('Climate Change Basics')).toHaveFocus()
+
+    // Tab visits the current card's actions, then leaves the grid.
+    await userEvent.tab()
+    expect(screen.getByRole('button', { name: 'Save Climate Change Basics' })).toHaveFocus()
+    await userEvent.tab()
+    expect(screen.getByRole('link', { name: 'Details: Climate Change Basics' })).toHaveFocus()
+    await userEvent.tab()
+    expect(document.activeElement?.closest('ul')).toBeNull()
+  })
+})
+
+describe('Featured', () => {
+  it('shows the featured video with Play and Details, and steps with prev/next', async () => {
+    renderAt('/', <Featured videos={research} alsoNew={fixtureVideos.slice(3, 7)} />)
+    const region = screen.getByRole('region', { name: 'Featured' })
+    expect(within(region).getByRole('heading', { level: 3, name: 'Climate Change Basics' }))
+    expect(within(region).getByRole('link', { name: 'Play' })).toHaveAttribute(
+      'href',
+      '/watch/climate-basics',
+    )
+    expect(within(region).getByRole('link', { name: 'Details' })).toHaveAttribute(
+      'href',
+      '/?v=climate-basics',
+    )
+    expect(within(region).getByText('1 of 3')).toBeInTheDocument()
+    const alsoNew = within(region).getByRole('complementary', { name: 'Also new' })
+    expect(within(alsoNew).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(alsoNew).getByRole('link', { name: 'Play Digital Art Studio' })).toHaveAttribute(
+      'href',
+      '/watch/digital-art',
+    )
+
+    await userEvent.click(within(region).getByRole('button', { name: 'Next featured video' }))
+    expect(within(region).getByText('2 of 3')).toBeInTheDocument()
+    expect(within(region).getByRole('link', { name: 'Play' })).toHaveAttribute(
+      'href',
+      '/watch/climate-policy',
+    )
+    await userEvent.click(within(region).getByRole('button', { name: 'Previous featured video' }))
+    await userEvent.click(within(region).getByRole('button', { name: 'Previous featured video' }))
+    expect(within(region).getByText('3 of 3')).toBeInTheDocument()
+  })
+
+  it('does not mark the featured image as a Tab stop', () => {
+    renderAt('/', <Featured videos={research} alsoNew={[]} />)
+    const image = document.querySelector('a[aria-hidden="true"]')
+    expect(image).toHaveAttribute('href', '/watch/climate-basics')
+    expect(image).toHaveAttribute('tabindex', '-1')
+  })
+})
+
+describe('ContinueWatching and CollectionChips', () => {
+  it('renders nothing without history and a strip with it', () => {
+    const { rerender } = render(<ContinueWatching videos={[]} />)
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+    rerender(<></>)
+    renderAt('/', <ContinueWatching videos={research.slice(0, 2)} />)
+    const strip = screen.getByRole('region', { name: 'Continue watching' })
+    expect(within(strip).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(strip).getByRole('link', { name: 'Play Climate Change Basics' })).toHaveAttribute(
+      'href',
+      '/watch/climate-basics',
+    )
+  })
+
+  it('lists every collection with its count', () => {
+    renderAt('/', <CollectionChips />)
+    const section = screen.getByRole('region', { name: 'Collections' })
+    expect(within(section).getByRole('link', { name: /^Research ?3$/ })).toHaveAttribute(
+      'href',
+      '/collections/research',
+    )
+    expect(within(section).getByRole('link', { name: 'All collections (3)' })).toHaveAttribute(
+      'href',
+      '/collections',
+    )
   })
 })
 
@@ -62,13 +184,27 @@ describe('DetailModal', () => {
     renderAt('/?v=climate-basics', <DetailModal />)
     const dialog = screen.getByRole('dialog', { name: 'Climate Change Basics' })
     expect(dialog).toHaveAttribute('open')
-    const similar = within(dialog).getByRole('region', { name: 'More Like This' })
+    expect(within(dialog).getByRole('link', { name: 'Play' })).toHaveAttribute(
+      'href',
+      '/watch/climate-basics',
+    )
+    expect(within(dialog).getByRole('button', { name: 'Save Climate Change Basics' }))
+    expect(within(dialog).getByRole('link', { name: /Watch on YouTube/ })).toHaveAttribute(
+      'href',
+      'https://www.youtube.com/watch?v=abcdefghijk',
+    )
+    expect(within(dialog).getByRole('link', { name: 'Climate' })).toHaveAttribute(
+      'href',
+      '/search?q=Climate',
+    )
+    const similar = within(dialog).getByRole('region', { name: 'More like this' })
     expect(
-      within(similar).getByRole('link', { name: 'More info: Climate Policy in the Philippines' }),
+      within(similar).getByRole('link', { name: 'Details: Climate Policy in the Philippines' }),
     ).toHaveAttribute('href', '/?v=climate-policy')
     expect(
       within(similar).getByRole('link', { name: 'Play Climate Policy in the Philippines' }),
     ).toHaveAttribute('href', '/watch/climate-policy')
+    expect(within(similar).getAllByRole('heading', { level: 4 }).length).toBeGreaterThan(0)
   })
 
   it('stays open under StrictMode, whose remount sees a late close event', async () => {
@@ -106,15 +242,15 @@ describe('DetailModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('opens from More Info on a card and closing goes back to the page', async () => {
+  it('opens from Details on a card and closing goes back to the page', async () => {
     const router = renderAt(
       '/',
       <>
-        <Row title="Research" videos={research} />
+        <Section row={researchRow()} />
         <DetailModal />
       </>,
     )
-    await userEvent.click(screen.getByRole('link', { name: 'More info: Ocean Science 101' }))
+    await userEvent.click(screen.getByRole('link', { name: 'Details: Ocean Science 101' }))
     expect(router.state.location.search).toBe('?v=ocean-science')
     const dialog = screen.getByRole('dialog', { name: 'Ocean Science 101' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
@@ -123,108 +259,5 @@ describe('DetailModal', () => {
     await waitFor(() => expect(router.state.location.search).toBe(''))
     expect(router.state.historyAction).toBe('POP')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
-  it('titles grid cards one level below the list heading', () => {
-    renderAt('/?v=climate-basics', <DetailModal />)
-    const similar = screen.getByRole('region', { name: 'More Like This' })
-    expect(within(similar).getAllByRole('heading', { level: 4 }).length).toBeGreaterThan(0)
-  })
-})
-
-describe('Hero', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it('pauses while mostly scrolled out of view', () => {
-    let notify: IntersectionObserverCallback = () => {}
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        constructor(callback: IntersectionObserverCallback) {
-          notify = callback
-        }
-        observe() {}
-        disconnect() {}
-      },
-    )
-    renderAt('/', <Hero videos={research} />)
-    const hero = screen.getByRole('region', { name: 'Featured titles' })
-    expect(hero).not.toHaveAttribute('data-paused')
-    const entry = { intersectionRatio: 0.2 } as IntersectionObserverEntry
-    act(() => notify([entry], {} as IntersectionObserver))
-    expect(hero).toHaveAttribute('data-paused')
-  })
-})
-
-describe('Proof-of-concept notice', () => {
-  it('is shown in the header and the footer', () => {
-    renderAt(
-      '/',
-      <>
-        <Header />
-        <Footer />
-      </>,
-    )
-    expect(screen.getByRole('note', { name: 'Proof of concept' })).toHaveTextContent('PoC')
-    expect(screen.getByRole('contentinfo')).toHaveTextContent(
-      /^Proof of concept — a temporary, non-commercial demo .* not affiliated with, endorsed by, or intended to imitate the design of any commercial streaming service./,
-    )
-  })
-})
-
-describe('Header search', () => {
-  function renderLayout() {
-    const router = createMemoryRouter([
-      {
-        path: '/',
-        element: (
-          <>
-            <Header />
-            <Outlet />
-          </>
-        ),
-        children: [
-          { index: true, element: <p>Home</p> },
-          { path: 'search', element: <p>Results</p> },
-          { path: 'my-list', element: <p>Saved</p> },
-        ],
-      },
-    ])
-    render(<RouterProvider router={router} />)
-    return router
-  }
-  const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)))
-
-  it('searches shortly after typing stops', async () => {
-    const router = renderLayout()
-    await userEvent.click(screen.getByRole('button', { name: 'Search' }))
-    await userEvent.type(screen.getByRole('searchbox'), 'climate')
-    expect(router.state.location.pathname).toBe('/')
-    await wait(400)
-    expect(router.state.location.pathname + router.state.location.search).toBe('/search?q=climate')
-  })
-
-  it('drops a pending search when the user navigates elsewhere', async () => {
-    const router = renderLayout()
-    await userEvent.click(screen.getByRole('button', { name: 'Search' }))
-    await userEvent.type(screen.getByRole('searchbox'), 'climate')
-    await act(() => router.navigate('/my-list'))
-    await wait(400)
-    expect(router.state.location.pathname).toBe('/my-list')
-  })
-})
-
-describe('Row See all', () => {
-  it('links to the whole collection when the row shows only part of it', () => {
-    renderAt(
-      '/',
-      <Row title="Research" videos={research} seeAll="/collections/research" total={12} />,
-    )
-    expect(screen.getByRole('link', { name: 'See all 12 titles in Research' })).toHaveAttribute(
-      'href',
-      '/collections/research',
-    )
   })
 })

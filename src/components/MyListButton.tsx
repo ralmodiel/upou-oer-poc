@@ -1,31 +1,38 @@
-import { useMyList } from '../lib/storage'
-import { CheckIcon, PlusIcon } from './icons'
+import { useInMyList } from '../lib/storage'
+import { BookmarkFilledIcon, BookmarkIcon } from './icons-browse'
 
 interface Props {
   id: string
   title: string
-  className?: string
+  className: string
   iconClassName?: string
+  tabIndex?: number
 }
 
-/** Kept separate so a list change re-renders only these buttons, not whole cards. */
+/** Labelled Save toggle for My List; subscribes to this one video only. */
 export default function MyListButton({
   id,
   title,
-  className = '',
+  className,
   iconClassName = 'size-4',
+  tabIndex,
 }: Props) {
-  const { has, toggle } = useMyList()
-  const saved = has(id)
+  const [saved, toggle] = useInMyList(id)
   return (
     <button
       type="button"
       aria-pressed={saved}
-      aria-label={`My List: ${title}`}
-      onClick={() => toggle(id)}
-      className={`grid place-items-center rounded-full bg-ink-950/60 text-white ring-2 ring-white/50 backdrop-blur-sm transition duration-200 ease-cinematic hover:bg-ink-950/80 hover:ring-white aria-pressed:bg-brand-600/30 aria-pressed:ring-brand-400 ${className}`}
+      aria-label={`Save ${title}`}
+      onClick={toggle}
+      tabIndex={tabIndex}
+      className={className}
     >
-      {saved ? <CheckIcon className={iconClassName} /> : <PlusIcon className={iconClassName} />}
+      {saved ? (
+        <BookmarkFilledIcon className={iconClassName} />
+      ) : (
+        <BookmarkIcon className={iconClassName} />
+      )}
+      {saved ? 'Saved' : 'Save'}
     </button>
   )
 }

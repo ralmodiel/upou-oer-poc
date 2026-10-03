@@ -1,84 +1,38 @@
-@reference "../index.css";
-
-/* One gutter for header, hero and rows so everything lines up. */
+/* One gutter for the header, pages and sections so everything lines up. */
 :root {
   --gutter: clamp(1rem, 4vw, 4rem);
 }
 
-/* Lock page scroll while the detail dialog is open, without layout shift. */
+/* Lock page scroll while the quick-look dialog is open, without layout shift. */
 html:has(dialog[data-details][open]) {
   overflow: hidden;
   scrollbar-gutter: stable;
 }
 
-/* Rows show a slice of the next card so they read as scrollable. */
-.browse-row {
-  --n: 2.3;
-  --gap: 0.5rem;
-  --card-w: calc((100cqw - 2 * var(--gutter) - (var(--n) - 1) * var(--gap)) / var(--n));
-  container-type: inline-size;
-  /* Skip off-screen rows; the size estimate tracks real row heights per breakpoint. */
+/* Home sections below the fold are laid out only when scrolled near. The size estimate
+   follows the eight-card grid: four rows on phones down to two rows from lg. */
+.lazy-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 11rem;
+  contain-intrinsic-size: auto 54rem;
 }
-@media (width >= 40rem) {
-  .browse-row {
-    --n: 3.3;
-    contain-intrinsic-size: auto 14rem;
+@media (width >= 48rem) {
+  .lazy-section {
+    contain-intrinsic-size: auto 46rem;
   }
 }
 @media (width >= 64rem) {
-  .browse-row {
-    --n: 4.6;
-    --gap: 0.625rem;
+  .lazy-section {
+    contain-intrinsic-size: auto 36rem;
   }
 }
 @media (width >= 80rem) {
-  .browse-row {
-    --n: 5.2;
-    contain-intrinsic-size: auto 15.5rem;
-  }
-}
-@media (width >= 96rem) {
-  .browse-row {
-    --n: 6.2;
-    --gap: 0.75rem;
-    contain-intrinsic-size: auto 16.5rem;
-  }
-}
-
-@keyframes ken-burns {
-  from {
-    transform: scale(1.02);
-  }
-  to {
-    transform: scale(1.12) translate3d(-1.5%, -1%, 0);
-  }
-}
-
-@keyframes hero-progress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
+  .lazy-section {
+    contain-intrinsic-size: auto 42rem;
   }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .ken-burns {
-    animation: ken-burns 20s ease-in-out infinite alternate;
-  }
-  /* The active pill's progress bar is the slide timer: its animationend advances the hero. */
-  .hero-progress {
-    animation: hero-progress 9s linear forwards;
-  }
-  .hero[data-paused] :is(.hero-progress, .ken-burns),
-  .hero:has(:focus-visible) .hero-progress {
-    animation-play-state: paused;
-  }
-
-  /* Detail dialog: the backdrop fades in and out; data-closing plays the exit before the URL changes. */
+  /* Quick look: the backdrop fades in and out; data-closing plays the exit before the URL changes. */
   dialog[data-details]::backdrop {
     transition: opacity 200ms ease;
   }
@@ -100,14 +54,9 @@ html:has(dialog[data-details][open]) {
     translate: 0 1.5rem;
   }
 }
-@media (prefers-reduced-motion: no-preference) and (width >= 40rem) {
+@media (prefers-reduced-motion: no-preference) and (width >= 48rem) {
   dialog[data-details][data-closing] > div {
     translate: none;
-    scale: 0.95;
-  }
-}
-@media (prefers-reduced-motion: no-preference) and (hover: hover) {
-  .hero:hover .hero-progress {
-    animation-play-state: paused;
+    scale: 0.98;
   }
 }

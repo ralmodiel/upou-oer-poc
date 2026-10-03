@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router'
-import EmptyState from '../components/EmptyState'
 import VideoGrid from '../components/VideoGrid'
+import { GridHint } from '../components/browse-ui'
 import { useDocumentTitle } from '../components/hooks'
-import { ListIcon, PlusIcon } from '../components/icons'
+import { BookmarkIcon } from '../components/icons-browse'
+import EmptyState from '../components/ui/EmptyState'
+import LinkButton from '../components/ui/LinkButton'
+import SectionHeading from '../components/ui/SectionHeading'
 import { getVideo } from '../data/catalog'
 import { useMyList } from '../lib/storage'
 
@@ -13,34 +15,40 @@ export default function MyListPage() {
   const saved = useMemo(() => ids.map((id) => getVideo(id)).filter((v) => v !== undefined), [ids])
 
   return (
-    <div className="px-(--gutter) pt-24 pb-8 sm:pt-28">
-      <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">My List</h1>
+    <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
+      <SectionHeading
+        as="h1"
+        eyebrow="Saved for later"
+        title="My List"
+        description={
+          saved.length > 0
+            ? `${saved.length} saved ${saved.length === 1 ? 'video' : 'videos'}, newest first. Your list is kept in this browser.`
+            : undefined
+        }
+      />
       {saved.length > 0 ? (
         <>
-          <p className="mt-1 text-sm text-neutral-400">
-            {saved.length} saved {saved.length === 1 ? 'title' : 'titles'}
-          </p>
+          <GridHint />
           <div className="mt-8">
             <VideoGrid videos={saved} />
           </div>
         </>
       ) : (
         <EmptyState
-          icon={<ListIcon className="size-7" />}
-          title="Your list is empty"
+          icon={<BookmarkIcon />}
+          title="Nothing saved yet"
           action={
-            <Link
-              to="/"
-              className="inline-flex h-11 items-center rounded-md bg-white px-6 font-semibold text-ink-950 transition hover:bg-neutral-200"
-            >
-              Browse videos
-            </Link>
+            <div className="flex flex-wrap justify-center gap-3">
+              <LinkButton to="/collections">Browse collections</LinkButton>
+              <LinkButton to="/" variant="secondary">
+                Back to Browse
+              </LinkButton>
+            </div>
           }
         >
           <p>
-            Select{' '}
-            <PlusIcon className="inline size-4 rounded-full align-[-0.15em] ring-1 ring-current" />{' '}
-            on any title to save it here for later.
+            Press <strong className="font-semibold text-ink">Save</strong> on any video to keep it
+            here. Your list stays in this browser, no account needed.
           </p>
         </EmptyState>
       )}

@@ -13,19 +13,17 @@ import type { Video } from '../../types'
 import { createReelAudio, type ReelAudio } from './audio'
 import { createClock, type Clock } from './clock'
 import { SkipIcon, SoundOffIcon, SoundOnIcon } from './icons'
-import { buildReelPlan, END_AT, INDEX_STYLES, SHOT_AT, TICK_STYLES, type ReelPlan } from './plan'
+import { buildReelPlan, INDEX_STYLES, TICK_STYLES, type ReelPlan } from './plan'
 import { DECODE_CAP_MS, settleImages } from './preload'
 import './reel.css'
 
 export const REEL_MS = 10_000
 
-const LETTERS = [...'UPOUNETWORKS'].map((char, i) => ({
-  char,
-  i,
-  style: { '--i': i } as CSSProperties,
-}))
-// Light leaks sweep across the ident→montage and montage→end-card cuts.
-const LEAKS = [SHOT_AT[0] - 350, END_AT - 550].map((at) => ({ '--d': `${at}ms` }) as CSSProperties)
+// Wordmark letters, indexed across both words so the kinetic ident can drop them in one by one.
+const WORDMARK = ['UPOU', 'Networks'].map((word, wi, words) => {
+  const offset = words.slice(0, wi).join('').length
+  return [...word].map((char, i) => ({ char, style: { '--i': offset + i } as CSSProperties }))
+})
 
 interface Stills {
   key: string
@@ -147,17 +145,19 @@ export default function PromoReel({ video, onComplete }: Props) {
   return (
     <div
       ref={rootRef}
-      role="region"
+      role="group"
       aria-label={`Promo reel: ${video.title}`}
       className="reel"
       data-template={plan.template}
+      data-accent={plan.accent}
       data-side={plan.side}
       data-motion={plan.motion}
       data-end={plan.ending}
+      data-lowres={plan.lowRes || undefined}
       style={style}
     >
       {stills ? (
-        <Timeline plan={plan} video={video} stills={stills} />
+        <Timeline plan={plan} stills={stills} />
       ) : (
         <div className="reel-loading" role="status">
           <span className="sr-only">Loading promo</span>
@@ -166,14 +166,15 @@ export default function PromoReel({ video, onComplete }: Props) {
       <div className="reel-controls">
         <button
           type="button"
-          className="reel-sound"
-          aria-label={soundOn ? 'Mute promo sound' : 'Unmute promo sound'}
+          className="reel-btn reel-sound"
+          aria-pressed={soundOn}
           onClick={() => setSoundOn((on) => !on)}
         >
           {soundOn ? <SoundOnIcon /> : <SoundOffIcon />}
+          <span>{soundOn ? 'Sound on' : 'Sound off'}</span>
         </button>
-        <button type="button" className="reel-skip" onClick={complete} autoFocus>
-          Skip Intro
+        <button type="button" className="reel-btn reel-skip" onClick={complete}>
+          <span>Skip intro</span>
           <SkipIcon />
         </button>
       </div>
@@ -182,17 +183,15 @@ export default function PromoReel({ video, onComplete }: Props) {
 }
 
 // Static once mounted: the CSS timeline runs without React re-rendering it.
-const Timeline = memo(function Timeline({
-  plan,
-  video,
-  stills,
-}: {
-  plan: ReelPlan
-  video: Video
-  stills: Stills
-}) {
+const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stills: Stills }) {
   return (
     <>
+      {/* Low-res stills are shown framed over a blurred fill instead of blown up. */}
+      {plan.lowRes && plan.template === 'cinematic' && stills.backdrop && (
+        <div className="reel-backfill" aria-hidden="true">
+          <img src={stills.backdrop} alt="" draggable={false} />
+        </div>
+      )}
       <div className="reel-stage">
         {plan.shots.map((shot, i) => (
           <div key={i} className="reel-shot" style={shot.style}>
@@ -206,7 +205,7 @@ const Timeline = memo(function Timeline({
       </div>
       <div className="reel-frame" />
       <div className="reel-shade" />
-      <div className="reel-bars" />
+      <div className="reel-rule" />
       <p className="reel-index" aria-hidden="true">
         <span className="reel-index-now">
           {INDEX_STYLES.map((s, i) => (
@@ -265,16 +264,16 @@ const Timeline = memo(function Timeline({
       </div>
 
       <div className="reel-ident">
-        <span className="reel-ident-glow" />
+        <span className="reel-ident-wash" />
         <p className="reel-wordmark">
           <span className="reel-ident-block" />
           <span className="sr-only">UPOU Networks</span>
           <span className="reel-wm" aria-hidden="true">
-            {[LETTERS.slice(0, 4), LETTERS.slice(4)].map((word, wi) => (
+            {WORDMARK.map((word, wi) => (
               <span key={wi} className={wi ? 'reel-wm-b' : 'reel-wm-a'}>
-                {word.map((l) => (
-                  <span key={l.i} style={l.style}>
-                    {l.char}
+                {word.map((letter, i) => (
+                  <span key={i} style={letter.style}>
+                    {letter.char}
                   </span>
                 ))}
               </span>
@@ -282,7 +281,7 @@ const Timeline = memo(function Timeline({
           </span>
         </p>
         <span className="reel-streak" />
-        <p className="reel-ident-sub">{plan.identLine}</p>
+        <p className="reel-ident-sub">Open educational videos</p>
       </div>
 
       <div className="reel-end">
@@ -296,7 +295,7 @@ const Timeline = memo(function Timeline({
             <span className="reel-live" aria-hidden="true" />
             Now playing
           </p>
-          <h2 className="reel-end-title">{video.title}</h2>
+          <h2 className="reel-end-title">{plan.title}</h2>
           <p className="reel-end-meta">{plan.meta}</p>
           <p className="reel-count">
             Starting in
@@ -316,9 +315,6 @@ const Timeline = memo(function Timeline({
         </div>
       </div>
 
-      {LEAKS.map((s, i) => (
-        <span key={i} className="reel-leak" style={s} />
-      ))}
       <div className="reel-vignette" />
       <div className="reel-grain" />
       <div className="reel-progress" />

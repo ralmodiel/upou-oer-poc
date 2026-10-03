@@ -63,4 +63,23 @@ export const fixtureVideos: Video[] = [
     '2025-12-01T08:00:00+08:00',
   ),
   make('odel-intro', 'Introduction to ODeL', 'Education', ['ODeL'], '2025-11-01T08:00:00+08:00'),
+  make(
+    'learning-science',
+    'The Science of Learning',
+    'Education',
+    ['Education', 'Science'],
+    '2025-10-01T08:00:00+08:00',
+  ),
 ]
+
+/** `n` videos in one category, newest first by id, for paging tests. */
+export const manyVideos = (n: number, category = 'Research'): Video[] =>
+  Array.from({ length: n }, (_, i) =>
+    make(
+      `v-${String(i + 1).padStart(2, '0')}`,
+      `Lecture ${String(i + 1).padStart(2, '0')}`,
+      category,
+      ['Lecture'],
+      new Date(Date.UTC(2026, 0, 1) - i * 86_400_000).toISOString(),
+    ),
+  )

@@ -5,18 +5,30 @@ import { openShortcuts } from '../lib/shortcuts'
 
 const LINK =
   'rounded-sm text-ink-2 underline decoration-line underline-offset-4 transition-colors hover:text-maroon hover:decoration-maroon'
-const ACTION = `${LINK} cursor-pointer text-left`
+// List items: the same look with a 40px tall hit area.
+const ITEM = `${LINK} -my-2.5 inline-block py-2.5`
+const ACTION = `${ITEM} cursor-pointer text-left`
 
-const REPO_URL = import.meta.env.VITE_REPO_URL as string | undefined
+// Only a real https URL becomes a link.
+const REPO_RAW = import.meta.env.VITE_REPO_URL as string | undefined
+const REPO_URL = /^https:\/\/\S+$/.test(REPO_RAW ?? '') ? REPO_RAW : undefined
 const LICENSES_URL = `${import.meta.env.BASE_URL}THIRD_PARTY_LICENSES.txt`
 
 // First paragraph of NOTICE.md, verbatim.
 const DISCLAIMER =
   "This project is a temporary, non-commercial proof of concept built to explore UPOU's open educational videos. It is not a product or service, it is not monetized, and it is expected to be taken down shortly after publication."
 
-function External({ href, children }: { href: string; children: ReactNode }) {
+function External({
+  href,
+  children,
+  className = ITEM,
+}: {
+  href: string
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={LINK}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
       {children}
     </a>
   )
@@ -64,7 +76,9 @@ export default function Footer() {
             </li>
             <li className="leading-relaxed text-ink-3">
               Videos © UP Open University, shared under{' '}
-              <External href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</External>{' '}
+              <External href="https://creativecommons.org/licenses/by/4.0/" className={LINK}>
+                CC BY 4.0
+              </External>{' '}
               unless stated otherwise.
             </li>
           </ul>
@@ -76,7 +90,7 @@ export default function Footer() {
           <ul className="mt-3 space-y-2.5">
             <li className="text-ink-3">Code: MIT License</li>
             <li>
-              <a href={LICENSES_URL} className={LINK}>
+              <a href={LICENSES_URL} className={ITEM}>
                 Third-party licenses
               </a>
             </li>

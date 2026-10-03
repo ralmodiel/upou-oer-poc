@@ -167,3 +167,10 @@
   text-transform: uppercase;
   color: var(--color-forest);
 }
+
+/* A chip's list item never grows past its row, so an over-long label truncates. */
+@layer components {
+  li:has(> [data-chip]) {
+    max-width: 100%;
+  }
+}

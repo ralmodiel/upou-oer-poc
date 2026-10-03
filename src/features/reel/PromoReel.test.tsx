@@ -73,6 +73,7 @@ describe('PromoReel', () => {
     expect(bare.hook).toMatch(/Technology and Teaching/)
     expect(bare.tags).toEqual([])
     expect(bare.lowRes).toBe(false)
+    expect(bare.meta).toEqual(['UP Open University', 'Technology and Teaching · 2025'])
   })
 
   it('clamps very long titles and frames low-res stills', () => {

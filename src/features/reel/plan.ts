@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { yearOf } from '../../lib/format'
 import { pick, seededRandom } from '../../lib/seed'
-import { isGenericTag, tagKey } from '../../lib/tags'
+import { isGenericTag, tagKey, tidyTag } from '../../lib/tags'
 import type { Video } from '../../types'
 
 export type Template = 'cinematic' | 'split' | 'kinetic'
@@ -64,7 +64,8 @@ export interface ReelPlan {
   hookStyle: CSSProperties
   tags: { text: string; style: CSSProperties }[]
   storyStyle: CSSProperties
-  meta: string
+  /** End-card byline: channel, then "category · year" (phones show only the latter). */
+  meta: string[]
   shots: Shot[]
   rootHz: number
 }
@@ -72,9 +73,8 @@ export interface ReelPlan {
 const css = (vars: Vars) => vars as CSSProperties
 const ms = (n: number) => `${Math.round(n)}ms`
 const pct = (n: number) => `${n.toFixed(2)}%`
-/** Title-cases all-lowercase tags such as "open data"; mixed-case tags are left alone. */
-export const tidyTag = (s: string) =>
-  s === s.toLowerCase() ? s.replace(/\b[a-z]/g, (c) => c.toUpperCase()) : s
+// tidyTag now lives in lib/tags; kept here for existing importers.
+export { tidyTag }
 
 export const TICK_STYLES = TICK_AT.map((t) => css({ '--d': ms(t) }))
 export const INDEX_STYLES = SHOT_AT.map((t) => css({ '--d': ms(t) }))
@@ -317,9 +317,11 @@ export function buildReelPlan(video: Video): ReelPlan {
       '--dim': ms(hookIn - 150),
       '--drift': drift,
       '--title-scale': titleScale,
-      // Kinetic type fills the width (serif glyphs ≈ 0.52em) within ~50% of the height.
+      // Kinetic type fills the width (serif glyphs ≈ 0.52em) within ~50% of the height;
+      // phone stages show at most four lines (reel.css hides the rest).
       '--kw': (88 / (maxLine * 0.52)).toFixed(2),
       '--kh': (50 / (wordLines.length * 0.95)).toFixed(2),
+      '--kh-s': (46 / (Math.min(wordLines.length, 4) * 0.95)).toFixed(2),
     }),
     title,
     // Non-breaking around the dot so the year never wraps onto a line of its own.
@@ -331,7 +333,7 @@ export function buildReelPlan(video: Video): ReelPlan {
     hookStyle: css({ '--d': ms(hookIn) }),
     tags: chips.map((text, i) => ({ text, style: css({ '--g': ms(chipsIn + i * 120) }) })),
     storyStyle: css({ '--o': ms(exitAt) }),
-    meta: [video.channel, category, yearText].filter(Boolean).join(' · '),
+    meta: [video.channel, [category, yearText].filter(Boolean).join(' · ')].filter(Boolean),
     shots,
     rootHz,
   }

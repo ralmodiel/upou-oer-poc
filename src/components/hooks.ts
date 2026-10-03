@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react'
 
 /** Sets document.title while mounted and restores the previous title afterwards. */
 export function useDocumentTitle(title: string) {
@@ -35,34 +41,44 @@ export function useScrolledPast(threshold: number) {
   )
 }
 
-function subscribeVisibility(onChange: () => void) {
-  document.addEventListener('visibilitychange', onChange)
-  return () => document.removeEventListener('visibilitychange', onChange)
+const ROW_MOVES: Record<string, 'next' | 'prev' | 'first' | 'last'> = {
+  ArrowRight: 'next',
+  ArrowLeft: 'prev',
+  Home: 'first',
+  End: 'last',
 }
 
-export function usePageVisible() {
-  return useSyncExternalStore(
-    subscribeVisibility,
-    () => document.visibilityState !== 'hidden',
-    () => true,
-  )
-}
+/**
+ * Roving tabindex for a <ul> of chips: one item in the Tab order (`tabIndexOf(i)`), Left/Right,
+ * Home and End move between items. `count` clamps the entry point when the list shrinks.
+ */
+export function useRovingRow(count: number, initial = 0) {
+  const [current, setCurrent] = useState(initial)
+  const active = Math.max(0, Math.min(current, count - 1))
 
-/** True while at least `ratio` of the element is on screen; re-renders only when that flips. */
-export function useInView<T extends Element>(ratio: number) {
-  const ref = useRef<T>(null)
-  const [inView, setInView] = useState(true)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setInView(entry.intersectionRatio >= ratio),
-      { threshold: ratio },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [ratio])
-  return [ref, inView] as const
+  const itemIndex = (list: HTMLElement, target: EventTarget) => {
+    const item = (target as HTMLElement).closest('li')
+    return item?.parentElement === list ? Array.prototype.indexOf.call(list.children, item) : -1
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
+    const move = ROW_MOVES[e.key]
+    if (!move || e.altKey || e.ctrlKey || e.metaKey) return
+    const from = itemIndex(e.currentTarget, e.target)
+    if (from < 0) return
+    const last = e.currentTarget.children.length - 1
+    const to = { next: from + 1, prev: from - 1, first: 0, last }[move]
+    if (to === from || to < 0 || to > last) return
+    e.preventDefault()
+    e.currentTarget.children[to].querySelector<HTMLElement>('a, button')?.focus()
+  }
+
+  const onFocus = (e: FocusEvent<HTMLUListElement>) => {
+    const index = itemIndex(e.currentTarget, e.target)
+    if (index >= 0 && index !== active) setCurrent(index)
+  }
+
+  return { listProps: { onKeyDown, onFocus }, tabIndexOf: (i: number) => (i === active ? 0 : -1) }
 }
 
 export const prefersReducedMotion = () =>

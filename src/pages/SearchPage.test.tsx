@@ -31,12 +31,14 @@ describe('SearchPage', () => {
   it('filters by collection with chips that reflect ?category=', () => {
     renderAt('/search?q=science')
     const filters = screen.getByRole('navigation', { name: 'Filter by collection' })
-    expect(within(filters).getByRole('link', { name: /^All ?3$/ })).toHaveAttribute('aria-current')
-    expect(within(filters).getByRole('link', { name: /^Research ?2$/ })).toHaveAttribute(
+    expect(within(filters).getByRole('link', { name: /^All \(3\)$/ })).toHaveAttribute(
+      'aria-current',
+    )
+    expect(within(filters).getByRole('link', { name: /^Research \(2\)$/ })).toHaveAttribute(
       'href',
       '/search?q=science&category=research',
     )
-    expect(within(filters).getByRole('link', { name: /^Education ?1$/ })).not.toHaveAttribute(
+    expect(within(filters).getByRole('link', { name: /^Education \(1\)$/ })).not.toHaveAttribute(
       'aria-current',
     )
   })
@@ -47,7 +49,7 @@ describe('SearchPage', () => {
     expect(screen.getByRole('link', { name: 'Play The Science of Learning' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Play Ocean Science 101' })).not.toBeInTheDocument()
     const filters = screen.getByRole('navigation', { name: 'Filter by collection' })
-    expect(within(filters).getByRole('link', { name: /^Education ?1$/ })).toHaveAttribute(
+    expect(within(filters).getByRole('link', { name: /^Education \(1\)$/ })).toHaveAttribute(
       'aria-current',
     )
     expect(screen.getByRole('link', { name: 'Details: The Science of Learning' })).toHaveAttribute(
@@ -63,7 +65,7 @@ describe('SearchPage', () => {
       'href',
       '/search?q=Climate',
     )
-    expect(screen.getByRole('link', { name: /^Research ?3$/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /^Research \(3\)$/ })).toHaveAttribute(
       'href',
       '/collections/research',
     )
@@ -75,6 +77,6 @@ describe('SearchPage', () => {
   it('shows a friendly message with suggestions when nothing matches', () => {
     renderAt('/search?q=zzzz')
     expect(screen.getByRole('heading', { name: 'Nothing matched' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /^Education ?2$/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Education \(2\)$/ })).toBeInTheDocument()
   })
 })

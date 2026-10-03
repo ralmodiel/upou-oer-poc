@@ -1,6 +1,7 @@
 // SectionHeading: `title` rendered `as` h1|h2|h3 (default h2, h1 uses the page-title scale), optional
-// `eyebrow`, `count`, a "See all (n)" link via `seeAllTo` (+ `seeAllLabel`), `description`, and
-// `children` for controls on the right.
+// `eyebrow`, `count`, a "See all (n)" link via `seeAllTo` (+ `seeAllLabel`; `seeAllContext` names the
+// section for assistive tech so repeated links stay distinct), `description`, and `children` for
+// controls on the right.
 import type { ReactNode } from 'react'
 import { Link, type To } from 'react-router'
 import { ChevronRightIcon } from '../icons'
@@ -13,6 +14,7 @@ export interface SectionHeadingProps {
   count?: number
   seeAllTo?: To
   seeAllLabel?: string
+  seeAllContext?: string
   description?: ReactNode
   children?: ReactNode
   className?: string
@@ -32,11 +34,13 @@ export default function SectionHeading({
   count,
   seeAllTo,
   seeAllLabel,
+  seeAllContext,
   description,
   children,
   className = '',
 }: SectionHeadingProps) {
   const showCountInline = count !== undefined && !seeAllTo
+  const seeAll = seeAllLabel ?? (count !== undefined ? `See all (${count})` : 'See all')
   return (
     <div className={`flex flex-wrap items-end justify-between gap-x-6 gap-y-2 ${className}`}>
       <div className="min-w-0">
@@ -57,9 +61,10 @@ export default function SectionHeading({
           {seeAllTo && (
             <Link
               to={seeAllTo}
+              aria-label={seeAllContext ? `${seeAll} in ${seeAllContext}` : undefined}
               className="group inline-flex h-10 items-center gap-0.5 text-sm font-semibold text-maroon hover:text-maroon-2"
             >
-              {seeAllLabel ?? (count !== undefined ? `See all (${count})` : 'See all')}
+              {seeAll}
               <ChevronRightIcon className="size-4 transition-transform motion-safe:group-hover:translate-x-0.5" />
             </Link>
           )}

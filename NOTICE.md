@@ -41,6 +41,7 @@ unless otherwise stated.
 ## Third-party software
 
 The production build bundles open-source libraries: React, React DOM, React Router, and their
-dependencies. Their license texts are reproduced in
+dependencies. The site also serves two typefaces, Instrument Sans and Instrument Serif, under the
+SIL Open Font License 1.1. All of these license texts are reproduced in
 [`public/THIRD_PARTY_LICENSES.txt`](public/THIRD_PARTY_LICENSES.txt), which is also published
 with the site.

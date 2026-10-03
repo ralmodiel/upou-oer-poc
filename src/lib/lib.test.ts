@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { seededRandom } from './seed'
-import { isGenericTag, tagKey } from './tags'
+import { isGenericTag, tagKey, tidyTag } from './tags'
 import { embedUrl, isYouTubeId, watchUrl } from './youtube'
 
 describe('lib helpers', () => {
@@ -18,6 +18,8 @@ describe('lib helpers', () => {
     expect(isGenericTag('Video Post')).toBe(true)
     expect(isGenericTag(' video lecture ')).toBe(true)
     expect(isGenericTag('Climate Change')).toBe(false)
+    expect(tidyTag('open data')).toBe('Open Data')
+    expect(tidyTag('ODeL')).toBe('ODeL')
   })
 
   it('builds YouTube URLs only for valid ids', () => {

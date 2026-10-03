@@ -168,7 +168,7 @@ describe('ContinueWatching and CollectionChips', () => {
   it('lists every collection with its count', () => {
     renderAt('/', <CollectionChips />)
     const section = screen.getByRole('region', { name: 'Collections' })
-    expect(within(section).getByRole('link', { name: /^Research ?3$/ })).toHaveAttribute(
+    expect(within(section).getByRole('link', { name: /^Research \(3\)$/ })).toHaveAttribute(
       'href',
       '/collections/research',
     )

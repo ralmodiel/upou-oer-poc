@@ -1,6 +1,7 @@
 // Chip: pill-shaped filter / tag. With `to` it is a link (route-active by default, or pass `active`
 // for query-string filters → aria-current); without `to` it is a toggle button (`active` →
-// aria-pressed). Optional trailing `count`.
+// aria-pressed). Optional trailing `count`, `size` md|sm, `tabIndex` for roving rows. Inside a
+// list, an over-long label truncates at the row (index.css caps the item via data-chip).
 import type { MouseEventHandler, ReactNode } from 'react'
 import { Link, NavLink, type To } from 'react-router'
 
@@ -10,19 +11,27 @@ export interface ChipProps {
   end?: boolean
   active?: boolean
   count?: number
+  size?: 'md' | 'sm'
+  tabIndex?: number
   onClick?: MouseEventHandler<HTMLElement>
   title?: string
   className?: string
 }
 
-// Single line, sized to its label (so items in a scroll row keep their width), clamped to the
-// viewport with an ellipsis for the rare over-long label.
+// Single line, sized to its label (so items in a scroll row keep their width), capped at the
+// container with an ellipsis for the rare over-long label.
 const BASE =
-  'inline-flex h-10 w-max max-w-[calc(100vw-2*var(--gutter))] shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border px-4 text-sm font-medium whitespace-nowrap transition-colors'
+  'inline-flex w-max max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border font-medium whitespace-nowrap transition-colors'
+const SIZE = {
+  md: 'h-10 px-4 text-sm',
+  // Compact tags; still 40px tall on touch screens.
+  sm: 'h-9 px-3 text-xs [@media(hover:none)]:h-10',
+}
 const OFF = 'border-line bg-surface text-ink-2 hover:border-ink-3 hover:bg-surface-2 hover:text-ink'
 const ON = 'border-maroon/30 bg-maroon-soft text-maroon'
 
-const chipClass = (active: boolean, extra: string) => `${BASE} ${active ? ON : OFF} ${extra}`.trim()
+const chipClass = (active: boolean, size: 'md' | 'sm', extra: string) =>
+  `${BASE} ${SIZE[size]} ${active ? ON : OFF} ${extra}`.trim()
 
 export default function Chip({
   children,
@@ -30,6 +39,8 @@ export default function Chip({
   end,
   active,
   count,
+  size = 'md',
+  tabIndex,
   onClick,
   title,
   className = '',
@@ -40,6 +51,10 @@ export default function Chip({
       {count !== undefined && <span className="shrink-0 text-xs tabular-nums">{count}</span>}
     </>
   )
+  // "Research (3)" rather than "Research3". (No sr-only spans here: they are absolutely positioned
+  // and would stretch the page from inside a scroll row.)
+  const label =
+    count !== undefined && typeof children === 'string' ? `${children} (${count})` : undefined
   if (to !== undefined && active === undefined) {
     return (
       <NavLink
@@ -47,7 +62,10 @@ export default function Chip({
         end={end}
         onClick={onClick}
         title={title}
-        className={({ isActive }) => chipClass(isActive, className)}
+        tabIndex={tabIndex}
+        aria-label={label}
+        data-chip=""
+        className={({ isActive }) => chipClass(isActive, size, className)}
       >
         {content}
       </NavLink>
@@ -60,8 +78,11 @@ export default function Chip({
         to={to}
         onClick={onClick}
         title={title}
+        tabIndex={tabIndex}
+        aria-label={label}
+        data-chip=""
         aria-current={on ? 'true' : undefined}
-        className={chipClass(on, className)}
+        className={chipClass(on, size, className)}
       >
         {content}
       </Link>
@@ -72,8 +93,11 @@ export default function Chip({
       type="button"
       onClick={onClick}
       title={title}
+      tabIndex={tabIndex}
+      aria-label={label}
+      data-chip=""
       aria-pressed={on}
-      className={chipClass(on, className)}
+      className={chipClass(on, size, className)}
     >
       {content}
     </button>

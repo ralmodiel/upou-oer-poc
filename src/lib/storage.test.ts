@@ -1,8 +1,52 @@
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import { useMyList, useWatchHistory } from './storage'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  toggleMyList,
+  useInMyList,
+  useMyList,
+  usePersistentState,
+  useWatchHistory,
+} from './storage'
 
 describe('storage hooks', () => {
+  it('tracks one video with useInMyList', () => {
+    const a = renderHook(() => useInMyList('a')).result
+    const b = renderHook(() => useInMyList('b')).result
+    expect(a.current[0]).toBe(false)
+    act(() => a.current[1]())
+    expect(a.current[0]).toBe(true)
+    expect(b.current[0]).toBe(false)
+    expect(JSON.parse(localStorage.getItem('upou:my-list')!)).toEqual(['a'])
+    act(() => toggleMyList('a'))
+    expect(a.current[0]).toBe(false)
+  })
+
+  it('returns the fallback for invalid JSON and the parsed value otherwise', () => {
+    localStorage.setItem('upou:theme', '{oops')
+    localStorage.setItem('upou:howitworks', '"yes"')
+    localStorage.setItem('upou:esc-hint', 'null')
+    const theme = renderHook(() => usePersistentState<unknown>('upou:theme', 'system')).result
+    const how = renderHook(() => usePersistentState<unknown>('upou:howitworks', false)).result
+    const hint = renderHook(() => usePersistentState<unknown>('upou:esc-hint', false)).result
+    expect(theme.current[0]).toBe('system')
+    // Wrong-shaped values come back as stored; each caller validates its own.
+    expect(how.current[0]).toBe('yes')
+    expect(hint.current[0]).toBe(null)
+    act(() => theme.current[1]('dark'))
+    expect(theme.current[0]).toBe('dark')
+    expect(localStorage.getItem('upou:theme')).toBe('"dark"')
+  })
+
+  it('keeps the value in memory when storage writes fail', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    const { result } = renderHook(() => useMyList())
+    act(() => result.current.toggle('a'))
+    expect(result.current.ids).toEqual(['a'])
+    spy.mockRestore()
+  })
+
   it('toggles and persists My List', () => {
     const { result } = renderHook(() => useMyList())
     act(() => result.current.toggle('a'))

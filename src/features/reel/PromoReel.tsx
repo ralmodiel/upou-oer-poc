@@ -295,8 +295,15 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
             <span className="reel-live" aria-hidden="true" />
             Now playing
           </p>
-          <h2 className="reel-end-title">{plan.title}</h2>
-          <p className="reel-end-meta">{plan.meta}</p>
+          <p className="reel-end-title">{plan.title}</p>
+          <p className="reel-end-meta">
+            {plan.meta.map((part, i) => (
+              <span key={i}>
+                {part}
+                {i < plan.meta.length - 1 && ' · '}
+              </span>
+            ))}
+          </p>
           <p className="reel-count">
             Starting in
             {TICK_STYLES.map((s, i) => (

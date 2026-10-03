@@ -1,5 +1,5 @@
 import { useInMyList } from '../lib/storage'
-import { BookmarkFilledIcon, BookmarkIcon } from './icons-browse'
+import { BookmarkFilledIcon, BookmarkIcon } from './icons'
 
 interface Props {
   id: string

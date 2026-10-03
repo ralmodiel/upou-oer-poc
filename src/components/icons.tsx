@@ -29,13 +29,6 @@ export const PlayIcon = (props: IconProps) => (
   </Icon>
 )
 
-export const PauseIcon = (props: IconProps) => (
-  <Icon {...props} stroke="none">
-    <rect x="6" y="4.5" width="4" height="15" rx="1" fill="currentColor" />
-    <rect x="14" y="4.5" width="4" height="15" rx="1" fill="currentColor" />
-  </Icon>
-)
-
 export const PlusIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 5v14M5 12h14" />
@@ -67,12 +60,6 @@ export const ChevronRightIcon = (props: IconProps) => (
   </Icon>
 )
 
-export const ChevronDownIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="m5 9 7 7 7-7" />
-  </Icon>
-)
-
 export const SearchIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="11" cy="11" r="6.5" />
@@ -89,12 +76,6 @@ export const CloseIcon = (props: IconProps) => (
 export const ExternalLinkIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M14 4h6v6M20 4l-9 9M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" />
-  </Icon>
-)
-
-export const ListIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M9 6h11M9 12h11M9 18h7M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
   </Icon>
 )
 
@@ -124,6 +105,12 @@ export const BookmarkIcon = (props: IconProps) => (
   </Icon>
 )
 
+export const BookmarkFilledIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path fill="currentColor" d="M6.5 4.5h11v16l-5.5-3.6-5.5 3.6z" />
+  </Icon>
+)
+
 export const HomeIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M3.5 11 12 4l8.5 7M5.5 9.5V20h4.5v-5h4v5h4.5V9.5" />
@@ -139,35 +126,9 @@ export const GridIcon = (props: IconProps) => (
   </Icon>
 )
 
-export const KeyboardIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <rect x="2.5" y="6" width="19" height="12" rx="2" />
-    <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6" />
-  </Icon>
-)
-
-export const HelpCircleIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01" />
-  </Icon>
-)
-
-export const ArrowLeftIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M19 12H5M11 6l-6 6 6 6" />
-  </Icon>
-)
-
 export const ShareIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12 3.5v12M8 7.5l4-4 4 4M5 13.5v5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-5" />
-  </Icon>
-)
-
-export const LinkIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.2 1.2M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.2-1.2" />
   </Icon>
 )
 
@@ -175,11 +136,5 @@ export const FilmIcon = (props: IconProps) => (
   <Icon {...props}>
     <rect x="3" y="4.5" width="18" height="15" rx="2" />
     <path d="M7 4.5v15M17 4.5v15M3 9h4M3 15h4M17 9h4M17 15h4M10.5 9.5v5l4-2.5z" />
-  </Icon>
-)
-
-export const SortIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M8 4v16M4.5 7.5 8 4l3.5 3.5M16 20V4M12.5 16.5 16 20l3.5-3.5" />
   </Icon>
 )

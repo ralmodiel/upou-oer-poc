@@ -25,7 +25,7 @@ export default function Breadcrumbs({ items, className = '' }: BreadcrumbsProps)
               {item.to !== undefined && !last ? (
                 <Link
                   to={item.to}
-                  className="truncate rounded-sm px-0.5 py-1 text-ink-2 underline-offset-4 hover:text-maroon hover:underline"
+                  className="-my-1.5 truncate rounded-sm px-0.5 py-2.5 text-ink-2 underline-offset-4 hover:text-maroon hover:underline"
                 >
                   {item.label}
                 </Link>

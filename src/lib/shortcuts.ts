@@ -41,12 +41,16 @@ export function isEditable(target: EventTarget | null): boolean {
 
 export const hasOpenDialog = () => document.querySelector('dialog[open]') !== null
 
-/** Back = previous in-app page when there is one, otherwise home (deep links). */
+/** Back = previous in-app page when there is one, otherwise home (deep links, replaced entries). */
 export function useGoBack() {
   const navigate = useNavigate()
   const { key } = useLocation()
   return useCallback(() => {
-    if (key !== 'default') void navigate(-1)
+    // The browser router keeps the entry index in history.state (0 = first page of this visit,
+    // also after a replace); without it (memory router in tests) fall back to the location key.
+    const idx = (window.history.state as { idx?: number } | null)?.idx
+    const hasPrevious = idx === undefined ? key !== 'default' : idx > 0
+    if (hasPrevious) void navigate(-1)
     else void navigate('/', { replace: true })
   }, [key, navigate])
 }
@@ -74,6 +78,8 @@ export function useGlobalShortcuts() {
       e.preventDefault()
       focusSearch()
     } else if (!editing && e.key === '?') {
+      // Never stack the sheet on top of another dialog.
+      if (hasOpenDialog()) return
       e.preventDefault()
       openShortcuts()
     }

@@ -2,16 +2,13 @@ import records from './catalog.json'
 import type { Video } from '../types'
 import { expandCatalog } from './expand'
 
-export interface Row {
-  id: string
-  title: string
-  videos: readonly Video[]
-}
-
 /** A home section for one category; `videos` is capped, `count` is the category total. */
-export interface CategoryRow extends Row {
+export interface CategoryRow {
+  id: string
   slug: string
+  title: string
   count: number
+  videos: readonly Video[]
 }
 
 export interface Category {
@@ -30,7 +27,7 @@ export interface SearchOptions {
   limit?: number
 }
 
-export interface IndexedVideo {
+interface IndexedVideo {
   v: Video
   title: string
   meta: string
@@ -40,15 +37,10 @@ export interface IndexedVideo {
 /** The crawler's bucket for posts without a category: browsable, but not a home section. */
 export const GENERAL_CATEGORY = 'General'
 const MIN_ROW_SIZE = 3
-const LEGACY_ROW_CAP = 24
 
 // The catalog is static, so derived collections are memoized and only tests swap the data
-// (see testing.ts). These are live bindings: importers see the swap.
+// (see testing.ts). `videos` is a live binding: importers see the swap.
 export let videos: readonly Video[] = []
-export let featured: Video[] = []
-export let latest: Video[] = []
-export let rows: Row[] = []
-export let categories: string[] = []
 let byId = new Map<string, Video>()
 let memo = new Map<string, unknown>()
 
@@ -70,8 +62,12 @@ function stamp(v: Video): number {
   return t
 }
 const newestFirst = (a: Video, b: Video) => stamp(b) - stamp(a)
+const oldestFirst = (a: Video, b: Video) => stamp(a) - stamp(b)
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
 const byTitle = (a: Video, b: Video) => collator.compare(a.title, b.title)
+
+/** The whole catalog, newest first. Shared and memoized: do not mutate. */
+const byDate = () => cached('byDate', () => [...videos].sort(newestFirst))
 
 export const slugifyCategory = (name: string): string =>
   name
@@ -127,13 +123,17 @@ export function getCategory(slug: string): Category | undefined {
   return cached('categoryBySlug', () => new Map(getCategories().map((c) => [c.slug, c]))).get(slug)
 }
 
+/** By exact name. Slugs can carry a "-2" suffix, so never slugify a name to find its category. */
+export function getCategoryByName(name: string): Category | undefined {
+  return cached('categoryByName', () => new Map(getCategories().map((c) => [c.name, c]))).get(name)
+}
+
 /** The videos of one category. Results are shared and memoized: do not mutate them. */
 export function getCategoryVideos(slug: string, sort: CategorySort = 'newest'): Video[] {
   return cached(`category:${slug}:${sort}`, () => {
     const list = groups().get(slug)?.videos ?? []
-    if (sort === 'title') return [...list].sort(byTitle)
-    if (sort === 'oldest') return [...getCategoryVideos(slug)].reverse()
-    return [...list].sort(newestFirst)
+    const compare = sort === 'title' ? byTitle : sort === 'oldest' ? oldestFirst : newestFirst
+    return [...list].sort(compare)
   })
 }
 
@@ -154,41 +154,13 @@ export function getRows(capPerRow = 8): CategoryRow[] {
 
 /** Five videos: the featured ones first, then the newest. */
 export function getFeatured(): Video[] {
-  return cached('featured', () => pickFeatured(videos, 5))
+  return cached('featured', () =>
+    [...byDate()].sort((a, b) => Number(!!b.featured) - Number(!!a.featured)).slice(0, 5),
+  )
 }
 
 export function getLatest(limit = 12): Video[] {
-  return cached(`latest:${limit}`, () => newest(videos, limit))
-}
-
-/** Featured items first, then newest. */
-export function pickFeatured(list: readonly Video[], limit = 5): Video[] {
-  return [...list]
-    .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || newestFirst(a, b))
-    .slice(0, limit)
-}
-
-export function newest(list: readonly Video[], limit = 12): Video[] {
-  return [...list].sort(newestFirst).slice(0, limit)
-}
-
-/** One row per category with enough titles; small categories are pooled into "More to Explore". */
-export function categoryRows(list: readonly Video[], minSize = MIN_ROW_SIZE): Row[] {
-  const groups = new Map<string, Video[]>()
-  for (const v of list) {
-    const group = groups.get(v.category)
-    if (group) group.push(v)
-    else groups.set(v.category, [v])
-  }
-  const rows: Row[] = []
-  const rest: Video[] = []
-  for (const [title, items] of [...groups].sort((a, b) => b[1].length - a[1].length)) {
-    if (items.length >= minSize)
-      rows.push({ id: `cat-${slugifyCategory(title)}`, title, videos: items })
-    else rest.push(...items)
-  }
-  if (rest.length >= minSize) rows.push({ id: 'more', title: 'More to Explore', videos: rest })
-  return rows
+  return cached(`latest:${limit}`, () => byDate().slice(0, limit))
 }
 
 /** The description, or a short summary from metadata (most source pages have no description). */
@@ -220,30 +192,19 @@ const normalize = (s: string) =>
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
 
-export const buildIndex = (list: readonly Video[]): IndexedVideo[] =>
-  list.map((v) => ({
-    v,
-    title: normalize(v.title),
-    meta: normalize(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
-    body: normalize(v.description),
-  }))
+// Built on the first search.
+const index = () =>
+  cached('index', (): IndexedVideo[] =>
+    videos.map((v) => ({
+      v,
+      title: normalize(v.title),
+      meta: normalize(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
+      body: normalize(v.description),
+    })),
+  )
 
-const isIndex = (x: readonly IndexedVideo[] | SearchOptions): x is readonly IndexedVideo[] =>
-  Array.isArray(x)
-
-/**
- * Every term must match; title hits outrank tag/category hits, which outrank description hits.
- * The second argument is either options or a prebuilt index (the original signature).
- */
-export function searchVideos(
-  query: string,
-  indexOrOptions: readonly IndexedVideo[] | SearchOptions = {},
-  limit = 60,
-): Video[] {
-  const legacy = isIndex(indexOrOptions)
-  // the default index is built on the first search
-  const index = legacy ? indexOrOptions : cached('index', () => buildIndex(videos))
-  const { category, limit: max = limit } = legacy ? {} : indexOrOptions
+/** Every term must match; title hits outrank tag/category hits, which outrank description hits. */
+export function searchVideos(query: string, { category, limit = 60 }: SearchOptions = {}): Video[] {
   const wanted = category ? (getCategory(category)?.name ?? category) : undefined
   // Edge punctuation is dropped so quoted or comma-separated queries still match.
   const terms = normalize(query)
@@ -252,7 +213,7 @@ export function searchVideos(
     .filter(Boolean)
   if (!terms.length) return []
   const hits: { v: Video; score: number }[] = []
-  for (const { v, title, meta, body } of index) {
+  for (const { v, title, meta, body } of index()) {
     if (wanted && v.category !== wanted) continue
     let score = 0
     for (const t of terms) {
@@ -267,22 +228,15 @@ export function searchVideos(
   }
   return hits
     .sort((a, b) => b.score - a.score)
-    .slice(0, max)
+    .slice(0, limit)
     .map((h) => h.v)
 }
 
-/** Installs a catalog and resets everything derived from it. Tests: use setCatalog in testing.ts. */
+/** Installs a catalog and forgets everything derived from it. Tests: use setCatalog in testing.ts. */
 export function replaceCatalog(list: readonly Video[]): void {
   videos = list
   byId = new Map(list.map((v) => [v.id, v]))
   memo = new Map()
-  featured = getFeatured()
-  latest = getLatest()
-  // the original home rows; capped so a whole category never renders in one strip
-  rows = categoryRows(list).map((r) =>
-    r.videos.length > LEGACY_ROW_CAP ? { ...r, videos: r.videos.slice(0, LEGACY_ROW_CAP) } : r,
-  )
-  categories = [...new Set(list.map((v) => v.category))].sort()
 }
 
 replaceCatalog(expandCatalog(records))

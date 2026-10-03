@@ -1,16 +1,13 @@
-import { memo, type SyntheticEvent } from 'react'
+import { memo } from 'react'
 import { formatDate } from '../lib/format'
 import type { Video } from '../types'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
+import Thumbnail from './Thumbnail'
 import { InfoIcon, PlayIcon } from './icons'
-import { isNew, srcSetOf } from './media'
+import { isNew } from './media'
 import Badge from './ui/Badge'
-
-const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
-  e.currentTarget.dataset.loaded = ''
-}
 
 // Quick actions sit above the stretched link; they appear on hover/focus and stay visible on touch screens.
 const ACTIONS =
@@ -55,17 +52,11 @@ function VideoCard({
           {title}
         </PlayLink>
       </Heading>
-      <div className="relative order-1 aspect-video overflow-hidden rounded-card bg-surface-2 ring-1 ring-black/5 transition-[translate,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-has-[[data-card-link]:focus-visible]/card:ring-2 group-has-[[data-card-link]:focus-visible]/card:ring-maroon group-has-[[data-card-link]:focus-visible]/card:ring-offset-2 group-has-[[data-card-link]:focus-visible]/card:ring-offset-paper motion-reduce:transition-none">
-        <img
-          src={video.thumbnail}
-          srcSet={srcSetOf(video)}
-          sizes={sizes}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onLoad={markLoaded}
-          className="size-full object-cover opacity-0 transition-opacity duration-300 data-loaded:opacity-100"
-        />
+      <Thumbnail
+        video={video}
+        sizes={sizes}
+        className="order-1 rounded-card ring-1 ring-black/5 transition-[translate,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-has-[[data-card-link]:focus-visible]/card:ring-2 group-has-[[data-card-link]:focus-visible]/card:ring-maroon group-has-[[data-card-link]:focus-visible]/card:ring-offset-2 group-has-[[data-card-link]:focus-visible]/card:ring-offset-paper motion-reduce:transition-none"
+      >
         {/* Visual cue only: the card link already plays. */}
         <span
           aria-hidden="true"
@@ -75,7 +66,7 @@ function VideoCard({
             <PlayIcon className="size-5 translate-x-px" />
           </span>
         </span>
-      </div>
+      </Thumbnail>
       <p className="order-4 mt-1 flex items-center gap-1.5 text-sm text-ink-3">
         <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>
         {isNew(id) && (

@@ -1,17 +1,19 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { getVideo, similarTo, summaryOf } from '../data/catalog'
+import { DEFAULT_CHANNEL } from '../data/expand'
 import { formatDate } from '../lib/format'
 import { watchUrl } from '../lib/youtube'
 import type { Video } from '../types'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
+import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { TEXT_LINK } from './browse-ui'
 import { DetailsContext, wasOpenedInApp } from './details'
 import { prefersReducedMotion, useDocumentTitle } from './hooks'
 import { CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
-import { largeImageOf, slugOfCategory, srcSetOf } from './media'
+import { slugOfCategory } from './media'
 import Chip from './ui/Chip'
 import IconButton from './ui/IconButton'
 import { buttonClass } from './ui/button-styles'
@@ -121,14 +123,12 @@ function DetailDialog({ video }: { video: Video }) {
 
         <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 md:grid-rows-[auto_auto_1fr] md:p-8">
           <div className="-mx-5 -mt-5 min-w-0 md:col-span-5 md:col-start-1 md:row-start-1 md:m-0">
-            <img
-              key={video.id}
-              src={largeImageOf(video)}
-              srcSet={srcSetOf(video)}
+            <Thumbnail
+              video={video}
               sizes="(min-width: 48rem) 400px, 100vw"
-              alt=""
-              decoding="async"
-              className="aspect-video w-full bg-surface-2 object-cover md:rounded-card md:ring-1 md:ring-black/5"
+              large
+              loading="eager"
+              className="md:rounded-card md:ring-1 md:ring-black/5"
             />
           </div>
 
@@ -152,13 +152,13 @@ function DetailDialog({ video }: { video: Video }) {
             <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-3">
               <Link
                 to={`/collections/${slugOfCategory(video.category)}`}
-                className="eyebrow hover:underline"
+                className="eyebrow -my-3 py-3 hover:underline"
               >
                 {video.category}
               </Link>
               <span aria-hidden="true">·</span>
               <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>
-              {video.channel !== 'UP Open University' && (
+              {video.channel !== DEFAULT_CHANNEL && (
                 <>
                   <span aria-hidden="true">·</span>
                   <span>{video.channel}</span>
@@ -182,7 +182,7 @@ function DetailDialog({ video }: { video: Video }) {
                       to={`/search?q=${encodeURIComponent(tag)}`}
                       active={false}
                       title={tag}
-                      className="h-8 px-3 text-xs"
+                      size="sm"
                     >
                       {tag}
                     </Chip>
@@ -224,7 +224,7 @@ function ExternalLink({ href, children }: { href: string; children: ReactNode })
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-1.5 ${TEXT_LINK}`}
+      className={`relative inline-flex min-h-10 items-center gap-1.5 ${TEXT_LINK}`}
     >
       {children}
       <ExternalLinkIcon className="size-4" />

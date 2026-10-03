@@ -10,3 +10,6 @@ coverage
 
 # Local tooling (crawler and helper scripts) is not published
 scripts/
+
+# Local working data (transcripts, downloads) is never committed
+tmp/

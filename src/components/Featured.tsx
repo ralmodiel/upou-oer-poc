@@ -6,8 +6,9 @@ import type { Video } from '../types'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
+import Thumbnail from './Thumbnail'
 import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, PlayIcon } from './icons'
-import { largeImageOf, slugOfCategory, srcSetOf } from './media'
+import { slugOfCategory } from './media'
 import IconButton from './ui/IconButton'
 import { buttonClass } from './ui/button-styles'
 
@@ -57,28 +58,21 @@ function Featured({ videos, alsoNew }: Props) {
 
           <div role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}`}>
             {/* Decorative duplicate of the Play button: the image is clickable but not a Tab stop. */}
-            <PlayLink
-              video={video}
-              tabIndex={-1}
-              aria-hidden="true"
-              className="relative mt-3 block aspect-video overflow-hidden rounded-card bg-surface-2 ring-1 ring-black/5"
-            >
-              <img
-                key={video.id}
-                src={largeImageOf(video)}
-                srcSet={srcSetOf(video)}
+            <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="mt-3 block">
+              <Thumbnail
+                video={video}
                 sizes="(min-width: 64rem) 55vw, 100vw"
-                alt=""
-                decoding="async"
+                large
+                loading="eager"
                 fetchPriority={index === 0 ? 'high' : undefined}
-                className="size-full object-cover"
+                className="rounded-card ring-1 ring-black/5"
               />
             </PlayLink>
             <div className="mt-5">
               <p className="flex flex-wrap items-center gap-x-2 text-sm text-ink-3">
                 <Link
                   to={`/collections/${slugOfCategory(video.category)}`}
-                  className="eyebrow hover:underline"
+                  className="eyebrow -my-3 py-3 hover:underline"
                 >
                   {video.category}
                 </Link>
@@ -121,14 +115,10 @@ function Featured({ videos, alsoNew }: Props) {
               {alsoNew.map((v) => (
                 <li key={v.id}>
                   <article className="group/item relative flex gap-4 py-3">
-                    <img
-                      src={v.thumbnail}
-                      srcSet={srcSetOf(v)}
+                    <Thumbnail
+                      video={v}
                       sizes="128px"
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="aspect-video w-32 shrink-0 rounded-lg bg-surface-2 object-cover ring-1 ring-black/5"
+                      className="w-32 shrink-0 rounded-lg ring-1 ring-black/5"
                     />
                     <div className="min-w-0">
                       <p className="eyebrow truncate">{v.category}</p>

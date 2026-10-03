@@ -1,8 +1,3 @@
-/* One gutter for the header, pages and sections so everything lines up. */
-:root {
-  --gutter: clamp(1rem, 4vw, 4rem);
-}
-
 /* Lock page scroll while the quick-look dialog is open, without layout shift. */
 html:has(dialog[data-details][open]) {
   overflow: hidden;

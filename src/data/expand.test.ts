@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
-import { expandCatalog, expandRecord, isValidRecord } from './expand'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { hashString } from '../lib/seed'
+import { expandCatalog, expandRecord, isValidRecord, setLoadSeed } from './expand'
 
 const base = {
   id: 'open-data-101',
@@ -9,6 +10,9 @@ const base = {
   p: '2026-01-25T02:15:36+08:00',
 }
 const image = (name: string) => `https://i.ytimg.com/vi/abcDEF12345/${name}.jpg`
+
+// Show the first member of each thumbnail set (the original thumbnail).
+beforeAll(() => setLoadSeed(-hashString(base.id)))
 
 describe('expandRecord', () => {
   it('derives URLs and defaults for a record with maxres images', () => {
@@ -23,6 +27,7 @@ describe('expandRecord', () => {
       publishedAt: '2026-01-25T02:15:36+08:00',
       sourceUrl: 'https://oer.upou.edu.ph/open-data-101/',
       thumbnail: image('mqdefault'),
+      thumbnails: [image('mqdefault'), image('mq1'), image('mq2'), image('mq3')],
       backdrop: image('maxresdefault'),
       frames: [image('maxres1'), image('maxres2'), image('maxres3')],
     })

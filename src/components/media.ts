@@ -1,9 +1,8 @@
-import { getCategories, getLatest } from '../data/catalog'
+import { getCategoryByName, getLatest } from '../data/catalog'
 import type { Video } from '../types'
 
 /** Route slug of a category name (names that collide after slugifying get a suffix). */
-export const slugOfCategory = (name: string) =>
-  getCategories().find((c) => c.name === name)?.slug ?? ''
+export const slugOfCategory = (name: string) => getCategoryByName(name)?.slug ?? ''
 
 // Only YouTube's maxresdefault stills are really 1280px wide; other backdrops are 320px frames
 // or source-site images of unknown size, so they are never advertised as 1280w.

@@ -25,16 +25,19 @@ function useSavedCount() {
   return ids.filter((id) => getVideo(id)).length
 }
 
+// Decorative: the link carries the count in its name.
 function CountBadge({ count, className = '' }: { count: number; className?: string }) {
   return (
     <span
+      aria-hidden="true"
       className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-maroon px-1.5 text-[0.6875rem] leading-none font-bold text-on-accent tabular-nums ${className}`}
     >
       {count}
-      <span className="sr-only"> saved</span>
     </span>
   )
 }
+
+const myListLabel = (saved: number) => (saved > 0 ? `My List, ${saved} saved` : undefined)
 
 export default function Header() {
   const scrolled = useScrolledPast(8)
@@ -48,12 +51,12 @@ export default function Header() {
           : 'bg-paper'
       }`}
     >
-      <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) lg:gap-x-3">
+      <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) md:flex-nowrap lg:gap-x-3">
         <div className="flex min-w-0 shrink-0 items-center gap-2">
           <Link
             to="/"
             aria-label="UPOU Networks, home"
-            className="flex items-baseline gap-1 rounded-sm py-2 font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
+            className="flex items-baseline gap-1 rounded-sm py-2.5 font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
           >
             <span className="text-ink">UPOU</span>
             <span className="text-maroon">Networks</span>
@@ -75,7 +78,7 @@ export default function Header() {
           <NavLink to="/collections" className={NAV_LINK}>
             Collections
           </NavLink>
-          <NavLink to="/my-list" className={NAV_LINK}>
+          <NavLink to="/my-list" aria-label={myListLabel(saved)} className={NAV_LINK}>
             My List
             {saved > 0 && <CountBadge count={saved} className="ml-1.5" />}
           </NavLink>
@@ -145,9 +148,22 @@ function SearchBox() {
   }, [pending])
 
   const requestFocus = () => {
+    // The search page's own field (phones) takes over while it is the visible one.
+    const pageField = document.querySelector<HTMLInputElement>('input[data-search-page]')
+    if (pageField?.offsetParent) {
+      pageField.focus()
+      pageField.select()
+      return
+    }
+    const field = input.current
+    if (field?.offsetParent) {
+      // Already visible (md and up): focus now, before any keystroke can land.
+      field.focus()
+      field.select()
+      return
+    }
+    // The phone field renders first; the tick focuses it once it is visible.
     setOpen(true)
-    // Focus now when the field is already visible; the tick covers the phone field that opens first.
-    input.current?.focus()
     setFocusTick((t) => t + 1)
   }
   useAppEvent(FOCUS_SEARCH_EVENT, requestFocus)
@@ -181,12 +197,12 @@ function SearchBox() {
         label="Search"
         icon={<SearchIcon />}
         onClick={requestFocus}
-        className={`ml-auto md:hidden ${expanded ? 'invisible' : ''}`}
+        className={`ml-auto md:hidden ${expanded || onSearchPage ? 'invisible' : ''}`}
       />
       <form
         role="search"
         onSubmit={onSubmit}
-        className={`${expanded ? 'flex' : 'hidden md:flex'} order-last basis-full pb-2.5 md:order-none md:ml-auto md:w-44 md:basis-auto md:pb-0 lg:w-72 xl:w-80`}
+        className={`${expanded ? 'flex' : 'hidden md:flex'} order-last min-w-0 basis-full pb-2.5 md:order-none md:ml-auto md:w-44 md:basis-auto md:pb-0 lg:w-72 xl:w-80`}
       >
         <label htmlFor={inputId} className="sr-only">
           Search videos
@@ -265,7 +281,7 @@ export function TabBar() {
           </NavLink>
         </li>
         <li className="flex flex-1">
-          <NavLink to="/my-list" className={TAB}>
+          <NavLink to="/my-list" aria-label={myListLabel(saved)} className={TAB}>
             <span className="relative">
               <BookmarkIcon className="size-6" />
               {saved > 0 && <CountBadge count={saved} className="absolute -top-1.5 -right-3" />}

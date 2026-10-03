@@ -40,11 +40,11 @@ describe('Header and tab bar', () => {
       'page',
     )
     expect(within(nav).getByRole('link', { name: 'Browse' })).not.toHaveAttribute('aria-current')
-    expect(within(nav).getByRole('link', { name: /My List/ })).toHaveTextContent(/1 saved$/)
+    expect(within(nav).getByRole('link', { name: 'My List, 1 saved' })).toHaveTextContent('1')
 
     const tabs = screen.getByRole('navigation', { name: 'Primary' })
     expect(within(tabs).getAllByRole('link')).toHaveLength(4)
-    expect(within(tabs).getByRole('link', { name: /My List/ })).toHaveTextContent(/1 saved/)
+    expect(within(tabs).getByRole('link', { name: 'My List, 1 saved' })).toHaveTextContent('1')
     expect(screen.getByRole('searchbox', { name: 'Search videos' })).toBeInTheDocument()
   })
 

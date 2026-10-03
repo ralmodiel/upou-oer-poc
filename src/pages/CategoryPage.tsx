@@ -94,7 +94,7 @@ export default function CategoryPage() {
         <div
           role="group"
           aria-label="Sort by"
-          className="inline-flex rounded-pill border border-line bg-surface p-1"
+          className="inline-flex rounded-pill border border-line bg-surface p-0.5"
         >
           {SORTS.map((o) => (
             <Link
@@ -103,7 +103,7 @@ export default function CategoryPage() {
               replace
               preventScrollReset
               aria-current={o.value === sort ? 'true' : undefined}
-              className="inline-flex h-9 items-center rounded-pill px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:text-ink aria-[current]:bg-ink aria-[current]:text-paper"
+              className="inline-flex h-10 items-center rounded-pill px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:text-ink aria-[current]:bg-ink aria-[current]:text-paper"
             >
               {o.label}
             </Link>

@@ -1,9 +1,9 @@
-import { useMemo, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint, TEXT_LINK } from '../components/browse-ui'
 import { DetailsContext, pageTarget } from '../components/details'
-import { useDocumentTitle } from '../components/hooks'
+import { useDocumentTitle, useRovingRow } from '../components/hooks'
 import { SearchIcon } from '../components/icons'
 import { slugOfCategory } from '../components/media'
 import Button from '../components/ui/Button'
@@ -11,7 +11,12 @@ import Chip from '../components/ui/Chip'
 import EmptyState from '../components/ui/EmptyState'
 import SectionHeading from '../components/ui/SectionHeading'
 import { getCategories, getCategory, searchVideos, videos } from '../data/catalog'
+import { focusSearch } from '../lib/shortcuts'
 import { isGenericTag, tagKey } from '../lib/tags'
+
+const PAGE_SIZE = 24
+// How far each query was expanded, so Back from the player shows the same page length.
+const expanded = new Map<string, number>()
 
 /** Most used tags, de-duplicated by case and by series prefix ("TechTips Series 1"). */
 function popularTags(limit: number) {
@@ -58,6 +63,28 @@ export default function SearchPage() {
       .map(([name, n]) => ({ name, n, slug: slugOfCategory(name) }))
   }, [all, category])
 
+  // Results come in pages of 24; a new query or filter starts over.
+  const pageKey = `${q}\n${slug}`
+  const [paging, setPaging] = useState<{ key: string; shown: number } | null>(null)
+  const shown = paging?.key === pageKey ? paging.shown : (expanded.get(pageKey) ?? PAGE_SIZE)
+  const visible = results.slice(0, shown)
+  const grid = useRef<HTMLDivElement>(null)
+  const focusAt = useRef(-1)
+
+  // After "Load more", focus the first new card so keyboard and screen-reader users land on it.
+  useEffect(() => {
+    if (focusAt.current < 0) return
+    grid.current?.querySelectorAll<HTMLElement>('[data-card-link]')[focusAt.current]?.focus()
+    focusAt.current = -1
+  })
+
+  const loadMore = () => {
+    const next = Math.min(results.length, shown + PAGE_SIZE)
+    expanded.set(pageKey, next)
+    focusAt.current = shown
+    setPaging({ key: pageKey, shown: next })
+  }
+
   // Detail links keep the query and filter behind the dialog.
   const kept = new URLSearchParams(params)
   kept.delete('v')
@@ -71,6 +98,28 @@ export default function SearchPage() {
   }
 
   useDocumentTitle(q ? `“${q}” · Search · UPOU Networks` : 'Search · UPOU Networks')
+
+  // Filter chips: one Tab stop, entered at the active filter.
+  const activeFacet = category ? facets.findIndex((f) => f.name === category.name) + 1 : 0
+  const { listProps, tabIndexOf } = useRovingRow(facets.length + 1, activeFacet)
+
+  // Phones: the filter row scrolls sideways, so bring the active chip into view.
+  const row = useRef<HTMLUListElement>(null)
+  useEffect(() => {
+    const ul = row.current
+    const chip = ul?.querySelector<HTMLElement>('[aria-current]')
+    if (!ul || !chip || ul.scrollWidth <= ul.clientWidth) return
+    const left = chip.getBoundingClientRect().left - ul.getBoundingClientRect().left + ul.scrollLeft
+    ul.scrollTo({ left: left - (ul.clientWidth - chip.offsetWidth) / 2 })
+  }, [slug, q])
+
+  // Arriving without a query from md up: the header field is the search field, so focus it.
+  const landedEmpty = !q
+  useEffect(() => {
+    if (landedEmpty && window.matchMedia('(min-width: 48rem)').matches) focusSearch()
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -102,7 +151,8 @@ export default function SearchPage() {
             : 'Lectures, webinars and student work from UP Open University. Search by title, topic or tag, or start from a popular topic.'
         }
       />
-      <form role="search" onSubmit={submit} className="mt-5 flex max-w-2xl gap-2">
+      {/* Phones only: from md up the header field is always visible, so one field is enough. */}
+      <form role="search" onSubmit={submit} className="mt-5 flex max-w-2xl gap-2 md:hidden">
         <label htmlFor="search-page-q" className="sr-only">
           Search videos
         </label>
@@ -112,6 +162,7 @@ export default function SearchPage() {
           name="q"
           type="search"
           defaultValue={raw}
+          data-search-page=""
           placeholder="Title, topic or tag"
           autoComplete="off"
           className="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface px-5 text-base text-ink placeholder:text-ink-3 focus:border-maroon"
@@ -131,20 +182,28 @@ export default function SearchPage() {
           {all.length > 0 && (
             <nav aria-label="Filter by collection" className="mt-3">
               <ul
+                ref={row}
                 role="list"
+                {...listProps}
                 className="-mx-(--gutter) flex gap-2 overflow-x-auto scroll-px-(--gutter) px-(--gutter) pb-1 scrollbar-none md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
               >
                 <li>
-                  <Chip to={{ search: filterLink() }} active={!category} count={all.length}>
+                  <Chip
+                    to={{ search: filterLink() }}
+                    active={!category}
+                    count={all.length}
+                    tabIndex={tabIndexOf(0)}
+                  >
                     All
                   </Chip>
                 </li>
-                {facets.map((f) => (
+                {facets.map((f, i) => (
                   <li key={f.name}>
                     <Chip
                       to={{ search: filterLink(f.slug) }}
                       active={category?.name === f.name}
                       count={f.n}
+                      tabIndex={tabIndexOf(i + 1)}
                     >
                       {f.name}
                     </Chip>
@@ -154,12 +213,26 @@ export default function SearchPage() {
             </nav>
           )}
           {count > 0 ? (
-            <div className="mt-8">
-              <GridHint />
-              <DetailsContext value={target}>
-                <VideoGrid videos={results} />
-              </DetailsContext>
-            </div>
+            <>
+              <div ref={grid} className="mt-8">
+                <GridHint />
+                <DetailsContext value={target}>
+                  <VideoGrid videos={visible} />
+                </DetailsContext>
+              </div>
+              {count > PAGE_SIZE && (
+                <div className="mt-10 flex flex-col items-center gap-3">
+                  <p className="text-sm text-ink-3">
+                    Showing {visible.length} of {count}
+                  </p>
+                  {visible.length < count && (
+                    <Button variant="secondary" onClick={loadMore}>
+                      Load {Math.min(PAGE_SIZE, count - visible.length)} more
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <>
               <EmptyState icon={<SearchIcon />} title="Nothing matched" compact>

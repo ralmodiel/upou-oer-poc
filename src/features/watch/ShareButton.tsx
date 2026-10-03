@@ -10,10 +10,10 @@ export default function ShareButton({ title }: { title: string }) {
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
-  const show = (text: string) => {
+  const show = (text: string, ms = 2400) => {
     setToast(text)
     clearTimeout(timer.current)
-    timer.current = setTimeout(() => setToast(''), 2400)
+    timer.current = setTimeout(() => setToast(''), ms)
   }
 
   const share = async () => {
@@ -25,7 +25,8 @@ export default function ShareButton({ title }: { title: string }) {
       try {
         await navigator.share({ title, url })
       } catch {
-        show(`Copy this link: ${url}`)
+        // Neither clipboard nor share sheet: leave the link up long enough to copy by hand.
+        show(`Copy this link: ${url}`, 10_000)
       }
     }
   }

@@ -1,6 +1,5 @@
 import Chip from '../../components/ui/Chip'
-import { isGenericTag, tagKey } from '../../lib/tags'
-import { tidyTag } from '../reel/plan'
+import { isGenericTag, tagKey, tidyTag } from '../../lib/tags'
 
 /** Distinct, meaningful tags as search links. */
 export default function WatchTags({ tags }: { tags: readonly string[] }) {

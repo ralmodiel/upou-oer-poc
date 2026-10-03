@@ -16,3 +16,7 @@ const GENERIC = new Set([
 ])
 
 export const isGenericTag = (tag: string) => GENERIC.has(tagKey(tag))
+
+/** Title-cases all-lowercase tags such as "open data"; mixed-case tags are left alone. */
+export const tidyTag = (tag: string) =>
+  tag === tag.toLowerCase() ? tag.replace(/\b[a-z]/g, (c) => c.toUpperCase()) : tag

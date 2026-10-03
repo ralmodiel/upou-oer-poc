@@ -9,9 +9,11 @@ export interface Video {
   channel: string
   publishedAt: string
   sourceUrl: string
-  /** 16:9, ~320px wide. */
+  /** 16:9, ~320px wide; the member of `thumbnails` shown during this page load. */
   thumbnail: string
-  /** 16:9, >= 1280px wide. */
+  /** All thumbnail candidates (320px): the original first, then the three still frames. */
+  thumbnails?: string[]
+  /** 16:9, >= 1280px wide when available; matches `thumbnail` for hi-res videos. */
   backdrop: string
   /** Three 16:9 still frames from the video, used by the promo reel. */
   frames: string[]

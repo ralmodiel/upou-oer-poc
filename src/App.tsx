@@ -13,7 +13,12 @@ function Root() {
   return (
     <>
       <Outlet />
-      <ScrollRestoration />
+      {/* Fresh loads of a different URL start at the top; reloads and Back still restore. */}
+      <ScrollRestoration
+        getKey={(location) =>
+          location.key === 'default' ? location.pathname + location.search : location.key
+        }
+      />
     </>
   )
 }

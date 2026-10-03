@@ -38,6 +38,22 @@ function useShownHistory() {
   return shown
 }
 
+const SECTIONS_PER_FRAME = 4
+
+// The first paint carries the top sections; the rest follow a few per frame so the home page
+// is interactive sooner. Coming Back (POP) everything renders at once, so the restored scroll
+// position lands on content.
+function useSectionCount(total: number) {
+  const popped = useNavigationType() === 'POP'
+  const [count, setCount] = useState(() => (popped ? total : SECTIONS_PER_FRAME))
+  useEffect(() => {
+    if (count >= total) return
+    const frame = requestAnimationFrame(() => setCount((c) => c + SECTIONS_PER_FRAME))
+    return () => cancelAnimationFrame(frame)
+  }, [count, total])
+  return Math.min(count, total)
+}
+
 export default function BrowsePage() {
   useDocumentTitle('UPOU Networks · Open educational videos')
   const entries = useShownHistory()
@@ -54,6 +70,7 @@ export default function BrowsePage() {
       .slice(0, 4)
   }, [featured])
   const rows = getRows()
+  const sectionCount = useSectionCount(rows.length)
 
   if (!videos.length) {
     return (
@@ -75,7 +92,7 @@ export default function BrowsePage() {
       <div className="mt-10 space-y-2 sm:mt-12">
         <ContinueWatching videos={recent} />
         <CollectionChips />
-        {rows.map((row) => (
+        {rows.slice(0, sectionCount).map((row) => (
           <Section key={row.id} row={row} />
         ))}
       </div>

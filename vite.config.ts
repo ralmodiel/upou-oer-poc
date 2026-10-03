@@ -12,7 +12,7 @@ const csp = [
   "script-src 'self'",
   "style-src 'self'",
   "img-src 'self' data: https://i.ytimg.com https://oer.upou.edu.ph",
-  'frame-src https://www.youtube-nocookie.com https://www.youtube.com',
+  'frame-src https://www.youtube-nocookie.com',
   "connect-src 'self'",
   "font-src 'self'",
   "media-src 'self'",
@@ -53,6 +53,8 @@ export default defineConfig({
   server: { port: 5280 },
   preview: { port: 5281 },
   build: {
+    // Every browser Tailwind 4 supports has native modulepreload; skip the polyfill.
+    modulePreload: { polyfill: false },
     rolldownOptions: {
       // Libraries and the crawled catalog change on their own schedules, so each gets a cacheable chunk.
       output: {

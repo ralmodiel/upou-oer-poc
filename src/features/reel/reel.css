@@ -145,11 +145,19 @@
   object-fit: cover;
 }
 
-/* Low-res stills (cinematic): a blurred fill behind a framed, smaller stage. */
+/*
+  Low-res stills (cinematic): a blurred fill behind a framed, smaller stage. The fill is laid out
+  at a quarter of the stage and scaled up, so the blur runs on a small layer.
+*/
 .reel-backfill {
   position: absolute;
-  inset: -6%;
-  filter: blur(18px) saturate(1.1);
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 25%;
+  transform-origin: 0 0;
+  transform: translate(-6cqw, -6cqh) scale(4.48);
+  filter: blur(4px) saturate(1.1);
   animation: reel-fade-in 700ms var(--ease) var(--t1) both;
 }
 
@@ -252,7 +260,7 @@
   gap: 0.5em;
   padding: 0;
   list-style: none;
-  font-size: clamp(0.55rem, min(1.1cqw, 2cqh), 1.3rem);
+  font-size: clamp(0.6rem, min(1.1cqw, 2cqh), 1.3rem);
 }
 
 .reel-tags li {
@@ -404,7 +412,7 @@
   top: calc(50cqh + 14.0625cqw + 3cqh);
   left: 6cqw;
   gap: 0.5em;
-  font-size: clamp(0.55rem, min(1.1cqw, 2cqh), 1.2rem);
+  font-size: clamp(0.6rem, min(1.1cqw, 2cqh), 1.2rem);
   font-weight: 600;
   letter-spacing: 0.2em;
   color: var(--ink-2);
@@ -683,7 +691,7 @@
 
 .reel-ident-sub {
   margin-right: -0.32em;
-  font-size: clamp(0.55rem, min(1.2cqw, 2.2cqh), 1.3rem);
+  font-size: clamp(0.6rem, min(1.2cqw, 2.2cqh), 1.3rem);
   font-weight: 500;
   letter-spacing: 0.32em;
   text-transform: uppercase;
@@ -820,7 +828,7 @@
   display: flex;
   align-items: center;
   gap: 0.7em;
-  font-size: clamp(0.55rem, min(1.1cqw, 2cqh), 1.3rem);
+  font-size: clamp(0.6rem, min(1.1cqw, 2cqh), 1.3rem);
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -863,7 +871,7 @@
 
 .reel-end-meta,
 .reel-count {
-  font-size: clamp(0.6rem, min(1.4cqw, 2.5cqh), 1.6rem);
+  font-size: clamp(0.65rem, min(1.4cqw, 2.5cqh), 1.6rem);
 }
 
 .reel-end-meta {
@@ -1035,13 +1043,24 @@
 /* ---------- Small stages (phones): fewer, larger things ---------- */
 
 @container (max-width: 560px) {
+  /* The controls take the bottom band (3cqh + 2.5rem), so copy keeps clear of it. */
   .reel[data-template='split'] :is(.reel-stage, .reel-frame) {
+    top: calc(50% - 0.75rem);
     width: 46cqw;
   }
 
   .reel[data-template='split'] .reel-copy {
+    top: 2cqh;
+    bottom: calc(3cqh + 2.5rem + 0.4rem);
     left: 56cqw;
     gap: max(0.4rem, 2cqh);
+  }
+
+  .reel[data-template='split'] .reel-hook {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
   }
 
   .reel[data-template='split'][data-side='right'] .reel-copy {
@@ -1061,13 +1080,37 @@
     inset: 6cqh 8cqw;
   }
 
+  /* Kinetic: at most four title lines, and the hook sits above the controls. */
   .reel[data-template='kinetic'] .reel-titleblock {
-    top: 9cqh;
+    top: 7cqh;
+  }
+
+  .reel[data-template='kinetic'] .reel-title {
+    font-size: min(calc(var(--kw) * 0.96cqw), calc(var(--kh-s) * 1cqh));
+  }
+
+  .reel[data-template='kinetic'] .reel-line:nth-child(n + 5) {
+    display: none;
+  }
+
+  .reel[data-template='kinetic'] .reel-line:nth-child(4):not(:last-child)::after {
+    content: '…';
   }
 
   .reel[data-template='kinetic'] .reel-story {
-    right: 40cqw;
-    bottom: 9cqh;
+    right: 6cqw;
+    bottom: calc(3cqh + 2.5rem + 0.4rem);
+  }
+
+  .reel[data-template='kinetic'] .reel-hook {
+    max-width: min(42ch, 88cqw);
+  }
+
+  .reel[data-template='kinetic'] .reel-hook > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .reel-kicker {
@@ -1095,8 +1138,19 @@
 }
 
 @container (max-width: 420px) {
-  .reel-tags,
+  .reel-tags {
+    display: none;
+  }
+
+  /* The byline keeps only "category · year". */
   .reel-end-meta {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reel-end-meta span:first-child:not(:only-child) {
     display: none;
   }
 

@@ -8,7 +8,7 @@ html:has(dialog[data-details][open]) {
    follows the grid: two rows of two cards on phones, one row of three or four from md. */
 .lazy-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 30rem;
+  contain-intrinsic-size: auto 35rem;
 }
 @media (width >= 48rem) {
   .lazy-section {

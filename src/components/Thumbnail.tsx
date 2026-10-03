@@ -28,8 +28,8 @@ const TILE_TONE: Record<Tone, Tone> = {
 /**
  * Stand-in for a video with no usable image (every still flagged): its title in the display serif
  * on the collection's brand band under a short rule, like the reel's type-only cards; never a blank
- * or dark box. Below 8rem wide it shows the title's first letter instead. Decorative: the card
- * names the video already.
+ * or dark box. Narrow tiles keep the title, in two lines. Decorative: the card names the video
+ * already.
  */
 export function TitleTile({ video, className = '' }: { video: Video; className?: string }) {
   const band = BAND[TILE_TONE[toneOf(slugOfCategory(video.category))]]
@@ -39,17 +39,14 @@ export function TitleTile({ video, className = '' }: { video: Video; className?:
       data-title-tile=""
       className={`absolute inset-0 overflow-hidden select-none @container ${band.fill} ${band.text} ${className}`}
     >
-      <div className="flex size-full flex-col justify-end p-[7cqi] @max-[8rem]:hidden">
+      <div className="flex size-full flex-col justify-end p-[7cqi] @max-[8rem]:p-[6cqi]">
         <span
           className={`mb-[4cqi] h-[clamp(2px,0.9cqi,5px)] w-[min(16cqi,4rem)] shrink-0 rounded-pill ${band.rule}`}
         />
-        <span className="line-clamp-3 font-display text-[length:clamp(0.75rem,9.5cqi,2.25rem)] leading-[1.08] text-balance">
+        <span className="line-clamp-3 font-display text-[length:clamp(0.75rem,9.5cqi,2.25rem)] leading-[1.08] text-balance @max-[8rem]:line-clamp-2">
           {video.title}
         </span>
       </div>
-      <span className="hidden size-full place-items-center font-display text-[length:50cqi] leading-none @max-[8rem]:grid">
-        {video.title.charAt(0)}
-      </span>
     </div>
   )
 }

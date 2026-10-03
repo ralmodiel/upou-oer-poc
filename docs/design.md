@@ -18,25 +18,42 @@ The 10-second generated promo reel stays. It is the product's signature feature.
   `#f5a71d`, green card `#036a4d`; seal forest `#00563f`, maroon `#8d1436`, gold `#fcb51b`.
   Tokens (CSS variables in `src/index.css`, exposed to Tailwind through `@theme`):
 
-| Token                 | Light                 | Dark               | Use                                    |
-| --------------------- | --------------------- | ------------------ | -------------------------------------- |
-| `--color-paper`       | `#faf8f6`             | `#1a191a`          | page background                        |
-| `--color-surface`     | `#ffffff`             | `#242325`          | cards, header, dialogs                 |
-| `--color-surface-2`   | `#f2eeeb`             | `#2f2e30`          | chips, wells, skeletons                |
-| `--color-ink`         | `#373637`             | `#f4f1ef`          | primary text (logo charcoal)           |
-| `--color-ink-2`       | `#5c5a5c`             | `#c9c5c7`          | secondary text                         |
-| `--color-ink-3`       | `#6b686a`             | `#9b9699`          | tertiary text, placeholders (AA)       |
-| `--color-line`        | `#e6e1dd`             | `#3a383b`          | 1px borders                            |
-| `--color-maroon`      | `#8d0c34`             | `#ec7097`          | primary actions, links, focus          |
-| `--color-maroon-2`    | `#7f001f`             | `#f28cab`          | hover / pressed                        |
-| `--color-maroon-soft` | `#f9e6ed`             | `#3f1a2a`          | tinted backgrounds                     |
-| `--color-forest`      | `#00563f`             | `#5fc59c`          | category eyebrows, "open/free" accents |
-| `--color-forest-soft` | `#e2efe9`             | `#173328`          | tinted backgrounds                     |
-| `--color-amber`       | `#f5a71d`             | `#f7b545`          | highlights, "New" marker (ink text on) |
-| `--color-gold`        | `#fcb51b`             | `#fcc75a`          | featured marker only                   |
-| `--color-overlay`     | `rgb(55 54 55 / 0.6)` | `rgb(0 0 0 / 0.7)` | dialog backdrop                        |
-| `--color-on-accent`   | `#ffffff`             | `#1a191a`          | text on maroon / forest fills          |
-| `--color-charcoal`    | `#373637`             | `#373637`          | text on amber / gold (both themes)     |
+| Token                   | Light                 | Dark               | Use                                    |
+| ----------------------- | --------------------- | ------------------ | -------------------------------------- |
+| `--color-paper`         | `#faf8f6`             | `#1a191a`          | page background                        |
+| `--color-surface`       | `#ffffff`             | `#242325`          | cards, header, dialogs                 |
+| `--color-surface-2`     | `#f2eeeb`             | `#2f2e30`          | chips, wells, skeletons                |
+| `--color-ink`           | `#373637`             | `#f4f1ef`          | primary text (logo charcoal)           |
+| `--color-ink-2`         | `#5c5a5c`             | `#c9c5c7`          | secondary text                         |
+| `--color-ink-3`         | `#6b686a`             | `#9b9699`          | tertiary text, placeholders (AA)       |
+| `--color-line`          | `#e6e1dd`             | `#3a383b`          | 1px borders                            |
+| `--color-maroon`        | `#8d0c34`             | `#fcc75a`          | brand text and links (gold in dark)    |
+| `--color-maroon-2`      | `#7f001f`             | `#ffd98a`          | link hover                             |
+| `--color-maroon-soft`   | `#f4e9e4`             | `#3f1a2a`          | tinted backgrounds (cream in light)    |
+| `--color-forest`        | `#00563f`             | `#5fc59c`          | category eyebrows, "open/free" accents |
+| `--color-forest-soft`   | `#e2efe9`             | `#173328`          | tinted backgrounds                     |
+| `--color-amber`         | `#f5a71d`             | `#f7b545`          | highlights, "New" marker (ink text on) |
+| `--color-gold`          | `#fcb51b`             | `#fcc75a`          | featured marker only                   |
+| `--color-overlay`       | `rgb(55 54 55 / 0.6)` | `rgb(0 0 0 / 0.7)` | dialog backdrop                        |
+| `--color-on-accent`     | `#ffffff`             | `#1a191a`          | text on maroon / forest fills          |
+| `--color-charcoal`      | `#373637`             | `#373637`          | text on amber / gold (both themes)     |
+| `--color-action`        | `#7b1113`             | `#6e0f26`          | filled buttons, active chips, badges   |
+| `--color-action-2`      | `#640d0f`             | `#86172f`          | hover on those fills                   |
+| `--color-on-action`     | `#ffffff`             | `#faf8f6`          | text on action fills                   |
+| `--color-focus`         | `#8d0c34`             | `#fcc75a`          | keyboard focus ring                    |
+| `--color-mark-maroon`   | `#7b1113`             | `#c23a5f`          | chip dots, collection bars (maroon)    |
+| `--color-mark-forest`   | `#014421`             | `#2f8f68`          | chip dots, collection bars (forest)    |
+| `--color-mark-charcoal` | `#373637`             | `#9b9699`          | chip dots, collection bars (charcoal)  |
+
+Round 3 (QA3-A) token decisions: **actions** fill with UP maroon, the band colour, in both themes
+(the deep band maroon with paper text in dark), so `--color-maroon` is free to be brand _text_;
+in dark it is gold (`#fcc75a`), so every maroon link, rule or active label reads gold on dark
+surfaces while maroon stays in fills and bands. **Focus** is its own token: maroon in light, gold
+in dark; the global ring is 2px with a 2px offset, cards draw a 3px outline on the article, and
+`band-focus` swaps the ring to gold on maroon, forest and charcoal bands. **Marks** (chip dots, the
+top bar of a collection card) use the band colours, lifted in dark so a 10px dot stays visible on
+dark paper (gold uses `--color-band-gold`). Light `maroon-soft` is cream (`#f4e9e4`): the old pink
+tint read as pink beside the photos.
 
 Contrast-driven adjustments (checked with a WCAG script): light `ink-3` darkened one step so it
 clears 4.5:1 on `surface-2`; dark `maroon` lightened so it clears 4.5:1 on `surface-2` and
@@ -47,11 +64,14 @@ Tailwind also gets `rounded-card`, `rounded-pill`, `shadow-lift`, `ease-out-soft
 `font-display`, `text-title` (page-title scale) and an `eyebrow` utility; `dark:` follows
 `data-theme`, not the OS.
 
-Light is the default. Dark follows `prefers-color-scheme` and a manual toggle (`light` /
+Light is the default. Dark follows `prefers-color-scheme` and a manual choice (`light` /
 `dark` / `system`) stored in `localStorage` under `upou:theme`; the `<html>` element carries
 `data-theme="light|dark"`. A tiny inline-free bootstrap (in `main.tsx`, before render)
 applies the stored theme to avoid a flash. Verify AA contrast for every text token on
-`paper` and `surface` in both themes with a script before finishing.
+`paper` and `surface` in both themes with a script before finishing. **One theme stop:** the
+header has a single icon button that flips light ↔ dark, so the first press always changes
+something and the remote meets one stop; all three choices (Light, Dark, System) sit in the Help
+menu's Theme group.
 
 - **Type:** display serif for headings and the wordmark, humanist sans for UI and body. Both
   self-hosted from `public/fonts/` (OFL-licensed, latin subset, `font-display: swap`, total
@@ -86,18 +106,19 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
      scroll snapping, no hover scaling.
   3. **Collections** chip row: every category with its count, linking to `/collections/:slug`;
      "All collections" link.
-  4. **Sections:** one per category with ≥ 3 videos, each a heading + "See all (n)" link and a
-     responsive **grid capped at 8 cards** (2 cols at 360px, 3 at md, 4 at lg). Grids, not
-     horizontal rows, are the main browsing pattern. Render below-the-fold sections lazily
-     (`content-visibility: auto` plus a sensible `contain-intrinsic-size`).
+  4. **Sections:** the largest collections only (see "Round 4: a shorter home"), each a heading +
+     "See all (n)" link and one row of cards (two rows of two on phones), then an "All 30
+     collections" button. Grids, not horizontal rows, are the main browsing pattern. Below-the-fold
+     sections render lazily (`content-visibility: auto` plus a sensible `contain-intrinsic-size`).
 - **Card:** thumbnail (16:9, rounded, lazy, `srcSet` 320w/1280w with accurate `sizes`), then
   eyebrow (category, forest, small caps), title (sans semibold, 2-line clamp), meta (date ·
   "New" marker for the 10 newest). **Clicking the card plays** (`/watch/:id`). Secondary
   actions above the stretched link: bookmark (My List, `aria-pressed`) and info (Quick look),
   both visible on touch devices and on hover/focus-within on pointer devices. Hover: 2px lift +
   shadow + a small play glyph on the thumbnail. Keyboard: card link, then the two buttons.
-- **Collections (`/collections`):** grid of category cards (cover image = newest video, name,
-  count, 2–3 sample titles). **Category (`/collections/:slug`):** title, count, sort control
+- **Collections (`/collections`):** from md, a grid of category cards (a mosaic of the newest
+  stills, name, count, 2–3 sample titles); on phones a compact list (see round 4).
+  **Category (`/collections/:slug`):** title, count, sort control
   (Newest / Oldest / A–Z), full grid with "Load more" in pages of 24.
 - **Search:** results grid with a category filter chip row and a result count; empty state with
   suggested topics; no results → suggestions.
@@ -218,8 +239,8 @@ Use more of the UP and UPOU colors in the page chrome, never as a tint over imag
   - A thin tri-color brand stripe (maroon · gold · forest, 3–4px) along the top of the header.
   - The home intro band ("Open Educational Resources from the University of the Philippines Open
     University") on a solid maroon or forest band with paper text and a gold rule.
-  - Section headings with a short gold rule and brand-colored eyebrows; alternating section
-    background bands (paper / forest-soft / maroon-soft) for rhythm.
+  - Section headings with a short gold rule and brand-colored eyebrows; tinted section bands
+    (forest-soft, maroon-soft) every third section for rhythm (round 4).
   - Each collection gets a deterministic brand color (maroon, forest, gold, charcoal) used for its
     chip dot, the top bar of its collection card and the solid band of its category page header.
   - Footer on a deep maroon (or forest) band with paper text and gold link hovers.
@@ -238,16 +259,19 @@ Brand color must be just as present in dark mode as in light mode; dark mode is 
 of the page. Add band tokens (surfaces that carry paper/charcoal text) to `src/index.css` next to
 the existing tokens:
 
-| Token                 | Light     | Dark      | Text on it            |
-| --------------------- | --------- | --------- | --------------------- |
-| `--color-band-maroon` | `#7b1113` | `#6e0f26` | `#faf8f6`             |
-| `--color-band-forest` | `#014421` | `#0f4a35` | `#faf8f6`             |
-| `--color-band-gold`   | `#fcb51b` | `#e3a91a` | `#1a191a` / `#373637` |
+| Token                   | Light     | Dark      | Text on it            |
+| ----------------------- | --------- | --------- | --------------------- |
+| `--color-band-maroon`   | `#7b1113` | `#6e0f26` | `#faf8f6`             |
+| `--color-band-forest`   | `#014421` | `#0f4a35` | `#faf8f6`             |
+| `--color-band-gold`     | `#fcb51b` | `#e3a91a` | `#1a191a` / `#373637` |
+| `--color-band-charcoal` | `#373637` | `#373637` | `#faf8f6`             |
 
 - The header stripe, intro band, footer band, collection bands and section rules use these in both
-  themes; soft section backgrounds use `maroon-soft` / `forest-soft` (already themed).
+  themes; soft section backgrounds use `maroon-soft` / `forest-soft` (already themed; mixed 70%
+  toward paper in dark on the home page).
 - Dark mode keeps gold as the accent for rules, active states and badges; brand-colored text on dark
-  surfaces uses the lighter dark tokens (`--color-maroon` #ec7097, `--color-forest` #5fc59c).
+  surfaces uses the lighter dark tokens (`--color-maroon` is gold `#fcc75a`, `--color-forest`
+  `#5fc59c`).
 - Verify AA for every band/text pair in both themes with a script, and compare light and dark
   screenshots of the same pages side by side: each brand element must be visible in both.
 
@@ -276,3 +300,93 @@ the existing tokens:
   or a catalogue tag ("Conference E-Proceedings"); acronyms keep their spelling (CHED, ASEAN,
   COVID-19) and small words stay lowercase. Recommendation reasons never repeat the row heading,
   appear at most three times in eight rows, and quote what follows a series name.
+
+## Round 4 addendum: remote, a shorter home, privacy
+
+### Remote markers (`data-spatial`, `src/lib/spatial.ts`)
+
+The arrow keys move focus to the nearest control in that direction; a few markers shape the walk:
+
+- `group`: a wrapped or scrolling row of chips is one stop for ↑ / ↓ (entered at its roving tab
+  stop, else the active or first chip); ← / → walk its items.
+- `heading`: a "See all" link beside a section heading. ↑ / ↓ from outside the section pass over
+  it to the section's content; ↑ from inside the section reaches it.
+- `aside`: a secondary bar control (theme, Help) reached along its bar, never by ↑ / ↓ from the
+  page.
+- `entry`: the hero's Play; ↓ from the header lands there while it is near the top of the screen.
+- `wide`: a centred control (Load more, "All 30 collections") stands for its parent's full-width
+  row, so ↓ from any column of a grid reaches it before the footer.
+- `skip`: never a target (the skip link, Tab only).
+
+Open dialogs scope the walk to their contents, and a sticky dialog header counts as a bar. In
+settings panels the switches and their buttons share one column, so ↑ / ↓ visit them in order.
+
+### Round 4: a shorter home
+
+- **Cap:** from md, the 12 largest collections (General excluded), one row of cards each: three
+  at md, four from lg. Phones keep 7 sections of four cards (two rows of two). After them, a
+  centred "All 30 collections" button (`wide`) under "18 more collections, plus everything in
+  these." The chips row above still links to every collection.
+- **Personal rows:** "Recommended for you" keeps two rows (eight from lg, six at md, four on
+  phones); "Because you watched" gets one row, like the collections.
+- **Measured** at 1440×900, from the top to the footer by ↓ alone: a fresh visit was 22.7 screens
+  and 99 presses, and is now 8.3 screens and 28 presses. With a watch and search history it was
+  25.1 screens and 108 presses, and is now 10.3 screens and 35 presses. Images fetched after
+  scrolling the whole page: 7.2 MB, now 1.7 MB.
+- **Lazy sections:** a collection section shows a skeleton of the same geometry until it is
+  within two screens (IntersectionObserver), with `content-visibility: auto` and
+  `contain-intrinsic-size` per breakpoint (35rem on phones, 25rem from md, 29rem from 80rem). Back
+  and reload render every section at once, so the restored scroll position lands on the same
+  layout. Personal rows are computed after first paint and frozen for the visit (saving a card
+  does not reshuffle them), but a privacy change that alters what they may use recomputes them at
+  once and never shows the old picks meanwhile.
+- **Band rhythm:** every third section is a tinted band, forest-soft then maroon-soft, with paper
+  between and a hairline where two paper sections meet. In dark mode the tints are mixed 70%
+  toward paper, so a long page stays calm. Brand presence stays in the header stripe, the intro
+  band, collection colours and the footer.
+
+### Collections page
+
+- **Phones (below md):** one card holding a compact list: the collection's brand bar, a 16:9 cover
+  80px wide, the name (up to two lines), the count and a chevron; 64px rows, the whole row is the
+  link. 360px went from 15.8 screens of mosaic cards to 4.3.
+- **From md:** the mosaic cards. The first row loads its stills at once; the others load within a
+  quarter screen of the viewport (IntersectionObserver), which cut the first load at 1440 @2x from
+  662 KB to 338 KB.
+- Covers and the category header strip use only videos with a usable image (below).
+
+### Videos without a usable image
+
+When the frame filter flags every image candidate of a video (`imagesOf()` returns null; 239
+videos in frame data v2), cards and hero slots show a **title tile**: the title on the
+collection's band at every size, two lines when narrow, in the display serif under a short gold
+rule (charcoal maps to maroon, which never reads as a dark box among stills). No single-letter or
+monogram tiles. It never falls back to the flagged thumbnail or poster, and never shows a blank
+or dark box. Collection covers and the
+category header strip skip such videos. Card previews start only for videos with at least one
+unflagged still: without one, the reel would play its type on the dark stage. Featured opens on
+a slide with an image; a title-tile slide stays one press away.
+
+### Privacy and history panel (`PrivacyDialog`)
+
+- **Openers:** Help menu ("Privacy and history"), the footer link, "Manage history" on Recently
+  viewed and "Privacy settings" under the personal rows.
+- **Dialog:** a native modal with a sticky title and Close (phones scroll the panel inside
+  100dvh), and Done at the end. Each opening starts at the top. Esc, Backspace, Done and the
+  backdrop close it, and focus returns to the opener; when the opener went with its row (history
+  turned off under "Manage history"), focus moves to the nearest control where it was.
+- **Switches:** `role="switch"` buttons named by their label and described by their text. Off is an
+  outlined track with a grey knob, on is a forest track with a light knob (3:1 or better in both
+  themes). A switch that needs watch history shows off with "Needs …" and stays focusable
+  (`aria-disabled`), so the remote and screen readers still reach it; its stored choice returns
+  with history.
+- **Storage:** `upou:prefs` holds `history`, `useHistory`, `recommendations`, `recentlyViewed`,
+  `becauseYouWatched` and `searches` (all on by default); `upou:history` and `upou:searches` keep
+  the last 20 each. Turning "Save watch history" or "Save searches" off deletes what was saved and
+  stops recording (the watch page records nothing). "Use watch history for suggestions" off hides
+  Recently viewed and Because you watched, and Recommended, Up next and More like this ignore
+  history. Every change applies at once, persists across reloads and follows in other tabs
+  (storage events).
+- **Clear rows:** "3 videos in your history" with Clear history, "1 search saved" with Clear
+  searches, in the switches' column. At zero the button stays focusable and is marked
+  unavailable, so focus never drops.

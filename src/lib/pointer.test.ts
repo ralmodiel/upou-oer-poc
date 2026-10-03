@@ -1,6 +1,6 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { FINE_POINTER_QUERY, usePointerKind } from './pointer'
+import { FINE_POINTER_QUERY, lastInput, useInputModality, usePointerKind } from './pointer'
 
 const original = window.matchMedia
 
@@ -21,5 +21,21 @@ describe('usePointerKind', () => {
         }) as unknown as MediaQueryList,
     )
     expect(renderHook(() => usePointerKind()).result.current).toBe('fine')
+  })
+})
+
+describe('useInputModality', () => {
+  it('follows the input used last: keyboard after a key press, pointer after a pointer press', () => {
+    const { result } = renderHook(() => useInputModality())
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    })
+    expect(result.current).toBe('keyboard')
+    expect(lastInput()).toBe('keyboard')
+    act(() => {
+      window.dispatchEvent(new Event('pointerdown'))
+    })
+    expect(result.current).toBe('pointer')
+    expect(lastInput()).toBe('pointer')
   })
 })

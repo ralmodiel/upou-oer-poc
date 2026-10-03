@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint, TEXT_LINK } from '../components/browse-ui'
 import { DetailsContext, pageTarget } from '../components/details'
@@ -55,6 +55,13 @@ export default function SearchPage() {
   const navigate = useNavigate()
   const raw = params.get('q') ?? ''
   const q = raw.trim()
+  // Phones: the Search tab lands with the caret in the field (not when coming Back to results).
+  const popped = useNavigationType() === 'POP'
+  useEffect(() => {
+    if (raw || popped) return
+    const field = document.getElementById('search-page-q')
+    if (field?.offsetParent) field.focus()
+  }, [raw, popped])
   const slug = params.get('category') ?? ''
   const category = slug ? getCategory(slug) : undefined
 

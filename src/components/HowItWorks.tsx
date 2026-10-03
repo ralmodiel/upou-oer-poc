@@ -47,9 +47,12 @@ export default function HowItWorks() {
     heading.current.focus()
   }
   useAppEvent(HOW_IT_WORKS_EVENT, focusHeading)
-  // Asked for before the strip existed (Help from another page): focus once it is here.
+  // Asked for before the strip existed (Help from another page): focus once it is here, after
+  // the router's scroll restoration so the focus scroll is the one that lasts.
   useEffect(() => {
-    if (!dismissed && takeHowItWorksFocus()) heading.current?.focus()
+    if (dismissed || !takeHowItWorksFocus()) return
+    const frame = requestAnimationFrame(() => heading.current?.focus())
+    return () => cancelAnimationFrame(frame)
   }, [dismissed])
 
   if (dismissed) return null
@@ -94,7 +97,7 @@ export default function HowItWorks() {
           <button
             type="button"
             onClick={openShortcuts}
-            className="cursor-pointer rounded-sm underline decoration-line underline-offset-4 hover:text-maroon hover:decoration-maroon"
+            className="-my-2.5 inline-block cursor-pointer rounded-sm py-2.5 underline decoration-line underline-offset-4 hover:text-maroon hover:decoration-maroon"
           >
             All shortcuts
           </button>

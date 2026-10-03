@@ -13,6 +13,7 @@ import {
   type CategorySort,
 } from '../data/catalog'
 import { collectionSeo, pageTitle, useSeo } from '../lib/seo'
+import { focusAndReveal } from '../lib/spatial'
 
 const PAGE_SIZE = 24
 const SORTS: { value: CategorySort; label: string }[] = [
@@ -47,10 +48,12 @@ export default function CategoryPage() {
         },
   )
 
-  // After "Load more", focus the first new card so keyboard and screen-reader users land on it.
+  // After "Load more", focus the first new card (scrolled to the middle of the screen) so
+  // keyboard and screen-reader users land on it.
   useEffect(() => {
     if (focusAt.current < 0) return
-    grid.current?.querySelectorAll<HTMLElement>('[data-card-link]')[focusAt.current]?.focus()
+    const link = grid.current?.querySelectorAll<HTMLElement>('[data-card-link]')[focusAt.current]
+    if (link) focusAndReveal(link)
     focusAt.current = -1
   })
 
@@ -134,7 +137,7 @@ export default function CategoryPage() {
           Showing {visible.length} of {all.length}
         </p>
         {visible.length < all.length && (
-          <Button variant="secondary" onClick={loadMore}>
+          <Button variant="secondary" onClick={loadMore} data-spatial="wide">
             Load {Math.min(PAGE_SIZE, all.length - visible.length)} more
           </Button>
         )}

@@ -169,3 +169,36 @@ feature must be easy to find without instructions.
   progress bar is visible; the "Starting in 3 · 2 · 1" countdown says what happens next.
 - **Consistent affordances:** every card behaves the same everywhere (click plays, bookmark saves,
   info opens Quick look); links look like links; hover and focus states always visible.
+
+## Round 2 addendum
+
+Round 2 adds four features and a crawlable build without changing the identity above; the
+colour rule stands (UPOU maroon, forest, paper and ink; never a black-and-red streaming look).
+
+- **TV-remote navigation** (`src/lib/spatial.ts`): one window `keydown` handler moves focus to
+  the nearest focusable element in the arrow's direction, measured from the whole card for card
+  links so grids move card by card. Open dialogs scope the search to their contents; `inert`,
+  `aria-hidden`, hidden and disabled elements never receive focus; text fields keep ← / → until
+  the caret reaches the edge. A target is scrolled into view (centred for cards, with reduced
+  motion honoured). The focus ring is the only indicator, so it must stay visible on every stop.
+- **Previews** (`src/components/preview.tsx`): hovering a card for 800 ms, or focusing it, mounts
+  the muted promo reel inside the card's 16:9 box; one preview plays at a time, Esc stops it
+  before the shell treats Esc as Back, and reduced motion disables automatic previews. The end
+  card holds for a second, then the thumbnail returns until the pointer leaves.
+- **Backdrops** (`Backdrop`, `WatchBackdrop`): a blurred, dimmed still behind the featured
+  block, the quick look and the watch page. Decorative (`aria-hidden`, empty `alt`), absolutely
+  positioned so it never shifts layout, and faded in on load; a missing still falls back to the
+  thumbnail and then to the plain surface.
+- **Recommendations** (`src/lib/recommend.ts`, `text.ts`, `history.ts`): a TF-IDF index built in
+  the browser on first use (idle time on the home page), blended with category, tag and series
+  signals and a local taste profile (watch history, searches, My List). Home shows "Recommended
+  for you" and "Because you watched …" with a one-line reason per card; the watch page's "Up
+  next" uses the same engine. Nothing leaves the device.
+- **SEO** (`src/lib/seo.ts`, `tools/seo`): one head preset per page type, applied at runtime by
+  `useSeo()` and baked into a static shell per route at build time (title, description,
+  canonical with a trailing slash, Open Graph, Twitter, JSON-LD, a plain-HTML summary that React
+  replaces), plus `sitemap.xml` and `robots.txt`. Search, My List and not-found pages are
+  `noindex`. Shells use the first member of each image set so link previews are stable.
+- **Image sets**: cards and backdrops rotate among the YouTube thumbnail and its three stills per
+  page load (seeded by the id); `m: 0` and `s: 0` in the catalog mark videos without 1280 px or
+  640 px stills, which fall back to the next size down.

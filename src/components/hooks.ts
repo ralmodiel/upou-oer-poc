@@ -1,27 +1,51 @@
 import {
-  useCallback,
   useEffect,
   useState,
   useSyncExternalStore,
   type FocusEvent,
   type KeyboardEvent,
 } from 'react'
+import { useLocation, useNavigationType } from 'react-router'
 
-/** True while the media `query` matches; re-renders when that flips. */
-export function useMediaQuery(query: string) {
-  const subscribe = useCallback(
-    (onChange: () => void) => {
-      const list = window.matchMedia(query)
-      list.addEventListener('change', onChange)
-      return () => list.removeEventListener('change', onChange)
-    },
-    [query],
-  )
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(query).matches,
-    () => false,
-  )
+export { useMediaQuery } from './browse-hooks'
+
+// The player or quick-look link last activated on each page of this visit, by location key.
+const openedFrom = new Map<string, string>()
+
+/**
+ * Back from the player (or from a quick look reopened by Back) returns focus to the card link,
+ * Play button or Details link that opened it, so the next arrow key continues from there instead
+ * of the top of the page. Mounted once (AppLayout).
+ */
+export function useReturnFocus() {
+  const { key } = useLocation()
+  const popped = useNavigationType() === 'POP'
+
+  useEffect(() => {
+    const remember = (e: Event) => {
+      const link = (e.target as Element | null)?.closest?.('a[href^="/watch/"], a[href*="v="]')
+      if (link) openedFrom.set(key, link.getAttribute('href') ?? '')
+    }
+    document.addEventListener('click', remember, true)
+    return () => document.removeEventListener('click', remember, true)
+  }, [key])
+
+  useEffect(() => {
+    const href = popped ? openedFrom.get(key) : undefined
+    if (!href) return
+    // After the page has rendered. A reopened dialog that took focus wins; focus left on the body
+    // or on the shell (header, footer) belongs to the page we came back from.
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement
+      if (active?.closest('dialog[open]') || active?.closest('main')) return
+      const links = Array.from(document.querySelectorAll<HTMLElement>('a[href]')).filter(
+        (el) => el.getAttribute('href') === href && !el.closest('[aria-hidden="true"]'),
+      )
+      const link = links.find((el) => el.hasAttribute('data-card-link')) ?? links[0]
+      link?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [key, popped])
 }
 
 /** Sets document.title while mounted and restores the previous title afterwards. */

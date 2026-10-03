@@ -126,21 +126,6 @@ export function topicsOf(video: Video, max = 6): string[] {
   return topics
 }
 
-/** Seeded one-liner from category and channel for videos without a description. */
-function metadataHook(video: Video, rand: () => number): string {
-  const channel = video.channel.trim() || 'UPOU OER'
-  const category = video.category.trim()
-  if (!category) return `Free, open learning from ${channel}.`
-  const options = [
-    `An open educational video from ${channel}'s ${category} collection.`,
-    `Free, open learning from the ${category} collection at ${channel}.`,
-    `Part of ${channel}'s ${category} collection, free for everyone.`,
-    `Watch and learn with ${channel}'s ${category} collection.`,
-  ]
-  const fits = options.filter((o) => o.length <= 110)
-  return fits.length ? pick(rand, fits) : hookFrom(options[2])
-}
-
 /** Splits words into up to `maxLines` lines of similar length. */
 export function toLines(words: string[], maxLines = 4): string[][] {
   const total = words.join(' ').length
@@ -254,15 +239,15 @@ export function buildReelPlan(video: Video): ReelPlan {
     }
   })
 
-  // Hook: description first; otherwise a topic line, else a metadata line.
+  // Hook: description first; otherwise the topics themselves (facts, no boilerplate), and the
+  // chips take the rest. A video with neither shows its title and kicker alone.
   const topics = topicsOf(video)
   let hook = hookFrom(video.description)
   let chips = topics.slice(0, 3)
-  if (!hook && topics.length >= 2) {
+  if (!hook && topics.length) {
     hook = topics.slice(0, 3).join(' · ')
     chips = topics.slice(3, 6)
   }
-  hook ||= metadataHook(video, rand)
 
   const title = clampTitle(video.title)
   const words = title.split(/\s+/).filter(Boolean)
@@ -275,7 +260,8 @@ export function buildReelPlan(video: Video): ReelPlan {
   const hookIn = long ? 4600 : 4100
   const chipsIn = hookIn + 1000
   const exitAt = END_AT - 350
-  const titleOut = template === 'cinematic' ? hookIn - 450 : exitAt
+  // Cinematic swaps the title for the hook in the centre; with no hook the title stays.
+  const titleOut = template === 'cinematic' && hook ? hookIn - 450 : exitAt
 
   const longest = Math.max(...words.map((w) => w.length))
   const hotCandidates = words.flatMap((w, i) => (w.length === longest ? [i] : []))

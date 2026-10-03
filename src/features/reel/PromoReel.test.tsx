@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PromoReel, { REEL_MS } from './PromoReel'
 import { buildReelPlan, REEL_TITLE_MAX } from './plan'
@@ -91,6 +92,26 @@ describe('PromoReel', () => {
     expect(onComplete).toHaveBeenCalledTimes(1)
   })
 
+  it('leaves no timers behind when unmounted early, and completes once under StrictMode', async () => {
+    vi.useFakeTimers()
+    const early = render(<PromoReel video={testVideo} variant="preview" onComplete={() => {}} />)
+    await act(() => vi.advanceTimersByTimeAsync(300))
+    early.unmount()
+    expect(vi.getTimerCount()).toBe(0)
+
+    const onComplete = vi.fn()
+    const strict = render(
+      <StrictMode>
+        <PromoReel video={testVideo} variant="preview" onComplete={onComplete} />
+      </StrictMode>,
+    )
+    await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+    await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
+    expect(onComplete).toHaveBeenCalledTimes(1)
+    strict.unmount()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('derives a deterministic plan that varies between videos', () => {
     expect(buildReelPlan({ ...testVideo })).toEqual(buildReelPlan(testVideo))
 
@@ -101,8 +122,11 @@ describe('PromoReel', () => {
     expect(new Set(plans.map((p) => p.accent)).size).toBeGreaterThan(1)
     expect(plans.map((p) => p.accent)).not.toContain('maroon')
 
+    // No description: the topics stand in; no topics either: no hook (no boilerplate line).
+    const topical = buildReelPlan({ ...testVideo, description: '' })
+    expect(topical.hook).toBe('TechTips · Open Data · Statistics')
     const bare = buildReelPlan({ ...testVideo, description: '', tags: [] })
-    expect(bare.hook).toMatch(/Technology and Teaching/)
+    expect(bare.hook).toBe('')
     expect(bare.tags).toEqual([])
     expect(bare.lowRes).toBe(false)
     expect(bare.meta).toEqual(['UP Open University', 'Technology and Teaching · 2025'])

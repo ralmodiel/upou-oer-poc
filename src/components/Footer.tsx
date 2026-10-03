@@ -67,9 +67,7 @@ export default function Footer() {
             </li>
             <li className="leading-relaxed text-ink-3">
               Videos © UP Open University, shared under{' '}
-              <External href="https://creativecommons.org/licenses/by/4.0/" className={LINK}>
-                CC BY 4.0
-              </External>{' '}
+              <External href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</External>{' '}
               unless stated otherwise.
             </li>
           </ul>

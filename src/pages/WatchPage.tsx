@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { preconnect } from 'react-dom'
 import { Link, useParams } from 'react-router'
+import { ChevronRightIcon } from '../components/icons'
 import Breadcrumbs, { type Crumb } from '../components/ui/Breadcrumbs'
 import Button from '../components/ui/Button'
 import NotFound from '../components/ui/NotFound'
 import { getCategoryByName, getVideo } from '../data/catalog'
-import YouTubePlayer from '../features/player/YouTubePlayer'
+import YouTubePlayer, { PlayerPoster } from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
 import EscHint from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
+import { useInputModality } from '../features/watch/modality'
 import UpNext from '../features/watch/UpNext'
 import { upNextFor } from '../features/watch/recommendations'
 import WatchBackdrop from '../features/watch/WatchBackdrop'
@@ -45,6 +47,8 @@ function Watch({ video }: { video: Video }) {
   // shift the footer on short pages.
   const [upNext] = useState(() => upNextFor(video, profile))
   const category = getCategoryByName(video.category)
+  // The stage is focused by script, so its focus ring waits for keyboard use (see modality.ts).
+  const keyboard = useInputModality() === 'keyboard'
   useSeo(videoSeo(video, category))
   for (const origin of ORIGINS) preconnect(origin)
 
@@ -54,20 +58,25 @@ function Watch({ video }: { video: Video }) {
     stageRef.current?.focus({ preventScroll: true })
   }, [phase])
 
-  // Chrome treats focus moved by script as :focus-visible until the first pointer event, which
-  // would ring the stage for the whole reel on load; show the ring only once a key has been used.
-  useEffect(() => {
-    const stage = stageRef.current
-    if (!stage) return
-    const keyed = () => stage.toggleAttribute('data-kbd', true)
-    const pointed = () => stage.toggleAttribute('data-kbd', false)
-    window.addEventListener('keydown', keyed, true)
-    window.addEventListener('pointerdown', pointed, true)
-    return () => {
-      window.removeEventListener('keydown', keyed, true)
-      window.removeEventListener('pointerdown', pointed, true)
+  // Keys on the stage itself: ↓ steps into its controls (Sound, then Skip), which spatial
+  // navigation would pass by for the nearer breadcrumb, and Enter skips the preview, as a
+  // remote's OK button should. Anything else is left to the shell.
+  const onStageKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.defaultPrevented) return
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+    const stage = e.currentTarget
+    if (e.key === 'Enter') {
+      const skip = stage.querySelector<HTMLButtonElement>('.reel-skip')
+      if (!skip) return
+      e.preventDefault()
+      skip.click()
+    } else if (e.key === 'ArrowDown') {
+      const control = stage.querySelector('button')
+      if (!control) return
+      e.preventDefault()
+      control.focus()
     }
-  }, [])
+  }
 
   const startPlayer = () => {
     setPhase('player')
@@ -84,10 +93,6 @@ function Watch({ video }: { video: Video }) {
     }
   }
 
-  // Most source pages have no description; say so instead of padding with metadata.
-  const about =
-    video.description ||
-    `No description was published for this video. It is part of ${video.channel}'s ${video.category} collection.`
   const crumbs: Crumb[] = [{ label: 'Browse', to: '/' }]
   if (category) crumbs.push({ label: category.name, to: `/collections/${category.slug}` })
   crumbs.push({ label: video.title })
@@ -111,8 +116,11 @@ function Watch({ video }: { video: Video }) {
               role="region"
               aria-label={phase === 'reel' ? 'Preview' : 'Video player'}
               onPointerLeave={reclaimFocus}
-              className="watch-stage relative aspect-video overflow-hidden bg-surface shadow-lift outline-none ring-1 ring-black/5 data-kbd:focus-visible:ring-2 data-kbd:focus-visible:ring-maroon md:rounded-card"
+              onKeyDown={onStageKeyDown}
+              data-kbd={keyboard || undefined}
+              className="watch-stage relative aspect-video overflow-hidden bg-surface shadow-lift ring-1 ring-black/5 md:rounded-card"
             >
+              <PlayerPoster video={video} />
               {phase === 'reel' ? (
                 <PromoReel video={video} onComplete={startPlayer} />
               ) : (
@@ -121,7 +129,7 @@ function Watch({ video }: { video: Video }) {
             </div>
 
             <article className="pt-5">
-              <Breadcrumbs items={crumbs} className="watch-crumbs" />
+              <Breadcrumbs items={crumbs} nowrap />
               <h1
                 className="watch-title mt-3 font-display text-title text-balance text-ink"
                 data-long={video.title.length > LONG_TITLE || undefined}
@@ -129,9 +137,12 @@ function Watch({ video }: { video: Video }) {
                 {video.title}
               </h1>
               <WatchMeta video={video} />
-              <p className="mt-5 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
-                {about}
-              </p>
+              {/* Most source pages have none; the meta row and topics carry the facts then. */}
+              {video.description && (
+                <p className="mt-5 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
+                  {video.description}
+                </p>
+              )}
               <WatchTags tags={video.tags} />
             </article>
           </div>
@@ -143,9 +154,9 @@ function Watch({ video }: { video: Video }) {
                 to={`/collections/${category.slug}`}
                 className="mt-6 inline-flex min-h-10 items-center gap-2 font-semibold text-maroon hover:underline"
               >
-                <BackIcon className="size-4" />
-                Back to {category.name}
+                More in {category.name}
                 <span className="font-normal text-ink-3">({category.count})</span>
+                <ChevronRightIcon className="size-4" />
               </Link>
             )}
           </aside>

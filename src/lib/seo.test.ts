@@ -147,8 +147,12 @@ describe('JSON-LD', () => {
     ])
   })
 
-  it('escapes "<" so no text can close the script tag', () => {
-    expect(serializeJsonLd({ a: '</script><b>' })).toBe('{"a":"\\u003c/script>\\u003cb>"}')
+  it('escapes what could close the script tag, and the output is still JSON', () => {
+    const text = '</script><!-- a & b > c \u2028\u2029'
+    const out = serializeJsonLd({ a: text })
+    expect(out).toBe('{"a":"\\u003c/script\\u003e\\u003c!-- a \\u0026 b \\u003e c \\u2028\\u2029"}')
+    expect(out).not.toMatch(/[<>&\u2028\u2029]/)
+    expect(JSON.parse(out)).toEqual({ a: text })
   })
 
   it('uses noindex and no canonical for private pages', () => {

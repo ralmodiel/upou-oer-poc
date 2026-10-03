@@ -37,8 +37,18 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   title, meta, share link, topics and an "Up next" list.
 - **Theme** — light / dark / system toggle, stored under `upou:theme` and applied before the first
   paint without an inline script.
-- **Keyboard** — Esc goes back everywhere (dialogs close first), `/` focuses search, `?` opens the
-  shortcuts sheet, and the arrow keys move within grids and chip rows.
+- **Keyboard and TV remotes** — Esc goes back everywhere (dialogs close first), `/` focuses
+  search, `?` opens the shortcuts sheet, and the arrow keys move focus to the nearest control in
+  that direction anywhere on the page (`src/lib/spatial.ts`), so the whole app works from a
+  remote or a keyboard alone.
+- **Previews** — hovering a card for a moment, or focusing it, plays that video's muted promo
+  reel inside the card; it stops on leave, blur or Esc, and never starts under reduced motion.
+- **Backdrops** — the featured block, quick look and watch page sit on a blurred still from the
+  video, falling back to the thumbnail (and then to a plain surface) when an image is missing.
+- **Recommendations** — "Recommended for you" and "Because you watched …" on the home page and
+  "Up next" on the watch page, from an in-browser engine (see [Recommendations](#recommendations)).
+- **SEO** — a static, crawlable shell per video and collection, `sitemap.xml`, `robots.txt` and
+  JSON-LD, generated at build time (see [SEO](#seo)).
 - **Promo reels** — each reel is built in the browser from the video's title, category, tags,
   description, and three real still frames from the video. A seeded random generator (keyed by
   the YouTube ID) picks one of three templates (Cinematic, Split, Kinetic), an accent color, Ken
@@ -96,6 +106,15 @@ thumbnail, backdrop and still-frame URLs) when the app starts (a few millisecond
 `src/data/catalog.ts` serves it synchronously: categories (`getCategories`, `getCategoryVideos`),
 home sections (`getRows`), featured and latest picks, search and similar titles, all memoized.
 
+Images come from YouTube in sets: the original thumbnail plus the three still frames YouTube
+generates, at 320 px for cards and at 1280 px (`maxres`) for backdrops and reels. Each page load
+shows one member of the set per video (seeded by the id), so grids look different on every visit
+while a video's thumbnail and backdrop always match. Two flags mark videos with fewer images:
+`m: 0` means no 1280 px stills exist (the 640 px `sd` ones are used), and `s: 0` means the `sd`
+stills are missing too (only the 320 px `mq` images exist). `b` carries the source page's own
+backdrop when it beats the YouTube default. The SEO shells always use the first member of a set,
+so link previews are stable.
+
 The snapshot was produced by a local crawler that:
 
 1. Walks the paginated listing at `https://oer.upou.edu.ph/videos/`.
@@ -148,12 +167,14 @@ tracking.
 src/
   App.tsx                routes (the watch page is lazy-loaded)
   data/                  catalog.json (slim records) + catalog API (categories, rows, search)
-  lib/                   localStorage hooks, theme, keyboard shortcuts, seeded RNG, YouTube + format helpers
+  lib/                   localStorage hooks, theme, shortcuts, spatial (arrow-key) navigation,
+                         recommender (recommend, text, history), SEO presets, seeded RNG, helpers
   layouts/ pages/        app shell (header, tab bar, footer, dialogs) and pages
   components/            featured block, sections, cards, quick-look dialog, ui/ primitives
   features/reel/         promo reel: plan (seeded), CSS timeline, Web Audio
   features/watch/        watch-page pieces: meta, share, topics, up next
   features/player/       YouTube player
+tools/seo/               build step that writes the static shells, sitemap.xml and robots.txt
 public/fonts/            self-hosted type; licenses in public/THIRD_PARTY_LICENSES.txt
 ```
 

@@ -28,6 +28,7 @@ const GENERIC = new Set([
   'materials',
   'compilation',
   'livestream',
+  'tvupupopenuniversity',
 ])
 
 // People are tagged with a title ("Dr. Myra Oruga", "aProf. Benjamin Gonzales", "Juan dela Cruz Jr.").
@@ -47,16 +48,25 @@ const nameParts = (tag: string) =>
     .split(/\s+/)
     .filter((w) => w && !INITIAL.test(w) && !PARTICLE.test(w))
 
+// A titled tag that reads like an office ("Director … and Information Service") teaches no names.
+const NOT_A_NAME = /\s(and|of|for|the|in|on|at)\s|&/i
+const MAX_NAME_PARTS = 5
+
 /** Learns name tokens from titled tags; called whenever the catalog loads. */
 export function registerNameTokens(tags: Iterable<string>) {
   nameTokens.clear()
   for (const tag of tags) {
     const t = tag.trim()
     if (!HONORIFIC.test(t)) continue
-    for (const w of nameParts(t.replace(HONORIFIC, (m) => m.slice(-1))))
-      nameTokens.add(w.toLowerCase())
+    const name = t.replace(HONORIFIC, (m) => m.slice(-1))
+    const parts = nameParts(name)
+    if (NOT_A_NAME.test(` ${name} `) || parts.length > MAX_NAME_PARTS) continue
+    for (const w of parts) nameTokens.add(w.toLowerCase())
   }
 }
+
+/** A first or last name seen in the catalog's person tags ("oruga"), whatever its case. */
+export const isNameToken = (word: string) => nameTokens.has(word.toLowerCase())
 
 /** A person's name (speaker, lecturer): titled, suffixed, or made only of known name tokens. */
 export const isPersonTag = (tag: string) => {

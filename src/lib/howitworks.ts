@@ -32,8 +32,8 @@ export function useHelp() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   return useCallback(() => {
-    void navigate('/', { replace: pathname === '/' })
-    window.scrollTo({ top: 0 })
+    // Already home: no navigation, or its scroll reset would undo the focus scroll below.
+    if (pathname !== '/') void navigate('/')
     show()
   }, [navigate, pathname, show])
 }

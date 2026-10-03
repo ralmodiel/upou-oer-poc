@@ -6,6 +6,7 @@ import { setCatalog } from '../data/testing'
 import { REEL_MS } from '../features/reel/PromoReel'
 import { DECODE_CAP_MS } from '../features/reel/preload'
 import { testVideo } from '../features/reel/testing'
+import { FINE_POINTER_QUERY } from '../lib/pointer'
 import WatchPage from './WatchPage'
 
 // Nine look-alikes in the same category, so "Up next" has more than it shows.
@@ -31,8 +32,20 @@ function renderAt(entries: string[], index = entries.length - 1) {
 const setClipboard = (writeText: () => Promise<void>) =>
   Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
 
+// jsdom matches no media query; a mouse-and-keyboard device for the tests that need one.
+const matchMedia = window.matchMedia
+const withFinePointer = () => {
+  window.matchMedia = (query: string) => ({
+    ...matchMedia(query),
+    matches: query === FINE_POINTER_QUERY,
+  })
+}
+
 beforeEach(() => setCatalog([testVideo, ...similar]))
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  window.matchMedia = matchMedia
+})
 
 describe('WatchPage', () => {
   it('plays the reel in a focused stage, then the player, without focusing the iframe', async () => {
@@ -61,7 +74,13 @@ describe('WatchPage', () => {
     expect(JSON.parse(localStorage.getItem('upou:history') ?? '[]')[0]?.id).toBe(testVideo.id)
   })
 
-  it('shows the Esc hint only the first time', () => {
+  it('shows the Esc hint only the first time, and only to fine pointers', () => {
+    const touch = renderAt([`/watch/${testVideo.id}`])
+    expect(screen.queryByText('to go back', { exact: false })).not.toBeInTheDocument()
+    expect(localStorage.getItem('upou:esc-hint')).toBeNull()
+    touch.unmount()
+
+    withFinePointer()
     const first = renderAt([`/watch/${testVideo.id}`])
     expect(screen.getByText('to go back', { exact: false })).toBeInTheDocument()
     expect(localStorage.getItem('upou:esc-hint')).toBe('true')
@@ -69,6 +88,35 @@ describe('WatchPage', () => {
 
     renderAt([`/watch/${testVideo.id}`])
     expect(screen.queryByText('to go back', { exact: false })).not.toBeInTheDocument()
+  })
+
+  it('steps into the reel controls with ↓; the stage rings only after keyboard use', () => {
+    renderAt([`/watch/${testVideo.id}`])
+    const stage = screen.getByRole('region', { name: 'Preview' })
+    expect(stage).toHaveFocus()
+    expect(stage).not.toHaveAttribute('data-kbd')
+
+    fireEvent.keyDown(stage, { key: 'ArrowDown' })
+    expect(screen.getByRole('button', { name: 'Unmute' })).toHaveFocus()
+    expect(stage).toHaveAttribute('data-kbd')
+
+    fireEvent.pointerDown(document.body)
+    expect(stage).not.toHaveAttribute('data-kbd')
+
+    // Enter on the stage (a remote's OK) skips straight to the player.
+    stage.focus()
+    fireEvent.keyDown(stage, { key: 'Enter' })
+    expect(screen.getByTitle(`${testVideo.title} (YouTube video)`)).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Video player' })).toHaveFocus()
+  })
+
+  it('shows the description only when the source published one', () => {
+    renderAt([`/watch/${testVideo.id}`])
+    expect(screen.getByText(testVideo.description.slice(0, 40), { exact: false })).toBeVisible()
+
+    setCatalog([{ ...testVideo, id: 'bare', description: '' }, ...similar])
+    renderAt(['/watch/bare'])
+    expect(screen.queryByText(/No description/)).not.toBeInTheDocument()
   })
 
   it('lays out breadcrumbs, meta, tags and eight "Up next" videos', () => {
@@ -103,7 +151,7 @@ describe('WatchPage', () => {
     const upNext = within(screen.getByRole('list', { name: 'Up next' })).getAllByRole('link')
     expect(upNext).toHaveLength(8)
     expect(upNext.map((a) => a.getAttribute('href'))).not.toContain(`/watch/${testVideo.id}`)
-    expect(screen.getByRole('link', { name: /Back to Technology and Teaching/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /More in Technology and Teaching/ })).toHaveAttribute(
       'href',
       slug,
     )

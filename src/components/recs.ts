@@ -1,10 +1,37 @@
 // Thin adapter over the recommender (src/lib/recommend.ts), so the browse UI has one place to
 // ask for titles and reasons.
-import { createContext } from 'react'
+import { createContext, useEffect } from 'react'
 import { similarTo } from '../data/catalog'
 import { isEmptyProfile, type Profile } from '../lib/history'
 import { explain, recommendFor, recommendForProfile, warmRecommender } from '../lib/recommend'
 import type { Video } from '../types'
+import { onIdle } from './browse-hooks'
+
+const INTENT_EVENTS = ['pointerdown', 'keydown', 'scroll'] as const
+
+/**
+ * The recommender indexes the catalog on first use, in one long task. Run it when the browser is
+ * idle after the visitor first interacts: never during page load, and usually before the first
+ * quick look or player needs it. Mounted once (AppLayout).
+ */
+export function useWarmRecommender() {
+  useEffect(() => {
+    let cancelIdle = () => {}
+    const stopListening = () =>
+      INTENT_EVENTS.forEach((type) => window.removeEventListener(type, start, true))
+    function start() {
+      stopListening()
+      cancelIdle = onIdle(warmRecommender, 4000)
+    }
+    INTENT_EVENTS.forEach((type) =>
+      window.addEventListener(type, start, { capture: true, passive: true }),
+    )
+    return () => {
+      stopListening()
+      cancelIdle()
+    }
+  }, [])
+}
 
 interface LikeOptions {
   profile?: Profile
@@ -21,9 +48,9 @@ export function moreLikeThis(video: Video, { profile, limit, exclude }: LikeOpti
   return [...picked, ...rest].slice(0, limit)
 }
 
-/** Unwatched titles for this browser's taste; empty for a fresh profile. */
-export const forYou = (profile: Profile, limit: number): Video[] =>
-  isEmptyProfile(profile) ? [] : recommendForProfile(profile, { limit })
+/** Unwatched titles for this browser's taste, none of `exclude`; empty for a fresh profile. */
+export const forYou = (profile: Profile, limit: number, exclude?: Iterable<string>): Video[] =>
+  isEmptyProfile(profile) ? [] : recommendForProfile(profile, { limit, exclude })
 
 /** One-line reasons keyed by video id, for card eyebrows. */
 export function reasonsFor(
@@ -36,5 +63,3 @@ export function reasonsFor(
 
 /** Per-card reasons ("Because you watched …") that replace the category eyebrow in a grid. */
 export const CardReasons = createContext<ReadonlyMap<string, string> | null>(null)
-
-export { warmRecommender }

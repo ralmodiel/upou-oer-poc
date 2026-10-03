@@ -61,15 +61,15 @@ html:has(dialog[data-details][open]) {
   contain-intrinsic-size: auto 30rem;
 }
 
-/* Hero and quick-look backdrops: a blurred, muted still (never a colour cast over footage)
-   that drifts slowly once, then rests. */
+/* Hero and quick-look backdrops: a blurred, nearly grey still (a flash frame must never wash the
+   page) that drifts slowly once, then rests. */
 .backdrop-img {
   scale: 1.1;
-  filter: blur(32px) saturate(0.35);
+  filter: blur(32px) grayscale(0.7) saturate(0.6);
   transform-origin: 50% 40%;
 }
 [data-theme='dark'] .backdrop-img {
-  filter: blur(32px) saturate(0.35) brightness(0.75);
+  filter: blur(32px) grayscale(0.7) saturate(0.6) brightness(0.75);
 }
 @media (prefers-reduced-motion: no-preference) {
   .backdrop-img[data-loaded] {
@@ -83,13 +83,13 @@ html:has(dialog[data-details][open]) {
   }
 }
 
-/* Preview reel over a card's thumbnail (the reel sizes itself to this box). */
+/* Preview reel over a card's thumbnail (the reel sizes itself to this box). Transparent, so the
+   still stays visible until the reel paints its first frame. */
 .card-preview {
   position: absolute;
   inset: 0;
   z-index: 1;
   overflow: hidden;
-  background: var(--color-surface-2);
 }
 @media (prefers-reduced-motion: no-preference) {
   .card-preview {

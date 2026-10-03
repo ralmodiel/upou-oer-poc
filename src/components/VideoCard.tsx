@@ -16,7 +16,7 @@ import Badge from './ui/Badge'
 const ACTIONS =
   'relative z-20 -ml-2 flex items-center gap-0.5 text-ink-3 transition-colors duration-200 group-hover/card:text-ink-2 group-focus-within/card:text-ink-2 [@media(hover:none)]:text-ink-2'
 export const ACTION =
-  'inline-flex h-9 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon [@media(hover:none)]:h-10'
+  'inline-flex h-10 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon'
 
 // Instant maroon outline on the thumbnail while the card link has keyboard focus (outline is
 // not in the transition list, unlike ring's box-shadow).
@@ -53,7 +53,7 @@ function VideoCard({
   return (
     <article {...hostProps} className="group/card relative flex flex-col">
       {reason ? (
-        <p className="order-2 mt-3 truncate text-xs font-semibold text-forest" title={reason}>
+        <p className="order-2 mt-3 line-clamp-2 text-xs font-semibold text-forest" title={reason}>
           {reason}
         </p>
       ) : (

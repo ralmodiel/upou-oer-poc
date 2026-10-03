@@ -28,7 +28,7 @@ import {
 } from './icons'
 import ThemeToggle from './ThemeToggle'
 import Menu, { type MenuSection } from './ui/Menu'
-import { iconButtonClass } from './ui/button-styles'
+import { buttonClass, iconButtonClass } from './ui/button-styles'
 
 const NAV_LINK =
   'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 lg:px-3 lg:after:inset-x-3'
@@ -44,7 +44,7 @@ function CountBadge({ count, className = '' }: { count: number; className?: stri
   return (
     <span
       aria-hidden="true"
-      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-maroon px-1.5 text-[0.6875rem] leading-none font-bold text-on-accent tabular-nums ${className}`}
+      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-maroon px-1.5 text-xs leading-none font-bold text-on-accent tabular-nums ${className}`}
     >
       {count}
     </span>
@@ -81,12 +81,12 @@ export default function Header() {
               role="note"
               title="Proof of concept"
               aria-label="Proof of concept"
-              className="rounded-pill border border-line bg-surface px-1.5 py-1 text-[0.625rem] leading-none font-semibold tracking-wider text-ink-2 uppercase"
+              className="rounded-pill border border-line bg-surface px-1 py-1 text-xs leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
             >
               Proof of concept
             </span>
           </div>
-          <p className="-mt-1.5 hidden text-[0.6875rem] leading-none tracking-wide text-ink-3 md:block">
+          <p className="-mt-1.5 hidden text-xs leading-none tracking-wide text-ink-3 md:block">
             Open Educational Resources
           </p>
         </div>
@@ -121,8 +121,10 @@ const THEME_ICONS: Record<Theme, typeof SunIcon> = {
 }
 
 // Help and shortcuts without scrolling to the footer; below lg it also holds the theme choice.
+// Keyboard shortcuts are listed only where there is a keyboard to speak of (mouse / trackpad).
 function HelpMenu() {
   const wide = useMediaQuery('(min-width: 64rem)')
+  const touchOnly = useMediaQuery('(hover: none)')
   const { theme, setTheme } = useTheme()
   const help = useHelp()
 
@@ -130,7 +132,16 @@ function HelpMenu() {
     {
       items: [
         { label: 'How it works', icon: <HelpIcon />, onSelect: help },
-        { label: 'Keyboard shortcuts', icon: <KeyboardIcon />, onSelect: openShortcuts, hint: '?' },
+        ...(touchOnly
+          ? []
+          : [
+              {
+                label: 'Keyboard shortcuts',
+                icon: <KeyboardIcon />,
+                onSelect: openShortcuts,
+                hint: '?',
+              },
+            ]),
       ],
     },
   ]
@@ -149,13 +160,15 @@ function HelpMenu() {
     })
   }
 
+  // Wide screens show the word, so help is discoverable; phones keep the icon.
   return (
     <Menu
       label={wide ? 'Help' : 'Help and theme'}
       sections={sections}
-      triggerClassName={iconButtonClass('ghost', 'sm')}
+      triggerClassName={wide ? buttonClass('ghost', 'sm') : iconButtonClass('ghost', 'sm')}
     >
       <HelpIcon />
+      {wide && 'Help'}
     </Menu>
   )
 }
@@ -309,7 +322,7 @@ function SearchBox() {
 }
 
 const TAB =
-  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium text-ink-3 transition-colors hover:text-ink aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-b-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100'
+  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-b-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100'
 
 /** Phone navigation (< md): Browse · Collections · Search · My List, pinned to the bottom. */
 export function TabBar() {

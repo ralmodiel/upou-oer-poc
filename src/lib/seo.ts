@@ -7,6 +7,10 @@ import type { Video } from '../types'
 import { isGenericTag } from './tags.ts'
 import { watchUrl } from './youtube.ts'
 
+// Social images use the original still, never a rotating frame (maxres1.jpg …).
+const canonicalImage = (url?: string) =>
+  url?.replace(/\/(maxres|sd|mq)[123]\.jpg(\?|$)/, '/$1default.jpg$2')
+
 export const SITE_NAME = 'UPOU OER'
 export const PUBLISHER = 'University of the Philippines Open University'
 const PUBLISHER_URL = 'https://www.upou.edu.ph/'
@@ -191,9 +195,14 @@ export function breadcrumbJsonLd(items: readonly CrumbLike[]): JsonLd {
   })
 }
 
-/** JSON for a <script type="application/ld+json">; "<" is escaped so no text can close the tag. */
+// Characters that could end the script tag or start a comment or entity, plus the two line
+// separators some JSON parsers reject; JSON strings may hold them as \u escapes.
+const UNSAFE_IN_SCRIPT = /[<>&\u2028\u2029]/g
+const escapeChar = (c: string) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
+
+/** JSON for a <script type="application/ld+json">: no text in it can close the tag. */
 export const serializeJsonLd = (data: JsonLd | JsonLd[]): string =>
-  JSON.stringify(data).replace(/</g, '\\u003c')
+  JSON.stringify(data).replace(UNSAFE_IN_SCRIPT, escapeChar)
 
 export interface SeoOptions {
   title: string
@@ -286,7 +295,7 @@ export function collectionsSeo(categories: readonly Category[]): SeoOptions {
       DESCRIPTION_MAX,
     ),
     canonicalPath: '/collections',
-    image: categories[0]?.cover.backdrop,
+    image: canonicalImage(categories[0]?.cover.backdrop),
     jsonLd: breadcrumbJsonLd([{ label: 'Browse', to: '/' }, { label: 'Collections' }]),
   }
 }
@@ -296,7 +305,7 @@ export function collectionSeo(category: Category, list: readonly Video[]): SeoOp
     title: pageTitle(`${category.name} · Collections`),
     description: describeCollection(category),
     canonicalPath: `/collections/${category.slug}`,
-    image: category.cover.backdrop,
+    image: canonicalImage(category.cover.backdrop),
     jsonLd: [
       collectionJsonLd(category, list),
       breadcrumbJsonLd([
@@ -316,7 +325,7 @@ export function videoSeo(video: Video, category?: Pick<Category, 'name' | 'slug'
     title: pageTitle(video.title),
     description: describeVideo(video),
     canonicalPath: `/watch/${video.id}`,
-    image: video.backdrop,
+    image: canonicalImage(video.backdrop),
     type: 'video.other',
     embed: embedUrlOf(video.youtubeId),
     jsonLd: [videoJsonLd(video), breadcrumbJsonLd(crumbs)],

@@ -1,6 +1,6 @@
 import type { ImgHTMLAttributes, ReactNode, SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { largeImageOf, srcSetOf } from './media'
+import { imagesOf } from './media'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
@@ -22,6 +22,8 @@ interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'f
   sizes: string
   /** Prefer the 1280px still (featured block, dialog). */
   large?: boolean
+  /** The original still instead of this page load's rotating pick (hero slots, lists). */
+  canonical?: boolean
   /** Wrapper classes: radius, ring, hover effects, grid order. */
   className?: string
   /** Overlays (play glyph). */
@@ -36,12 +38,14 @@ export default function Thumbnail({
   video,
   sizes,
   large = false,
+  canonical = false,
   className = '',
   children,
   loading = 'lazy',
   fetchPriority,
 }: Props) {
   const fade = loading === 'lazy'
+  const images = imagesOf(video, canonical)
   return (
     <div className={`relative aspect-video overflow-hidden bg-surface-2 @container ${className}`}>
       <span
@@ -52,15 +56,15 @@ export default function Thumbnail({
       </span>
       <img
         key={video.id}
-        src={large ? largeImageOf(video) : video.thumbnail}
-        srcSet={srcSetOf(video)}
+        src={large ? images.large : images.small}
+        srcSet={images.srcSet}
         sizes={sizes}
         alt=""
         loading={loading}
         fetchPriority={fetchPriority}
         decoding="async"
         onLoad={markLoaded}
-        onError={(e) => retryOrFail(e.currentTarget, video.thumbnail)}
+        onError={(e) => retryOrFail(e.currentTarget, images.small)}
         className={`relative size-full object-cover data-failed:hidden ${
           fade
             ? 'opacity-0 transition-opacity duration-300 data-loaded:opacity-100 motion-reduce:transition-none'

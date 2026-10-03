@@ -30,23 +30,33 @@ function decodeImage(src: string): Promise<boolean> {
   return result
 }
 
-/** Per-image success, waiting at most `capMs`; images still pending count as fine. */
-export function settleImages(srcs: readonly string[], capMs: number): Promise<boolean[]> {
+/**
+ * Per-image success, waiting at most `capMs`; images still pending count as fine. The web fonts
+ * are waited for too (within the cap), so the reel's type never swaps mid-animation. Aborting
+ * settles at once and clears the timer; callers check the signal before using the result.
+ */
+export function settleImages(
+  srcs: readonly string[],
+  capMs: number,
+  signal?: AbortSignal,
+): Promise<boolean[]> {
   const status = srcs.map(() => true)
-  const all = Promise.all(
-    srcs.map((src, i) =>
-      decodeImage(src).then((ok) => {
-        status[i] = ok
-      }),
-    ),
+  const loads = srcs.map((src, i) =>
+    decodeImage(src).then((ok) => {
+      status[i] = ok
+    }),
   )
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const cap = new Promise<void>((resolve) => {
-    timer = setTimeout(resolve, capMs)
-  })
-  return Promise.race([all, cap]).then(() => {
-    clearTimeout(timer)
-    return status
+  // jsdom has no FontFaceSet.
+  const fonts = (document as { fonts?: FontFaceSet }).fonts?.ready
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer)
+      signal?.removeEventListener('abort', done)
+      resolve(status)
+    }
+    const timer = setTimeout(done, capMs)
+    signal?.addEventListener('abort', done)
+    void Promise.all([...loads, fonts]).then(done)
   })
 }
 

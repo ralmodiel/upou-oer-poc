@@ -1,6 +1,6 @@
 import type { SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { largeImageOf } from './media'
+import { imagesOf } from './media'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
@@ -24,6 +24,8 @@ interface Props {
  * content (the parent needs `relative isolate`), so it never affects layout.
  */
 export default function Backdrop({ video, scrim, className = '' }: Props) {
+  // The original still, muted further in browse.css: a tone behind the page, never a colour wash.
+  const { small, large } = imagesOf(video, true)
   return (
     <div
       aria-hidden="true"
@@ -31,13 +33,13 @@ export default function Backdrop({ video, scrim, className = '' }: Props) {
     >
       <img
         key={video.id}
-        src={largeImageOf(video)}
+        src={large}
         alt=""
         loading="lazy"
         decoding="async"
         onLoad={markLoaded}
-        onError={(e) => retryOrFail(e.currentTarget, video.thumbnail)}
-        className="backdrop-img size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100 data-failed:hidden motion-reduce:transition-none"
+        onError={(e) => retryOrFail(e.currentTarget, small)}
+        className="backdrop-img size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-60 data-failed:hidden motion-reduce:transition-none"
       />
       <div className={`absolute inset-0 ${scrim}`} />
     </div>

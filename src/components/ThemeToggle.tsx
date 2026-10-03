@@ -32,7 +32,7 @@ export default function ThemeToggle({ compact = false, className = '' }: Props) 
     <div
       role="group"
       aria-label="Theme"
-      className={`inline-flex h-10 shrink-0 items-center gap-0.5 rounded-pill border border-line bg-surface p-0.5 ${className}`}
+      className={`inline-flex h-11 shrink-0 items-center gap-0.5 rounded-pill border border-line bg-surface p-0.5 ${className}`}
     >
       {THEMES.map(({ value, label }) => {
         const Icon = ICONS[value]
@@ -44,7 +44,7 @@ export default function ThemeToggle({ compact = false, className = '' }: Props) 
             aria-pressed={selected}
             title={`${label} theme`}
             onClick={() => setTheme(value)}
-            className={`grid size-9 cursor-pointer place-items-center rounded-pill transition-colors ${
+            className={`grid size-10 cursor-pointer place-items-center rounded-pill transition-colors ${
               selected ? 'bg-ink text-paper' : 'text-ink-3 hover:bg-surface-2 hover:text-ink'
             }`}
           >

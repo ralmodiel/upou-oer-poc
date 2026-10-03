@@ -11,6 +11,7 @@ const KEYS: { keys: string[]; text: string }[] = [
   { keys: ['Esc', 'Backspace'], text: 'Back: closes an open panel first, then the previous page' },
   { keys: ['Tab'], text: 'Next control; in a grid it moves on past the cards (Shift + Tab: back)' },
   { keys: ['Home', 'End'], text: 'First or last card in a grid' },
+  { keys: ['PgUp', 'PgDn'], text: 'Previous or next section of the page' },
   { keys: ['/'], text: 'Jump to search' },
   { keys: ['?'], text: 'Show this sheet' },
 ]

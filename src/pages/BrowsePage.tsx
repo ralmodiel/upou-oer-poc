@@ -8,7 +8,8 @@ import Recommended from '../components/Recommended'
 import Section from '../components/Section'
 import { onIdle, useFrozen, useMediaQuery } from '../components/browse-hooks'
 import { GridHint } from '../components/browse-ui'
-import { forYou, moreLikeThis, reasonsFor, warmRecommender } from '../components/recs'
+import { heroImageOf } from '../components/media'
+import { forYou, moreLikeThis, reasonsFor } from '../components/recs'
 import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
 import { getCategories, getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
@@ -73,12 +74,27 @@ const NO_RECS: HomeRecs = { limit: 0, pending: false, forYou: [], reasons: new M
 // As last computed, so Back lands on the same layout at once.
 let lastRecs: HomeRecs | null = null
 
-function computeRecs(profile: Profile, limit: number): HomeRecs {
-  const picked = forYou(profile, limit)
+// `shown`: every title already on the page (featured, also new, continue watching, category rows),
+// so no recommendation repeats one and the rows never wait for the recommender.
+function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>): HomeRecs {
+  // Only when nothing unshown matches (a tiny catalog) may a section repeat a shown title.
+  const orShown = (list: Video[], withShown: () => Video[]) => (list.length ? list : withShown())
+  const picked = orShown(forYou(profile, limit, shown), () => forYou(profile, limit))
   const watched = getVideo(profile.watched[0]?.id)
-  // Neither already watched nor already recommended above.
-  const exclude = [...picked.map((v) => v.id), ...profile.watched.map((e) => e.id)]
-  const because = watched ? moreLikeThis(watched, { profile, limit, exclude }) : []
+  // Neither watched nor already recommended above (nor shown, as far as possible).
+  const seen = [...picked.map((v) => v.id), ...profile.watched.map((e) => e.id)]
+  const because = watched
+    ? orShown(moreLikeThis(watched, { profile, limit, exclude: [...shown, ...seen] }), () =>
+        moreLikeThis(watched, { profile, limit, exclude: seen }),
+      )
+    : []
+  // Under the "Because you watched …" heading that reason says nothing: the collection eyebrow
+  // takes over on those cards.
+  const becauseReasons = new Map(
+    [...reasonsFor(because, profile, watched)].filter(
+      ([, r]) => !r.startsWith('Because you watched'),
+    ),
+  )
   return {
     limit,
     pending: false,
@@ -86,26 +102,32 @@ function computeRecs(profile: Profile, limit: number): HomeRecs {
     reasons: reasonsFor(picked, profile),
     because:
       watched && because.length
-        ? { video: watched, list: because, reasons: reasonsFor(because, profile, watched) }
+        ? { video: watched, list: because, reasons: becauseReasons }
         : undefined,
   }
 }
 
 // Personalised sections are computed once per visit, after the first paint (the recommender
-// indexes the catalog on first use). The profile is frozen at mount so saving a card here
-// does not reshuffle the grids.
-function useHomeRecommendations(limit: number): HomeRecs {
+// indexes the catalog on first use); the grids render in a later frame so neither task is long.
+// An empty profile skips the recommender entirely. The profile is frozen at mount so saving a
+// card here does not reshuffle the grids.
+function useHomeRecommendations(limit: number, shown: ReadonlySet<string>): HomeRecs {
   const profile = useFrozen(useProfile(), limit)
   const empty = isEmptyProfile(profile)
   const [recs, setRecs] = useState(() => (lastRecs?.limit === limit ? lastRecs : null))
   useEffect(() => {
-    if (empty) return onIdle(warmRecommender, 4000)
-    return onIdle(() => {
-      const next = computeRecs(profile, limit)
+    if (empty) return
+    let frame = 0
+    const cancelIdle = onIdle(() => {
+      const next = computeRecs(profile, limit, shown)
       lastRecs = next
-      setRecs(next)
+      frame = requestAnimationFrame(() => setRecs(next))
     })
-  }, [empty, profile, limit])
+    return () => {
+      cancelIdle()
+      cancelAnimationFrame(frame)
+    }
+  }, [empty, profile, limit, shown])
   if (empty) return NO_RECS
   return recs ?? { ...NO_RECS, limit, pending: true }
 }
@@ -114,11 +136,13 @@ function useHomeRecommendations(limit: number): HomeRecs {
 const PHONE_SECTIONS = 7
 const PHONE_CARDS = 4
 const CARDS = 8
+const MIN_ROW = 3
 
 const shortTitle = (title: string) => (title.length > 48 ? `${title.slice(0, 46).trim()}…` : title)
 
 export default function BrowsePage() {
-  useSeo(homeSeo(videos.length, getCategories().length, getFeatured()[0]?.backdrop))
+  const first = getFeatured()[0]
+  useSeo(homeSeo(videos.length, getCategories().length, first && heroImageOf(first)))
   const entries = useShownHistory()
   const recent = useMemo(
     () => entries.map((e) => getVideo(e.id)).filter((v) => v !== undefined),
@@ -132,12 +156,30 @@ export default function BrowsePage() {
       .filter((v) => !shown.has(v.id))
       .slice(0, 4)
   }, [featured])
-  const rows = getRows()
   const wide = useMediaQuery('(min-width: 48rem)')
-  const shownRows = wide ? rows : rows.slice(0, PHONE_SECTIONS)
   const cards = wide ? CARDS : PHONE_CARDS
+  // A title already above (featured, also new, continue watching) is left out of its category
+  // row, which takes the next newest instead.
+  const rows = getRows(CARDS * 2)
+  const shownRows = useMemo(() => {
+    const above = new Set([...featured, ...alsoNew, ...recent].map((v) => v.id))
+    return (wide ? rows : rows.slice(0, PHONE_SECTIONS)).map((row) => {
+      const rest = row.videos.filter((v) => !above.has(v.id))
+      // A small collection shown almost entirely above keeps its own list rather than going bare.
+      return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, cards) }
+    })
+  }, [featured, alsoNew, recent, rows, wide, cards])
+  const shown = useMemo(
+    () =>
+      new Set(
+        [...featured, ...alsoNew, ...recent, ...shownRows.flatMap((r) => r.videos)].map(
+          (v) => v.id,
+        ),
+      ),
+    [featured, alsoNew, recent, shownRows],
+  )
+  const recs = useHomeRecommendations(cards, shown)
   const sectionCount = useSectionCount(shownRows.length)
-  const recs = useHomeRecommendations(cards)
 
   if (!videos.length) {
     return (
@@ -170,13 +212,14 @@ export default function BrowsePage() {
         {recs.because && (
           <Recommended
             title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
+            description="Titles close to the one you watched last."
             videos={recs.because.list}
             reasons={recs.because.reasons}
             cards={cards}
           />
         )}
         {shownRows.slice(0, sectionCount).map((row) => (
-          <Section key={row.id} row={row} limit={wide ? undefined : PHONE_CARDS} />
+          <Section key={row.id} row={row} />
         ))}
         {!wide && sectionCount === shownRows.length && (
           <section

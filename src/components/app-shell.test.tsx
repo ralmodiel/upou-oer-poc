@@ -1,13 +1,14 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, Link, Outlet, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { setCatalog } from '../data/testing'
 import { HOW_IT_WORKS_KEY } from '../lib/howitworks'
 import Footer from './Footer'
 import Header, { TabBar } from './Header'
 import HowItWorks from './HowItWorks'
+import { useReturnFocus } from './hooks'
 import { fixtureVideos } from './test-fixtures'
 
 setCatalog(fixtureVideos)
@@ -125,7 +126,42 @@ describe('HowItWorks', () => {
     expect(screen.queryByRole('region', { name: /UPOU OER/ })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Help: how it works' }))
     expect(screen.getByRole('region', { name: /UPOU OER/ })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /UPOU OER/ })).toHaveFocus()
+    // The focus waits a frame for the router's scroll restoration.
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 2, name: /UPOU OER/ })).toHaveFocus(),
+    )
     expect(localStorage.getItem(HOW_IT_WORKS_KEY)).toBe('false')
+  })
+})
+
+describe('useReturnFocus', () => {
+  it('puts focus back on the card that opened the player after Back', async () => {
+    function Shell() {
+      useReturnFocus()
+      return <Outlet />
+    }
+    const router = createMemoryRouter([
+      {
+        element: <Shell />,
+        children: [
+          {
+            path: '/',
+            element: (
+              <Link to="/watch/climate-basics" data-card-link="">
+                Play Climate Change Basics
+              </Link>
+            ),
+          },
+          { path: '/watch/:id', element: <p>Player</p> },
+        ],
+      },
+    ])
+    render(<RouterProvider router={router} />)
+    await userEvent.click(screen.getByRole('link', { name: 'Play Climate Change Basics' }))
+    expect(screen.getByText('Player')).toBeInTheDocument()
+    await act(() => router.navigate(-1))
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'Play Climate Change Basics' })).toHaveFocus(),
+    )
   })
 })

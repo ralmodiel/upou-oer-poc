@@ -61,10 +61,11 @@ export default function SectionHeading({
           {seeAllTo && (
             <Link
               to={seeAllTo}
-              aria-label={seeAllContext ? `${seeAll} in ${seeAllContext}` : undefined}
               className="group inline-flex h-10 items-center gap-0.5 text-sm font-semibold text-maroon hover:text-maroon-2"
             >
-              {seeAll}
+              {/* Visible text first, then the section name: repeated links stay distinct. */}
+              {seeAllContext ? `${seeAll} ` : seeAll}
+              {seeAllContext && <span className="sr-only">in {seeAllContext}</span>}
               <ChevronRightIcon className="size-4 transition-transform motion-safe:group-hover:translate-x-0.5" />
             </Link>
           )}

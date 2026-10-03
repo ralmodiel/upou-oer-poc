@@ -1,4 +1,5 @@
 import { getCategoryByName, getLatest } from '../data/catalog'
+import { thumbnailSetOf } from '../data/expand'
 import type { Video } from '../types'
 
 /** Route slug of a category name (names that collide after slugifying get a suffix). */
@@ -17,14 +18,32 @@ export const widthOf = (url: string) =>
 
 export const hasHiRes = (video: Video) => widthOf(video.backdrop) >= 640
 
-/** `srcSet` for a 16:9 image slot, or undefined when only the 320px thumbnail is trustworthy. */
-export const srcSetOf = (video: Video) =>
-  hasHiRes(video)
-    ? `${video.thumbnail} 320w, ${video.backdrop} ${widthOf(video.backdrop)}w`
-    : undefined
-
 /** The best image for a large slot. */
 export const largeImageOf = (video: Video) => (hasHiRes(video) ? video.backdrop : video.thumbnail)
+
+// A rotating still frame (`maxres1.jpg` …); the original is `…default.jpg` next to it.
+const FRAME = /\/(maxres|sd|mq)[123]\.jpg(\?|$)/
+
+/**
+ * The canonical large image of a video (og:image or `…default.jpg`) for hero slots: the featured
+ * block, the quick look and their backdrops. Never one of the rotating still frames, which can be
+ * a flash or near-black frame that colours a whole page.
+ */
+export function heroImageOf(video: Video): string {
+  const original = video.backdrop.replace(FRAME, '/$1default.jpg$2')
+  return widthOf(original) >= 640 ? original : thumbnailSetOf(video)[0]
+}
+
+/**
+ * Sources for a 16:9 slot: this page load's pick from the thumbnail set, or with `canonical` the
+ * original images (hero slots and lists, where one odd frame stands out).
+ */
+export function imagesOf(video: Video, canonical = false) {
+  const small = canonical ? thumbnailSetOf(video)[0] : video.thumbnail
+  const large = canonical ? heroImageOf(video) : largeImageOf(video)
+  const width = widthOf(large)
+  return { small, large, srcSet: width >= 640 ? `${small} 320w, ${large} ${width}w` : undefined }
+}
 
 const NEW_COUNT = 10
 // Keyed by the memoized array, so a catalog swap (tests) invalidates it.

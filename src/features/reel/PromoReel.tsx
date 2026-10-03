@@ -19,8 +19,9 @@ import './reel.css'
 
 export const REEL_MS = 10_000
 export type ReelVariant = 'full' | 'preview'
-// Preview stages up to this many device pixels wide use the 320px stills.
-const SMALL_STAGE_PX = 640
+// Preview stages up to this wide (CSS px: cards) take the 320px stills whatever the DPR, so a
+// hover costs three or four small images; the hero's larger stage gets the big ones.
+const CARD_STAGE_PX = 480
 
 // Wordmark letters, indexed across both words so the kinetic ident can drop them in one by one.
 const WORDMARK = ['UPOU', 'OER'].map((word, wi, words) => {
@@ -96,24 +97,22 @@ export default function PromoReel({
 
   // Decode the stills (capped) before the clock starts; failures fall back to the backdrop or a gradient.
   useEffect(() => {
-    let live = true
-    // Small preview stages take the 320px stills: good enough there and far cheaper on hover.
-    const width = (rootRef.current?.clientWidth ?? 0) * (window.devicePixelRatio || 1)
-    const small = preview && width <= SMALL_STAGE_PX
+    const controller = new AbortController()
+    const small = preview && (rootRef.current?.clientWidth ?? 0) <= CARD_STAGE_PX
     const backdrop = small ? video.thumbnail : video.backdrop
     const shots = plan.shots.map((s) => (small ? s.small : s.src))
-    void settleImages([backdrop, ...shots], DECODE_CAP_MS).then(([backdropOk, ...shotOk]) => {
-      if (!live) return
-      const fallback = backdropOk ? backdrop : null
-      setLoaded({
-        key: video.id,
-        shots: shots.map((src, i) => (shotOk[i] ? src : fallback)),
-        backdrop: fallback ?? shots.find((_, i) => shotOk[i]) ?? null,
-      })
-    })
-    return () => {
-      live = false
-    }
+    void settleImages([backdrop, ...shots], DECODE_CAP_MS, controller.signal).then(
+      ([backdropOk, ...shotOk]) => {
+        if (controller.signal.aborted) return
+        const fallback = backdropOk ? backdrop : null
+        setLoaded({
+          key: video.id,
+          shots: shots.map((src, i) => (shotOk[i] ? src : fallback)),
+          backdrop: fallback ?? shots.find((_, i) => shotOk[i]) ?? null,
+        })
+      },
+    )
+    return () => controller.abort()
   }, [video, plan, preview])
 
   // One timer drives completion; animations, timer and audio pause together while the tab is hidden.
@@ -188,6 +187,7 @@ export default function PromoReel({
         <Timeline plan={plan} stills={stills} preview={preview} />
       ) : (
         <div className="reel-loading" role={preview ? undefined : 'status'}>
+          <img src={video.thumbnail} alt="" draggable={false} />
           {!preview && <span className="sr-only">Loading preview</span>}
         </div>
       )}
@@ -243,6 +243,12 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
           </div>
         ))}
       </div>
+      {/* Previews start on the card's own image and dissolve into the reel at the first beat. */}
+      {preview && stills.backdrop && (
+        <div className="reel-cover" aria-hidden="true">
+          <img src={stills.backdrop} alt="" draggable={false} />
+        </div>
+      )}
       <div className="reel-frame" aria-hidden="true" />
       <div className="reel-shade" aria-hidden="true" />
       <div className="reel-rule" aria-hidden="true" />

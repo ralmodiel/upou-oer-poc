@@ -33,6 +33,8 @@
   --motion: 1;
   /* Blur effects switch off for previews and reduced motion. */
   --fx: 1;
+  /* Paper over footage: the ident and the loading state sit on the first still, not a blank card. */
+  --wash: color-mix(in srgb, var(--paper) 80%, transparent);
   --o: 600s;
   --out: calc(var(--reel-ms) - var(--tout));
 
@@ -146,9 +148,18 @@
   animation: reel-kb 3400ms linear var(--s) both;
 }
 
+/*
+  The first shot waits in place under the ident instead of transitioning in: the ident dissolves
+  straight into it, and being painted early it counts as the page's largest paint (LCP).
+*/
+.reel-shot:first-child .reel-tx {
+  animation: none !important;
+}
+
 .reel-kb img,
 .reel-end-art img,
-.reel-backfill img {
+.reel-backfill img,
+.reel-cover img {
   display: block;
   width: 100%;
   height: 100%;
@@ -206,13 +217,19 @@
 
 /* ---------- Copy: kicker, word-by-word title, hook, chips ---------- */
 
+/* Hidden (not just transparent) until its first beat, so no reflow before then counts as a layout shift. */
 .reel-copy {
   z-index: 4;
-  animation: reel-drift calc(var(--tend) - var(--t1)) linear var(--t1) both;
+  animation:
+    reel-drift calc(var(--tend) - var(--t1)) linear var(--t1) both,
+    reel-show 1ms step-end var(--t1) both;
 }
 
+/* Arrives with the kicker (its small-stage scrim would otherwise sit empty), leaves at --o. */
 .reel-titleblock {
-  animation: reel-out 520ms var(--ease-in) var(--o) forwards;
+  animation:
+    reel-fade-in 400ms var(--ease) calc(var(--t1) + 100ms) both,
+    reel-out 520ms var(--ease-in) var(--o) forwards;
 }
 
 .reel-kicker {
@@ -648,7 +665,7 @@
   place-content: center;
   justify-items: center;
   gap: max(0.4rem, 2cqh);
-  background: var(--paper);
+  background: var(--wash);
   animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - 320ms) forwards;
 }
 
@@ -1032,11 +1049,33 @@
   color: var(--paper);
 }
 
+/*
+  While the stills decode, the thumbnail (already on screen in the card the user came from) sits
+  under the same paper wash the ident uses, so the stage never paints as a blank card.
+*/
 .reel-loading {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
+  isolation: isolate;
+}
+
+.reel-loading img {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reel-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--wash);
 }
 
 .reel-loading::before {
@@ -1058,6 +1097,33 @@
 
 .reel[data-variant='preview'] .reel-tx {
   box-shadow: none;
+}
+
+/* A card has no player to hand off to: the art grows back into the thumbnail undimmed. */
+.reel[data-variant='preview'] .reel-end-art::after {
+  animation: none;
+}
+
+/*
+  Cards open on footage: no ident, the thumbnail as is while decoding, then the card's own image
+  (.reel-cover) over the first pan until it dissolves into the reel where the ident would have.
+*/
+.reel[data-variant='preview'] .reel-ident,
+.reel[data-variant='preview'] .reel-loading::before,
+.reel[data-variant='preview'] .reel-loading::after {
+  display: none;
+}
+
+.reel-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - 320ms) forwards;
+}
+
+.reel[data-variant='preview'] .reel-shot:first-child .reel-kb {
+  animation-delay: 0s;
+  animation-duration: 4900ms;
 }
 
 .reel[data-variant='preview'] :is(.reel-tags, .reel-index) {
@@ -1246,8 +1312,11 @@
     display: none;
   }
 
-  /* Split stacks: full-width stills on top, copy on the paper band below, controls up top. */
-  .reel[data-template='split'] :is(.reel-stage, .reel-frame) {
+  /*
+    Split stacks: full-width stills on top, copy on the paper band below, controls up top.
+    `[data-side]` outranks the side-specific offsets above, which would otherwise win here.
+  */
+  .reel[data-template='split'][data-side] :is(.reel-stage, .reel-frame) {
     top: 0;
     right: 0;
     left: 0;
@@ -1262,7 +1331,7 @@
     display: none;
   }
 
-  .reel[data-template='split'] .reel-copy {
+  .reel[data-template='split'][data-side] .reel-copy {
     top: auto;
     right: 5cqw;
     bottom: 0;
@@ -1366,6 +1435,15 @@
 @keyframes reel-hide {
   to {
     visibility: hidden;
+  }
+}
+
+@keyframes reel-show {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
   }
 }
 

@@ -1,6 +1,7 @@
 // Breadcrumbs: `items` [{ label, to? }] rendered as an ordered trail (Browse › Collection › Title);
 // the last item is the current page (aria-current="page") and is never a link. `nowrap` keeps the
-// trail on one line: the current page's crumb truncates first, the others only after it.
+// trail on one line: the first crumb keeps its width, middle ones take at most 45% (truncated) and
+// the current page's crumb truncates in what is left, so it never collapses to nothing.
 import { Link, type To } from 'react-router'
 import { ChevronRightIcon } from '../icons'
 
@@ -21,11 +22,9 @@ export default function Breadcrumbs({ items, nowrap = false, className = '' }: B
       <ol className={`flex items-center gap-x-1 ${nowrap ? 'flex-nowrap' : 'flex-wrap gap-y-1'}`}>
         {items.map((item, i) => {
           const last = i === items.length - 1
+          const fit = !nowrap ? '' : last ? 'shrink-[1000]' : i === 0 ? 'shrink-0' : 'max-w-[45%]'
           return (
-            <li
-              key={`${item.label}-${i}`}
-              className={`flex min-w-0 items-center gap-x-1 ${nowrap && last ? 'shrink-[1000]' : ''}`}
-            >
+            <li key={`${item.label}-${i}`} className={`flex min-w-0 items-center gap-x-1 ${fit}`}>
               {i > 0 && <ChevronRightIcon className="size-3.5 shrink-0 text-ink-3" />}
               {item.to !== undefined && !last ? (
                 <Link

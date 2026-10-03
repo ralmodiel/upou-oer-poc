@@ -1,5 +1,5 @@
 import { useState, type SyntheticEvent } from 'react'
-import { largeImageOf } from '../../components/media'
+import { imagesOf } from '../../components/media'
 import type { Video } from '../../types'
 import './watch.css'
 
@@ -9,7 +9,7 @@ const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
 
 /** Full-bleed, blurred and dimmed still behind the player column, fading into the page. */
 export default function WatchBackdrop({ video }: { video: Video }) {
-  const [src, setSrc] = useState(() => largeImageOf(video))
+  const [src, setSrc] = useState(() => imagesOf(video, true).large)
   const [failed, setFailed] = useState(false)
   if (failed) return null
   return (

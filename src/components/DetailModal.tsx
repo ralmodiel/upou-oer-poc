@@ -79,9 +79,12 @@ function DetailDialog({ video }: { video: Video }) {
     }
   }, [])
 
+  // Each title (the first and any similar one swapped in) starts on Play: Enter plays at once,
+  // ↓ reaches "More like this", and a remote's OK never lands on Close by surprise.
   useEffect(() => {
     stopPreview()
     dialog.current?.scrollTo({ top: 0 })
+    dialog.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus({ preventScroll: true })
   }, [video.id])
 
   useDocumentTitle(`${video.title} · UPOU OER`)
@@ -169,13 +172,14 @@ function DetailDialog({ video }: { video: Video }) {
               video={video}
               sizes="(min-width: 48rem) 400px, 100vw"
               large
+              canonical
               loading="eager"
               className="md:rounded-card md:shadow-lift md:ring-1 md:ring-black/10"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:col-span-5 md:col-start-1 md:row-start-2">
-            <PlayLink video={video} className={buttonClass('primary')}>
+            <PlayLink video={video} data-autofocus="" className={buttonClass('primary')}>
               <PlayIcon />
               Play
             </PlayLink>

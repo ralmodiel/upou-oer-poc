@@ -1,7 +1,7 @@
 // Menu: a small dropdown — a trigger button and a popup of actions in `sections`. An item with
 // `checked` set is a radio item (aria-checked). Keyboard: Enter/Space opens and focuses the first
-// item, ↑ ↓ move (wrapping), Home/End jump, Esc closes and refocuses the trigger, Tab or focus
-// leaving closes. The popup owns its arrow keys (role=menu), so spatial navigation stays out.
+// item, ↑ ↓ move (wrapping), Home/End jump, Esc or Backspace closes and refocuses the trigger, Tab
+// or focus leaving closes. The popup owns its arrow keys (role=menu), so spatial navigation stays out.
 import {
   useEffect,
   useId,
@@ -38,7 +38,7 @@ export interface MenuProps {
 }
 
 const ITEM =
-  'flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-checked:font-semibold aria-checked:text-maroon [&>svg]:size-4.5 [&>svg]:shrink-0'
+  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-checked:font-semibold aria-checked:text-maroon [&>svg]:size-4.5 [&>svg]:shrink-0'
 
 export default function Menu({
   label,
@@ -83,7 +83,8 @@ export default function Menu({
     else if (e.key === 'ArrowUp') go(index - 1)
     else if (e.key === 'Home') go(0)
     else if (e.key === 'End') go(list.length - 1)
-    else if (e.key === 'Escape') {
+    else if (e.key === 'Escape' || e.key === 'Backspace') {
+      // Backspace too: a remote's Back closes the menu rather than leaving the page.
       e.preventDefault()
       close(true)
     } else if (e.key === 'Tab') setOpen(false)

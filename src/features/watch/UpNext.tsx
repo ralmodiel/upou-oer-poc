@@ -4,7 +4,11 @@ import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
 import type { UpNextItem } from './recommendations'
 
-/** Compact list of recommended videos; each row is one link, so it is keyboard operable as is. */
+/**
+ * Compact list of recommended videos; each row is one link, so it is keyboard operable as is
+ * (the shell's focus ring applies). The reason sits above the title in sentence case and may
+ * take two lines; without one the collection eyebrow stands in.
+ */
 export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
   if (!items.length) return null
   return (
@@ -18,7 +22,7 @@ export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
           <li key={v.id}>
             <Link
               to={`/watch/${v.id}`}
-              className="group -mx-2 flex gap-3 rounded-card px-2 py-3 outline-none transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-maroon"
+              className="group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2"
             >
               <img
                 src={v.thumbnail}
@@ -30,7 +34,11 @@ export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
                 className="aspect-video w-28 shrink-0 rounded-lg bg-surface-2 object-cover ring-1 ring-black/5 sm:w-36"
               />
               <span className="min-w-0">
-                <span className="eyebrow block truncate">{reason || v.category}</span>
+                {reason ? (
+                  <span className="line-clamp-2 text-xs font-medium text-forest">{reason}</span>
+                ) : (
+                  <span className="eyebrow block truncate">{v.category}</span>
+                )}
                 <span className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink group-hover:text-maroon">
                   {v.title}
                 </span>

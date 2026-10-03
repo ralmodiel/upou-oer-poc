@@ -7,6 +7,7 @@ import {
   type FocusEvent,
   type PointerEvent,
 } from 'react'
+import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
 import { canHover } from './browse-hooks'
@@ -57,17 +58,20 @@ export function useCardPreview(video: Video) {
   const [phase, setPhase] = useState<Phase>('idle')
   const hoverTimer = useRef(0)
   const endTimer = useRef(0)
+  // After a finished reel the thumbnail stays until the pointer or focus leaves the card.
+  const done = useRef(false)
   const { id } = video
 
   const stop = useCallback(() => {
     clearTimeout(hoverTimer.current)
     clearTimeout(endTimer.current)
+    done.current = false
     release(id)
     setPhase('idle')
   }, [id])
 
   const start = useCallback(() => {
-    if (prefersReducedMotion()) return
+    if (prefersReducedMotion() || done.current) return
     claim(id, stop)
     setPhase((p) => (p === 'idle' ? 'playing' : p))
   }, [id, stop])
@@ -78,8 +82,13 @@ export function useCardPreview(video: Video) {
   const onComplete = useCallback(() => {
     clearTimeout(endTimer.current)
     setPhase('ending')
-    endTimer.current = window.setTimeout(() => setPhase('done'), END_HOLD_MS)
-  }, [])
+    endTimer.current = window.setTimeout(() => {
+      // Nothing left to dismiss: Esc is the app's again.
+      done.current = true
+      release(id)
+      setPhase('done')
+    }, END_HOLD_MS)
+  }, [id])
 
   const previewing = phase === 'playing' || phase === 'ending'
   const hostProps = {
@@ -89,7 +98,11 @@ export function useCardPreview(video: Video) {
       hoverTimer.current = window.setTimeout(start, HOVER_DELAY_MS)
     },
     onPointerLeave: stop,
-    onFocus: start,
+    // Focus previews follow keyboard focus only: a click on a card's button, or the focus "Load
+    // more" gives the first new card after a click, plays nothing (pointers get hover previews).
+    onFocus: () => {
+      if (lastInput() !== 'pointer') start()
+    },
     onBlur: (e: FocusEvent) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node | null)) stop()
     },

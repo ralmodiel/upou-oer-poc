@@ -141,6 +141,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
           video={video}
           sizes="(min-width: 64rem) 55vw, 100vw"
           large
+          canonical
           loading="eager"
           fetchPriority={priority ? 'high' : undefined}
           className="rounded-card shadow-lift ring-1 ring-black/10"
@@ -156,9 +157,11 @@ function AlsoNewItem({ video }: { video: Video }) {
   const { hostProps, overlay } = useCardPreview(video)
   return (
     <article {...hostProps} className="group/item relative flex gap-4 py-3">
+      {/* Original stills: in a short list one black or flash frame would stand out. */}
       <Thumbnail
         video={video}
         sizes="(min-width: 40rem) 160px, 128px"
+        canonical
         className="w-32 shrink-0 rounded-lg ring-1 ring-black/5 sm:w-40"
       >
         {overlay}

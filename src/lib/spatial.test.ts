@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { candidates, distance, findTarget, keepsArrow, moveFocus } from './spatial'
+import { candidates, distance, findSection, findTarget, keepsArrow, moveFocus } from './spatial'
 
 // [top, left, width, height] in viewport pixels.
 type Rect = [number, number, number, number]
@@ -96,7 +96,6 @@ describe('findTarget', () => {
     page()
     focus('#a1-link')
     expect(id(findTarget('right'))).toBe('a2-link')
-    expect(id(findTarget('down'))).toBe('b1-link')
     expect(id(findTarget('up'))).toBe('browse')
     expect(findTarget('left')).toBeNull()
     focus('#b2-link')
@@ -105,11 +104,64 @@ describe('findTarget', () => {
     expect(id(findTarget('down'))).toBe('foot')
   })
 
-  it('reaches a card from a control inside another card', () => {
+  it("visits a card's own controls before the next card", () => {
     page()
+    focus('#a1-link')
+    expect(id(findTarget('down'))).toBe('a1-save')
     focus('#a1-save')
+    expect(id(findTarget('up'))).toBe('a1-link')
     expect(id(findTarget('right'))).toBe('a2-link')
     expect(id(findTarget('down'))).toBe('b1-link')
+  })
+
+  it('reaches a centred "wide" row control straight down from any column', () => {
+    page()
+    document
+      .querySelector('ul')!
+      .insertAdjacentHTML(
+        'afterend',
+        '<div id="row"><button id="more" data-spatial="wide">More</button></div><a id="far" href="/f">Far</a>',
+      )
+    place('#row', [560, 10, 620, 40])
+    place('#more', [560, 280, 80, 40])
+    // Aligned with the right column but further down: loses to the wide row.
+    place('#far', [700, 330, 100, 20])
+    focus('#b2-link')
+    expect(id(findTarget('down'))).toBe('more')
+  })
+
+  it('reaches controls scrolled out of view inside a (fixed) dialog', () => {
+    document.body.innerHTML =
+      '<dialog open style="position: fixed"><button id="close">Close</button><a id="facts" href="/c">General</a></dialog>'
+    place('#close', [-60, 900, 40, 40])
+    place('#facts', [20, 500, 120, 40])
+    focus('#facts')
+    expect(id(findTarget('up'))).toBe('close')
+  })
+
+  it('prefers page content over a sticky bar, which is the fallback', () => {
+    page()
+    document.querySelector('header')!.style.position = 'sticky'
+    document
+      .querySelector('ul')!
+      .insertAdjacentHTML('beforebegin', '<a id="chip" href="/c">Chip</a>')
+    // The chip row is scrolled out above the viewport, under the header.
+    place('#chip', [-40, 10, 80, 30])
+    focus('#a1-link')
+    expect(id(findTarget('up'))).toBe('chip')
+    document.getElementById('chip')!.remove()
+    expect(id(findTarget('up'))).toBe('browse')
+    // Still scrolling out from under the bar: the bar is the fallback all the same.
+    place('#a1', [30, 10, 300, 200])
+    expect(id(findTarget('up'))).toBe('browse')
+    place('#a1', [100, 10, 300, 200])
+    // From the bar itself only what is on screen counts, and the bar's own items come first:
+    // ← from the field stays in the bar although a card lies just below-left.
+    focus('#browse')
+    expect(id(findTarget('down'))).toBe('a1-link')
+    place('#a2', [45, 330, 300, 200])
+    focus('#q')
+    expect(id(findTarget('left'))).toBe('browse')
   })
 
   it('leaves a text field up or down, towards the overlapping column', () => {
@@ -161,6 +213,29 @@ describe('keepsArrow', () => {
     expect(keepsArrow(document.getElementById('ta'), 'right')).toBe(false)
     expect(keepsArrow(document.getElementById('s'), 'up')).toBe(true)
     expect(keepsArrow(null, 'up')).toBe(false)
+  })
+})
+
+describe('findSection', () => {
+  it('jumps to the first card of the next or previous section, stopping at the ends', () => {
+    page()
+    // Wrap the grid in a section (moving the nodes keeps their placed rects) and add one above.
+    const grid = document.querySelector('ul')!
+    const s2 = document.createElement('section')
+    grid.replaceWith(s2)
+    s2.append(grid)
+    s2.insertAdjacentHTML(
+      'beforebegin',
+      '<section id="s1"><a id="s1-a" href="/x">Chip</a></section>',
+    )
+    place('#s1-a', [70, 10, 60, 20])
+    focus('#s1-a')
+    expect(id(findSection(1))).toBe('a1-link')
+    focus('#b2-link')
+    expect(id(findSection(-1))).toBe('s1-a')
+    expect(findSection(1)).toBeNull()
+    ;(document.activeElement as HTMLElement).blur()
+    expect(id(findSection(1))).toBe('s1-a')
   })
 })
 

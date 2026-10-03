@@ -113,16 +113,12 @@ describe('Videos whose every image is flagged', () => {
     setCatalog(fixtureVideos)
   })
 
-  it('show their title on the brand band: no image, never the flagged thumbnail or poster', () => {
+  it('show their least bad image, never a plain colour tile', () => {
     renderAt('/', <VideoGrid videos={[flagged, ...others]} />)
     const card = screen.getByRole('link', { name: `Play ${flagged.title}` }).closest('article')!
-    expect(card.querySelector('img')).toBeNull()
-    const tile = card.querySelector('[data-title-tile]')!
-    expect(tile).toHaveTextContent(flagged.title)
-    expect(tile).toHaveAttribute('aria-hidden', 'true')
-    expect(tile.className).toMatch(/(^| )bg-band-(maroon|forest|gold)( |$)/)
-    // The others keep their stills.
-    expect(document.querySelectorAll('[data-title-tile]')).toHaveLength(1)
+    const image = card.querySelector('img')
+    expect([flagged.thumbnail, flagged.poster]).toContain(image?.getAttribute('src'))
+    expect(document.querySelector('[data-title-tile]')).toBeNull()
   })
 
   it('stay out of collection covers while other videos have stills', () => {

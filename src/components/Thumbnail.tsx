@@ -1,6 +1,6 @@
 import type { ImgHTMLAttributes, ReactNode, SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { imagesOf, slugOfCategory } from './media'
+import { slugOfCategory, thumbnailOf } from './media'
 import { BAND, toneOf, type Tone } from './tones'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
@@ -66,9 +66,9 @@ interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'f
 }
 
 /**
- * 16:9 still on a surface-2 well that shows the collection's initial underneath, so a slow or
- * missing image never reads as a blank block; a video whose every image is flagged gets its title
- * tile instead. Lazy images fade in; eager ones (LCP) paint at once.
+ * 16:9 still on a plain surface-2 well (no letter or tile while it loads); a video whose every
+ * image is flagged shows its least bad one, never a plain colour tile. Lazy images fade in; eager
+ * ones (LCP) paint at once.
  */
 export default function Thumbnail({
   video,
@@ -81,35 +81,26 @@ export default function Thumbnail({
   fetchPriority,
 }: Props) {
   const fade = loading === 'lazy'
-  const images = imagesOf(video, canonical)
+  const images = thumbnailOf(video, canonical)
   return (
     <div className={`relative aspect-video overflow-hidden bg-surface-2 @container ${className}`}>
-      <span
-        aria-hidden="true"
-        className="absolute inset-0 grid place-items-center font-display text-[length:clamp(1.25rem,22cqi,2.75rem)] text-ink-3/50 select-none"
-      >
-        {video.category.charAt(0)}
-      </span>
-      {!images && <TitleTile video={video} />}
-      {images && (
-        <img
-          key={video.id}
-          src={large ? images.large : images.small}
-          srcSet={images.srcSet}
-          sizes={sizes}
-          alt=""
-          loading={loading}
-          fetchPriority={fetchPriority}
-          decoding="async"
-          onLoad={markLoaded}
-          onError={(e) => retryOrFail(e.currentTarget, images.small)}
-          className={`relative size-full object-cover data-failed:hidden ${
-            fade
-              ? 'opacity-0 transition-opacity duration-300 data-loaded:opacity-100 motion-reduce:transition-none'
-              : ''
-          }`}
-        />
-      )}
+      <img
+        key={video.id}
+        src={large ? images.large : images.small}
+        srcSet={images.srcSet}
+        sizes={sizes}
+        alt=""
+        loading={loading}
+        fetchPriority={fetchPriority}
+        decoding="async"
+        onLoad={markLoaded}
+        onError={(e) => retryOrFail(e.currentTarget, images.small)}
+        className={`relative size-full object-cover data-failed:hidden ${
+          fade
+            ? 'opacity-0 transition-opacity duration-300 data-loaded:opacity-100 motion-reduce:transition-none'
+            : ''
+        }`}
+      />
       {children}
     </div>
   )

@@ -44,11 +44,14 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     if (!row) return
     row.focus({ preventScroll: true })
     ol.scrollTo?.({ top: row.offsetTop, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-  }, [items, listRef])
+  }, [items, more, listRef])
 
+  // Focus moves to the first new row; with nothing left to add, More… goes and the last row takes it.
+  // While the picks are still loading it does nothing.
   const onMore = () => {
+    if (!more) return
     const before = items.length
-    if (list.append().length) focusFrom.current = before
+    focusFrom.current = list.append().length ? before : before - 1
   }
 
   if (!items.length) return null
@@ -139,11 +142,13 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
         </ol>
       </div>
       {/* Under the scroll area, so it is always in sight; gone once nothing more is left. */}
-      {(more === null || more.length > 0) && (
+      {more !== false && (
         <Button
           variant="secondary"
           size="sm"
           onClick={onMore}
+          onPointerEnter={list.prefetch}
+          onFocus={list.prefetch}
           aria-disabled={more === null || undefined}
           className="watch-upnext-more mt-3 w-full aria-disabled:cursor-wait aria-disabled:opacity-60"
         >

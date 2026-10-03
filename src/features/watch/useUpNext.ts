@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { onIdle } from '../../components/browse-hooks'
 import { getVideo } from '../../data/catalog'
 import type { Profile } from '../../lib/history'
 import { isRecommenderReady, warmRecommenderAsync } from '../../lib/recommend'
@@ -16,6 +17,9 @@ import {
   type UpNextItem,
 } from './recommendations'
 
+// Rows More… adds at a time.
+const MORE = 8
+
 /** Whether the next video plays when one ends: on unless turned off (only a stored false is off). */
 export function useAutoplay() {
   const [stored, setStored] = usePersistentState<unknown>('upou:autoplay', true)
@@ -30,14 +34,16 @@ interface Rows {
 
 export interface UpNextList {
   items: UpNextItem[]
-  /** The next picks More… would add (null while the recommender's index builds). */
-  more: UpNextItem[] | null
+  /** Whether More… has rows to add: null while the recommender's index builds, false once none are left. */
+  more: boolean | null
   /** The playlist this page was opened from (null when it computed its own list). */
   playlist: Playlist | null
   /** The list as a playlist, for links into it: `ids` as shown, `from` its origin. */
   asPlaylist: () => Playlist
-  /** Adds `more` to the end (on a playlist page, kept in history state); returns what it added. */
+  /** Adds the next picks to the end (on a playlist page, kept in history state); returns them. */
   append: () => UpNextItem[]
+  /** Works out the next picks in idle time, ahead of a likely More… (pointer or focus on it). */
+  prefetch: () => void
   listRef: RefObject<HTMLOListElement | null>
 }
 
@@ -50,7 +56,9 @@ export interface UpNextList {
  *
  * Choosing a row freezes the list as a playlist (history state): the next page shows the same rows
  * in the same order. More… (and autoplay at the end of the list) appends the next picks for the
- * video that first listed them.
+ * video that first listed them. Those take a larger recommender run than the list itself, so they
+ * are worked out only when wanted, or in idle time once More… is pointed at or focused, never
+ * while the page renders.
  */
 export function useUpNext(video: Video, profile: Profile): UpNextList {
   const location = useLocation()
@@ -104,10 +112,16 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
     }
   }, [pending])
 
-  const more = useMemo(
-    () => (ready && rows.final ? moreUpNext(origin, video, rows.items, picked) : null),
-    [ready, rows, origin, video, picked],
-  )
+  // The next picks for the rows shown, one more than More… adds: a short answer means none are
+  // left after them.
+  const next = useRef<{ after: UpNextItem[]; picks: UpNextItem[] } | null>(null)
+  const nextPicks = (after: UpNextItem[]) => {
+    if (next.current?.after !== after)
+      next.current = { after, picks: moreUpNext(origin, video, after, picked, MORE + 1) }
+    return next.current.picks
+  }
+  const [left, setLeft] = useState(true)
+  const more = ready && rows.final ? left : null
   const from = playlist?.from ?? video.id
   const asPlaylist = (items = rows.items): Playlist => ({
     from,
@@ -115,15 +129,38 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   })
 
   const append = () => {
-    if (!more?.length) return []
-    const items = [...rows.items, ...more]
+    if (!more) return []
+    const picks = nextPicks(rows.items)
+    const added = picks.slice(0, MORE)
+    if (picks.length <= MORE) setLeft(false)
+    if (!added.length) return []
+    const items = [...rows.items, ...added]
     setRows({ items, final: true })
     if (playlist) {
       const state = withPlaylist(location.state, asPlaylist(items))
       void navigate(location, { replace: true, state, preventScrollReset: true })
     }
-    return more
+    return added
   }
 
-  return { items: rows.items, more, playlist, asPlaylist: () => asPlaylist(), append, listRef }
+  const scheduled = useRef<(() => void) | undefined>(undefined)
+  const prefetch = () => {
+    const after = rows.items
+    if (!more || next.current?.after === after || scheduled.current) return
+    scheduled.current = onIdle(() => {
+      scheduled.current = undefined
+      nextPicks(after)
+    }, 1000)
+  }
+  useEffect(() => () => scheduled.current?.(), [])
+
+  return {
+    items: rows.items,
+    more,
+    playlist,
+    asPlaylist: () => asPlaylist(),
+    append,
+    prefetch,
+    listRef,
+  }
 }

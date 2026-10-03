@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { slugifyCategory } from '../data/catalog'
+import { thumbnailOf } from '../components/media'
+import { getVideo, slugifyCategory } from '../data/catalog'
 import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
 import { REEL_MS } from '../features/reel/PromoReel'
@@ -212,14 +213,15 @@ describe('WatchPage', () => {
     expect(screen.queryByRole('button', { name: /More…|Loading…/ })).not.toBeInTheDocument()
   })
 
-  it('gives an "Up next" video with no clean image its title tile, never a flagged frame', () => {
+  it('gives an "Up next" video with no clean image its least bad picture, never a colour tile', () => {
     const flagged = similar[0]
     setFrameFlags({ [flagged.youtubeId]: 0b1111 })
     try {
       renderAt([`/watch/${testVideo.id}`])
       const row = screen.getByRole('link', { name: new RegExp(flagged.title) })
-      expect(row.querySelector('[data-title-tile]')).toHaveTextContent(flagged.title)
-      expect(row.querySelector('img')).toBeNull()
+      expect(row.querySelector('[data-title-tile]')).toBeNull()
+      const img = row.querySelector('img')
+      expect(img).toHaveAttribute('src', thumbnailOf(getVideo(flagged.id)!).small)
     } finally {
       setFrameFlags({})
     }
@@ -459,16 +461,27 @@ describe('WatchPage', () => {
     expect(srcs('.reel-end-art img')).toEqual([poster])
     expect(srcs('.watch-backdrop img')).toEqual([poster])
 
-    // Every candidate flagged: no image anywhere on the stage or behind it; the player waits on
-    // paper with the title tile, never on a dark box.
+    // Every candidate flagged: no reel and no backdrop; the player waits on paper over the video's
+    // least bad picture, as on its card, never on a colour tile or a dark box.
     setFrameFlags({ [testVideo.youtubeId]: 0b1111 })
     try {
       const other = renderAt([`/watch/${testVideo.id}`])
       await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
-      expect(other.container.querySelector('.watch-stage img, .watch-backdrop img')).toBeNull()
+      expect(other.container.querySelector('.reel, .watch-backdrop img')).toBeNull()
       const stage = other.container.querySelector('.watch-stage')
-      expect(stage?.querySelector('[data-title-tile]')).toHaveTextContent(testVideo.title)
+      expect(stage?.querySelector('[data-title-tile]')).toBeNull()
+      const picture = thumbnailOf(getVideo(testVideo.id)!, true)
+      const shown = other.container.querySelectorAll<HTMLImageElement>('.watch-stage > div > img')
+      expect([...shown].map((i) => i.src)).toEqual([picture.large])
       expect(stage?.querySelector(':scope > div[aria-hidden]')).toHaveClass('bg-[#faf8f6]')
+
+      // A still that fails gives way to its 320px version; the title tile only if that fails too.
+      fireEvent.error(shown[0])
+      const small = stage!.querySelector<HTMLImageElement>(':scope > div > img')!
+      expect(small.src).toBe(picture.small)
+      fireEvent.error(small)
+      expect(stage?.querySelector(':scope > div > img')).toBeNull()
+      expect(stage?.querySelector('[data-title-tile]')).toHaveTextContent(testVideo.title)
     } finally {
       setFrameFlags({})
     }

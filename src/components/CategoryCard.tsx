@@ -2,10 +2,9 @@ import { memo, type SyntheticEvent } from 'react'
 import { Link } from 'react-router'
 import { GENERAL_CATEGORY, getCategoryVideos, type Category } from '../data/catalog'
 import type { Video } from '../types'
-import { TitleTile } from './Thumbnail'
 import { useNear } from './browse-hooks'
 import { ChevronRightIcon } from './icons'
-import { imagesOf } from './media'
+import { imagesOf, thumbnailOf } from './media'
 import { MARK, toneOf } from './tones'
 
 // Covers below the first row load once they come within a quarter screen of the viewport.
@@ -44,18 +43,10 @@ function Tile({
   load: boolean
   className?: string
 }) {
-  // Canonical stills: a mosaic of three shows any odd rotating frame at once (a title tile when
-  // every image is flagged).
-  const images = imagesOf(video, true)
+  // Canonical stills: a mosaic of three shows any odd rotating frame at once (the least bad image
+  // when every image is flagged).
+  const { small, srcSet } = thumbnailOf(video, true)
   if (!load) return <div className={`bg-surface-2 ${className}`} />
-  if (!images) {
-    return (
-      <div className={`relative ${className}`}>
-        <TitleTile video={video} />
-      </div>
-    )
-  }
-  const { small, srcSet } = images
   return (
     <div className={`overflow-hidden bg-surface-2 ${className}`}>
       <img
@@ -75,7 +66,7 @@ function Tile({
 
 /**
  * Up to `count` of a collection's newest videos with a usable image: a cover is made of stills, so
- * a video whose every image is flagged stays out (its title tile only when no video has a still).
+ * a video whose every image is flagged stays out (its least bad image only when no video has one).
  */
 function coverVideos(slug: string, count: number): Video[] {
   const list = getCategoryVideos(slug)
@@ -163,7 +154,7 @@ export const CategoryListItem = memo(function CategoryListItem({
   const { slug, name } = category
   const [ref, near] = useNear<HTMLAnchorElement>(eager, NEAR)
   const [cover] = coverVideos(slug, 1)
-  const small = cover && imagesOf(cover, true)?.small
+  const small = cover && thumbnailOf(cover, true).small
   return (
     <Link
       ref={ref}
@@ -175,7 +166,6 @@ export const CategoryListItem = memo(function CategoryListItem({
         aria-hidden="true"
         className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
       >
-        {cover && !small && <TitleTile video={cover} />}
         {small && near && (
           <img
             src={small}

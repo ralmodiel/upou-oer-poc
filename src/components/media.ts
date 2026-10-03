@@ -60,7 +60,7 @@ export interface SlotImages {
 /**
  * Sources for a 16:9 slot: this page load's pick from the thumbnail set, or with `canonical` the
  * hero image (hero slots and lists, where one odd frame stands out). Null when the slot has no
- * clean image (every image of the video flagged): it then shows its plain well.
+ * clean image (every image of the video flagged); see `thumbnailOf` for a video's own picture.
  */
 export function imagesOf(video: Video, canonical = false): SlotImages | null {
   // The data falls back to the flagged original when nothing else is left: never show it.
@@ -73,6 +73,10 @@ export function imagesOf(video: Video, canonical = false): SlotImages | null {
         (s) => candidateOf(s) === candidateOf(large) && isClean(video, s),
       ) ?? large)
     : video.thumbnail
+  return slotOf(small, large)
+}
+
+function slotOf(small: string, large: string): SlotImages {
   const width = widthOf(large)
   const sd = sdOf(large)
   const srcSet =
@@ -80,6 +84,19 @@ export function imagesOf(video: Video, canonical = false): SlotImages | null {
       ? [`${small} 320w`, sd && `${sd} 640w`, `${large} ${width}w`].filter(Boolean).join(', ')
       : undefined
   return { small, large, srcSet }
+}
+
+/**
+ * A video's own picture (its card, list row, featured image): the clean images `imagesOf` picks,
+ * else the least bad one (the data's poster) rather than a plain colour tile. Covers and backdrops
+ * keep to clean images, and reels and previews never use a flagged frame.
+ */
+export function thumbnailOf(video: Video, canonical = false): SlotImages {
+  const clean = imagesOf(video, canonical)
+  if (clean) return clean
+  const large = video.poster ?? video.thumbnail
+  const small = thumbnailSetOf(video).find((s) => candidateOf(s) === candidateOf(large))
+  return slotOf(small ?? video.thumbnail, large)
 }
 
 const NEW_COUNT = 10

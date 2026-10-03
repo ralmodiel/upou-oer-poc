@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setFrameFlags } from '../data/frameFlags'
 import type { Video } from '../types'
-import { heroImageOf, imagesOf, largeImageOf } from './media'
+import { heroImageOf, imagesOf, largeImageOf, thumbnailOf } from './media'
 import { fixtureVideos } from './test-fixtures'
 
 const yt = (name: string) => `https://i.ytimg.com/vi/abcdefghijk/${name}.jpg`
@@ -52,12 +52,21 @@ describe('hero slots and the frame filter', () => {
     expect(heroImageOf({ ...v, poster: yt('maxresdefault') })).toBe(yt('maxres2'))
   })
 
-  it('leaves the slot without an image when every image is flagged', () => {
+  it('leaves decorative slots without an image when every image is flagged', () => {
     flag(0b1111)
     expect(heroImageOf(v)).toBeNull()
     expect(imagesOf(v, true)).toBeNull()
-    // Card thumbnails too: the data's last-resort original is flagged.
     expect(imagesOf(v)).toBeNull()
+  })
+
+  it("gives a video's own picture its least bad image (the poster), never nothing", () => {
+    flag(0b1111)
+    const leastBad = { ...v, poster: yt('maxres2') }
+    expect(thumbnailOf(leastBad, true)).toMatchObject({ small: yt('mq2'), large: yt('maxres2') })
+    expect(thumbnailOf(leastBad).small).toBe(yt('mq2'))
+    // With a clean image it is imagesOf's pick.
+    flag(0)
+    expect(thumbnailOf(leastBad, true)).toEqual(imagesOf(leastBad, true))
   })
 })
 

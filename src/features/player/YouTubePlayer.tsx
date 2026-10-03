@@ -15,6 +15,9 @@ const STAGE_SIZES = '(min-width: 1024px) 66vw, 100vw'
 const LISTENING = JSON.stringify({ event: 'listening', id: 1, channel: 'widget' })
 const LISTEN_EVERY_MS = 250
 const LISTEN_TRIES = 120
+// Playback an end needs after the last one counted: a seek near the end can report "ended", play
+// on for a moment and end again, which would restart a countdown the viewer just cancelled.
+const REPLAY_MS = 2000
 const command = (func: 'playVideo' | 'pauseVideo') =>
   JSON.stringify({ event: 'command', func, args: [], id: 1, channel: 'widget' })
 
@@ -116,13 +119,25 @@ export default function YouTubePlayer({
     }
     const timer = setInterval(listen, LISTEN_EVERY_MS)
     listen()
+    // An end counts once, however often it is reported (a state change, then the next info
+    // delivery), and the next one only after real playback (REPLAY_MS): a cancelled countdown
+    // stays cancelled until the video is played again.
+    let last: number | undefined
+    let since = 0
+    let played = Infinity
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== PLAYER_ORIGIN || e.source !== player) return
       heard = true
       const next = stateOf(e.data)
-      if (next === undefined) return
+      if (next === undefined || next === last) return
       setState(next)
-      if (next === 0) ended()
+      if (last === 1) played += performance.now() - since
+      if (next === 1) since = performance.now()
+      if (next === 0 && played >= REPLAY_MS) {
+        played = 0
+        ended()
+      }
+      last = next
     }
     window.addEventListener('message', onMessage)
     return () => {

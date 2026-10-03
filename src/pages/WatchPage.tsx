@@ -50,8 +50,10 @@ function Watch({ video }: { video: Video }) {
   const profile = useProfile()
   const upNext = useUpNext(video, profile)
   const [autoplay] = useAutoplay()
-  // The video autoplay goes to when this one ends, with the list it belongs to.
+  // The video autoplay goes to when this one ends, with the list it belongs to; switching autoplay
+  // off drops it, so switching back on does not restart an old countdown.
   const [queued, setQueued] = useState<{ next: Video; playlist: Playlist } | null>(null)
+  if (queued && !autoplay) setQueued(null)
   const location = useLocation()
   const navigate = useNavigate()
   const category = getCategoryByName(video.category)
@@ -61,9 +63,15 @@ function Watch({ video }: { video: Video }) {
   for (const origin of ORIGINS) preconnect(origin)
 
   // Focus the stage (never the YouTube iframe) when the reel starts and again when the player
-  // appears, so the app shell's Esc = Back handler keeps receiving key events.
+  // appears, so the app shell's Esc = Back handler keeps receiving key events. The hand-off leaves
+  // focus where it is if the viewer has moved on meanwhile (to Up next, say).
+  const opened = useRef(false)
   useEffect(() => {
-    stageRef.current?.focus({ preventScroll: true })
+    const stage = stageRef.current
+    const active = document.activeElement
+    const away = opened.current && active && active !== document.body && !stage?.contains(active)
+    opened.current = true
+    if (!away) stage?.focus({ preventScroll: true })
   }, [phase])
 
   // Keys on the stage itself: ↓ steps into its controls (Sound, then Skip; on the player its Play /
@@ -240,10 +248,12 @@ function WatchNotFound() {
     noindex: true,
   })
   return (
+    // Holds the viewport like the route's loading fallback (App.tsx), so the footer never moves
+    // into view.
     <NotFound
       title="Video not found"
       crumbs={[{ label: 'Browse', to: '/' }, { label: 'Video not found' }]}
-      className="mx-auto w-full max-w-[1600px]"
+      className="mx-auto min-h-dvh w-full max-w-[1600px]"
     >
       This video may have moved or is no longer in the catalog. Try one of these instead.
     </NotFound>

@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import Thumbnail from '../../components/Thumbnail'
 import Button from '../../components/ui/Button'
+import { isEditable, topDialog } from '../../lib/shortcuts'
 import type { Video } from '../../types'
 import './watch.css'
 
@@ -10,14 +11,15 @@ interface Props {
   next: Video
   /** Go to the next video (at zero, or on Play now). */
   onPlay: () => void
-  /** Stop this countdown only (Cancel or Esc). */
+  /** Stop this countdown only (Cancel, Esc or Backspace). */
   onCancel: () => void
 }
 
 /**
  * Shown on the stage when a video ends with autoplay on: the next video, a five-second countdown,
  * Play now and Cancel. A light card whatever the theme, never a dark box. Cancel takes focus, so a
- * remote's OK stops it; Esc cancels too, before the app would treat it as Back.
+ * remote's OK stops it (unless the viewer is typing or in a dialog); the Back keys, Esc and
+ * Backspace, cancel too, before the app would treat them as Back. An open dialog keeps its Esc.
  */
 export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
   const [left, setLeft] = useState(AUTOPLAY_SECONDS)
@@ -26,9 +28,12 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
   const cancel = useEffectEvent(onCancel)
 
   useEffect(() => {
-    rootRef.current?.querySelector<HTMLElement>('[data-cancel]')?.focus({ preventScroll: true })
+    const active = document.activeElement
+    if (!isEditable(active) && !topDialog())
+      rootRef.current?.querySelector<HTMLElement>('[data-cancel]')?.focus({ preventScroll: true })
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return
+      if (e.defaultPrevented || topDialog()) return
+      if (e.key !== 'Escape' && (e.key !== 'Backspace' || isEditable(e.target))) return
       e.preventDefault()
       cancel()
     }
@@ -50,7 +55,7 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
     <div
       ref={rootRef}
       role="group"
-      aria-labelledby="autoplay-next-title"
+      aria-labelledby="autoplay-next-label autoplay-next-title"
       className="watch-autoplay absolute inset-0 z-20 grid place-items-center p-[4%] @container"
     >
       <div className="flex w-full max-w-3xl items-center gap-[4cqi]">
@@ -61,9 +66,13 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
           className="w-[38%] shrink-0 rounded-lg ring-1 ring-black/5"
         />
         <div className="min-w-0">
-          <p className="text-[length:clamp(0.7rem,2.4cqi,0.95rem)] font-semibold tracking-wide text-forest uppercase">
-            Next{' '}
+          <p
+            id="autoplay-next-label"
+            className="text-[length:clamp(0.7rem,2.4cqi,0.95rem)] font-semibold tracking-wide text-forest uppercase"
+          >
+            Next
             <span className="text-ink-2 tabular-nums" aria-hidden="true">
+              {' '}
               · {left}
             </span>
             <span className="sr-only">, playing in {AUTOPLAY_SECONDS} seconds</span>

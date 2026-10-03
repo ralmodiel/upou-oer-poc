@@ -96,6 +96,17 @@ describe('WatchPage', () => {
     expect(screen.queryByText('to go back', { exact: false })).not.toBeInTheDocument()
   })
 
+  it('leaves focus on Up next when the reel hands over, if the viewer went there meanwhile', async () => {
+    vi.useFakeTimers()
+    renderAt([`/watch/${testVideo.id}`])
+    const row = document.querySelector<HTMLElement>('.watch-next')!
+    act(() => row.focus())
+    await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+    await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
+    expect(screen.getByRole('region', { name: 'Video player' })).not.toHaveFocus()
+    expect(row).toHaveFocus()
+  })
+
   it('steps into the reel controls with ↓; the stage rings only after keyboard use', () => {
     renderAt([`/watch/${testVideo.id}`])
     const stage = screen.getByRole('region', { name: 'Preview' })
@@ -279,7 +290,7 @@ describe('WatchPage', () => {
       const { router } = listed(['pick-0', 'pick-1', 'pick-2'])
       const frame = await toPlayer('pick-0')
       await send(frame, ended)
-      const card = screen.getByRole('group', { name: 'Similar video 1' })
+      const card = screen.getByRole('group', { name: 'Next, playing in 5 seconds Similar video 1' })
       expect(within(card).getByRole('button', { name: 'Cancel' })).toHaveFocus()
       await act(() => vi.advanceTimersByTimeAsync(4900))
       expect(router.state.location.pathname).toBe('/watch/pick-0')
@@ -291,27 +302,73 @@ describe('WatchPage', () => {
       })
     })
 
-    it('stops on Cancel or Esc, and Play now goes at once', async () => {
+    it('stops on Cancel, Esc or Backspace, and Play now goes at once', async () => {
       const { router } = listed(['pick-0', 'pick-1'])
       const frame = await toPlayer('pick-0')
+      const playing = JSON.stringify({ event: 'onStateChange', info: 1 })
+      // Played again for `ms`, then to the end.
+      const replay = async (ms = 3000) => {
+        await send(frame, playing)
+        await act(() => vi.advanceTimersByTimeAsync(ms))
+        await send(frame, ended)
+      }
       await send(frame, JSON.stringify({ event: 'onStateChange', info: 0 }))
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      // A cancelled countdown stays cancelled: the embed repeats the end in its next info delivery,
+      // and a seek near the end can report it, play a moment and end again.
+      await send(frame, ended)
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      await replay(600)
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
       await act(() => vi.advanceTimersByTimeAsync(6000))
       expect(router.state.location.pathname).toBe('/watch/pick-0')
       expect(screen.getByRole('region', { name: 'Video player' })).toHaveFocus()
 
-      // Esc cancels instead of going Back (the app's Back ignores a prevented key).
+      // Played to the end again: Esc cancels instead of going Back (the app's Back ignores a
+      // prevented key), and so does Backspace, the other Back key.
+      for (const key of ['Escape', 'Backspace']) {
+        await replay()
+        expect(fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key })).toBe(
+          false,
+        )
+        expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+        await act(() => vi.advanceTimersByTimeAsync(6000))
+        expect(router.state.location.pathname).toBe('/watch/pick-0')
+      }
+
+      await replay()
+      await act(() => fireEvent.click(screen.getByRole('button', { name: 'Play now' })))
+      expect(router.state.location.pathname).toBe('/watch/pick-1')
+    })
+
+    it('never takes focus from a field being typed in, which keeps Backspace', async () => {
+      listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
+      const field = document.createElement('input')
+      document.body.append(field)
+      try {
+        field.focus()
+        await send(frame, ended)
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+        expect(field).toHaveFocus()
+        expect(fireEvent.keyDown(field, { key: 'Backspace' })).toBe(true)
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+      } finally {
+        field.remove()
+      }
+    })
+
+    it('switching autoplay off drops a running countdown for good', async () => {
+      const { router } = listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
       await send(frame, ended)
-      expect(
-        fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' }),
-      ).toBe(false)
+      const toggle = screen.getByRole('switch', { name: 'Autoplay' })
+      fireEvent.click(toggle)
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      fireEvent.click(toggle)
       expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
       await act(() => vi.advanceTimersByTimeAsync(6000))
       expect(router.state.location.pathname).toBe('/watch/pick-0')
-
-      await send(frame, ended)
-      await act(() => fireEvent.click(screen.getByRole('button', { name: 'Play now' })))
-      expect(router.state.location.pathname).toBe('/watch/pick-1')
     })
 
     it('stays put with the switch off, or for messages from anywhere but the player', async () => {
@@ -544,7 +601,9 @@ describe('WatchPage', () => {
 
   it('shows a friendly not-found screen for unknown ids', () => {
     renderAt(['/watch/does-not-exist'])
-    expect(screen.getByRole('heading', { name: 'Video not found' })).toBeInTheDocument()
+    const heading = screen.getByRole('heading', { name: 'Video not found' })
+    // A screen tall, like the route's loading fallback: the footer never shifts into view (CLS).
+    expect(heading.closest('.min-h-dvh')).not.toBeNull()
     expect(document.title).toBe('Video not found · UPOU OER')
     expect(screen.getByRole('link', { name: 'Browse videos' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'All collections' })).toHaveAttribute(

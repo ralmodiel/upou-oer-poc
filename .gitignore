@@ -13,3 +13,6 @@ scripts/
 
 # Local working data (transcripts, downloads) is never committed
 tmp/
+
+# Claude Code session state (locks, local settings) stays on this machine
+.claude/

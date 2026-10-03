@@ -123,16 +123,19 @@ stills are missing too (only the 320 px `mq` images exist), and `q: 0` means You
 at all (only the thumbnail; the reel then plays on type or the thumbnail). `b` carries the source page's own
 backdrop when it beats the YouTube default.
 
-`src/data/frame-flags.json` marks the stills that catch a face not smiling, mid-word or looking
-angry: one 4-bit mask per YouTube id (bit 0 the thumbnail, bits 1–3 the frames), written by local
-scripts that score the public 320 px YouTube stills with MediaPipe's face landmarker (smile,
-open-mouth and frown blendshapes). Only these flags are kept; no images or face data are committed. `src/data/images.ts` turns a record and its flags into the
-image fields of a `Video`: `thumbnail` and `backdrop` (this load's pick among the clean stills),
-`poster` (the canonical image for hero slots, the player and the reel's end card: the original
-unless it is flagged, else the first clean still), `frames` (the reel's three shots) and `original`
-(the video's own image, used only for link previews). The original comes back only when every
-candidate is flagged. The SEO generator uses the same module, so the static shells and the app
-show the same canonical images.
+`src/data/frame-flags.json` holds one packed integer per YouTube id (bit layout in
+`src/data/frameFlags.ts`): which candidates are unfit (a face not smiling, talking, eyes closed,
+angry or awkward; a dark, blank or colour-cast still), the least bad one when all four are, stills
+that repeat a shot, slide-like stills, the beautiful candidates and a best-first ranking. Local
+scripts write it by scoring the public 320 px YouTube stills with MediaPipe's face landmarker
+(blendshapes, head pose, sharpness) plus brightness, contrast and colour checks. Only these flags
+are kept; no images or face data are committed. `src/data/images.ts` turns a record and its flags
+into the image fields of a `Video`: `thumbnail` and `backdrop` (this load's pick among the clean
+candidates, the beautiful ones when known), `poster` (the canonical image for hero slots, the
+player and the reel's end card: the best clean candidate, else the least bad), `frames` (the
+reel's three shots: clean stills best first, each shot once) and `original` (the video's own
+image, used only for link previews). The SEO generator uses the same module, so the static shells
+and the app show the same canonical images.
 
 The snapshot was produced by a local crawler that:
 
@@ -149,18 +152,21 @@ tests swap in fixtures with `setCatalog()` from `src/data/testing.ts`.
 
 ### Local tooling (not committed)
 
-`scripts/` and `tmp/` are ignored by git; these tools only matter when the data is refreshed.
+`scripts/` and `tmp/` are ignored by git; these tools only matter when the data is refreshed, and
+they rebuild every data file on this machine with no other dependency (details, steps and timings
+in `scripts/README.md`). Setup once: `py -m pip install -r scripts/faces/requirements.txt` and
+`npm install --prefix scripts`.
 
-| Script                                            | What it does                                                      |
-| ------------------------------------------------- | ----------------------------------------------------------------- |
-| `scripts/crawl.mjs`                               | The crawler above; writes `src/data/catalog.json`                 |
-| `scripts/probe-sd.mjs`                            | Marks low-res records whose 640 px stills are missing (`s: 0`)    |
-| `scripts/probe-stills.mjs`                        | Marks records with no YouTube stills at all (`q: 0`)              |
-| `scripts/faces/score.py`, `apply.mjs`, `stats.py` | Frame filter: scores the stills, writes `frame-flags.json`, stats |
-| `scripts/text/*.mjs`                              | Optional transcripts for recommendations (see below)              |
+| Command                                                  | What it does                                                                                                                        |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `node scripts/pipeline.mjs`                              | Probes, face detection, frame analysis, then writes `src/data/frame-flags.json` (seconds when cached; ~10 min from an empty `tmp/`) |
+| `node scripts/pipeline.mjs --crawl` (or `--from-json f`) | The same after a fresh crawl of the source site into `src/data/catalog.json`                                                        |
+| `node scripts/pipeline.mjs --transcripts`                | Also turns `tmp/transcripts` into `src/data/recs.json` (see below)                                                                  |
+| `node scripts/pipeline.mjs --check`                      | Lists the prerequisites found: Node 24.11+, Python and its packages, the face model, ffmpeg, Chrome                                 |
+| `node scripts/render-reels.mjs --ids <id> [--mp4]`       | Renders a promo reel (`--variant preview` for the card preview) to `tmp/reels/<id>.webm`                                            |
+| `node scripts/text/people-candidates.mjs`                | Lists tags that look like people's names, for `src/lib/people.ts`                                                                   |
 
-After a new crawl, run `probe-sd.mjs`, `probe-stills.mjs` and the face scripts again so the flags
-match the catalog.
+After a new crawl, run the pipeline again so the flags match the catalog.
 
 ## Recommendations
 

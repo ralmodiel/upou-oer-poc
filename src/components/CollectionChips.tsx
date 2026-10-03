@@ -6,12 +6,13 @@ import { MARK, toneOf } from './tones'
 import SectionHeading from './ui/SectionHeading'
 
 /**
- * Every collection as a chip with its brand dot and count; scrolls sideways on phones, wraps from
- * md up. One Tab stop, and one stop for ↑ / ↓ (data-spatial="group"): ← / → move between chips.
+ * Every collection as a chip with its brand dot and count, the one with the newest video first
+ * (like the home rows); scrolls sideways on phones, wraps from md up. One Tab stop, and one stop
+ * for ↑ / ↓ (data-spatial="group"): ← / → move between chips.
  */
 function CollectionChips() {
   const headingId = useId()
-  const categories = getCategories()
+  const categories = getCategories('latest')
   const { listProps, tabIndexOf } = useRovingRow(categories.length)
   return (
     <section aria-labelledby={headingId} className="px-(--gutter) py-8 sm:py-10">

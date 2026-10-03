@@ -104,9 +104,10 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
      category). Manual prev/next controls only, no auto-rotation.
   2. **Recently viewed** strip (only when history exists): compact horizontal list with
      scroll snapping, no hover scaling.
-  3. **Collections** chip row: every category with its count, linking to `/collections/:slug`;
-     "All collections" link.
-  4. **Sections:** the largest collections only (see "Round 4: a shorter home"), each a heading +
+  3. **Collections** chip row: every category with its count, the one with the newest video first,
+     linking to `/collections/:slug`; "All collections" link.
+  4. **Sections:** the collections with the newest videos only, newest first (see "Round 4: a
+     shorter home"), each a heading +
      "See all (n)" link and one row of cards (two rows of two on phones), then an "All 30
      collections" button. Grids, not horizontal rows, are the main browsing pattern. Below-the-fold
      sections render lazily (`content-visibility: auto` plus a sensible `contain-intrinsic-size`).
@@ -323,7 +324,8 @@ settings panels the switches and their buttons share one column, so ↑ / ↓ vi
 
 ### Round 4: a shorter home
 
-- **Cap:** from md, the 12 largest collections (General excluded), one row of cards each: three
+- **Cap:** from md, the 12 collections with the newest videos, newest first (General excluded;
+  was the 12 largest until the user asked for recency), one row of cards each: three
   at md, four from lg. Phones keep 7 sections of four cards (two rows of two). After them, a
   centred "All 30 collections" button (`wide`) under "18 more collections, plus everything in
   these." The chips row above still links to every collection.

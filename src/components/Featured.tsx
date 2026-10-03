@@ -1,5 +1,6 @@
-import { memo, useId, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState, type FocusEvent, type ReactNode } from 'react'
 import { formatDate } from '../lib/format'
+import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
 import DetailsLink from './DetailsLink'
@@ -34,7 +35,12 @@ const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
  * Editorial opener on a full-bleed backdrop of the featured video: the video with its text,
  * manual prev/next, and an "Also new" list.
  */
-function Featured({ videos, alsoNew, start }: Props) {
+function Featured(props: Props) {
+  return props.videos.length ? <Viewer {...props} /> : null
+}
+
+// Its hooks run only with a video to show.
+function Viewer({ videos, alsoNew, start }: Props) {
   const headingId = useId()
   const count = videos.length
   // A random slide per load among those with an image: a title tile opens the page only when no
@@ -43,9 +49,25 @@ function Featured({ videos, alsoNew, start }: Props) {
   const first = start ?? (pool.length ? pool[Math.floor(LOAD_PICK * pool.length)] : 0)
   const [index, setIndex] = useState(first)
   const video = videos[Math.min(index, count - 1)]
-  if (!video) return null
-  const go = (delta: number) => setIndex((i) => (i + delta + count) % count)
+  // The viewer previews the video it shows: on keyboard focus anywhere in it, and on each pick with
+  // previous / next (from any input). Hovering the image works as on a card.
+  const preview = useCardPreview(video)
+  const picked = useRef(false)
+  const { start: startPreview } = preview
+  useEffect(() => {
+    if (picked.current) startPreview()
+  }, [startPreview])
+  const go = (delta: number) => {
+    picked.current = true
+    setIndex((i) => (i + delta + count) % count)
+  }
   const long = video.title.length > LONG_TITLE
+  const onFocus = () => {
+    if (lastInput() !== 'pointer') preview.start()
+  }
+  const onBlur = (e: FocusEvent<HTMLElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) preview.stop()
+  }
 
   return (
     <div className="relative isolate overflow-hidden">
@@ -55,7 +77,7 @@ function Featured({ videos, alsoNew, start }: Props) {
         className="px-(--gutter) pt-6 pb-8 sm:pt-8 lg:pt-10 lg:pb-10"
       >
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
-          <div className="min-w-0 lg:col-span-7">
+          <div className="min-w-0 lg:col-span-7" onFocus={onFocus} onBlur={onBlur}>
             <div className="flex items-center justify-between gap-4">
               <h2 id={headingId} className="eyebrow">
                 Featured
@@ -82,7 +104,12 @@ function Featured({ videos, alsoNew, start }: Props) {
             </div>
 
             <div role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}`}>
-              <Hero video={video} priority={index === first} />
+              <Hero
+                video={video}
+                priority={index === first}
+                hostProps={preview.hostProps}
+                overlay={preview.overlay}
+              />
               <div className="mt-5">
                 <h3
                   title={video.title}
@@ -145,8 +172,18 @@ function Featured({ videos, alsoNew, start }: Props) {
 }
 
 /** The featured image: clickable (plays) but not a Tab stop; previews on hover like a card. */
-function Hero({ video, priority }: { video: Video; priority: boolean }) {
-  const { hostProps, overlay } = useCardPreview(video)
+function Hero({
+  video,
+  priority,
+  hostProps,
+  overlay,
+}: {
+  video: Video
+  priority: boolean
+  /** The viewer's preview, so it can also start on focus and on each pick. */
+  hostProps: ReturnType<typeof useCardPreview>['hostProps']
+  overlay: ReactNode
+}) {
   return (
     <div {...hostProps} className="mt-3">
       {/* Decorative duplicate of the Play button. */}

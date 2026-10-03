@@ -21,9 +21,19 @@ import {
 } from '../../src/lib/seo.ts'
 import { registerNameTokens } from '../../src/lib/tags.ts'
 import { watchUrl } from '../../src/lib/youtube.ts'
-import { loadCatalog, newestFirst } from './catalog.mjs'
+import { isGeneral, loadCatalog, newestFirst } from './catalog.mjs'
 
 const CATALOG = fileURLToPath(new URL('../../src/data/catalog.json', import.meta.url))
+
+// The home lists collections as the app does: the one with the newest video first, General last.
+const latestFirst = (categories) =>
+  [...categories].sort(
+    (a, b) =>
+      isGeneral(a.name) - isGeneral(b.name) ||
+      newestFirst(a.cover, b.cover) ||
+      b.count - a.count ||
+      a.name.localeCompare(b.name),
+  )
 const LATEST = 12
 const LIST_MAX = 100
 const SITEMAP_MAX = 50_000
@@ -214,7 +224,7 @@ export async function generate({
   )
   files.push([
     join(dist, 'index.html'),
-    shell(template, home, homeFallback(home, categories, newest.slice(0, LATEST))),
+    shell(template, home, homeFallback(home, latestFirst(categories), newest.slice(0, LATEST))),
   ])
   urls.push({ loc: canonicalUrl('/'), lastmod: newest[0]?.publishedAt })
 

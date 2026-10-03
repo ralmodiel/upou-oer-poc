@@ -52,7 +52,7 @@ export const slugifyCategory = (name) =>
 const stamp = (v) => Date.parse(v.publishedAt)
 export const newestFirst = (a, b) => stamp(b) - stamp(a)
 
-const isGeneral = (name) => Number(name === GENERAL_CATEGORY)
+export const isGeneral = (name) => Number(name === GENERAL_CATEGORY)
 
 /**
  * Videos in catalog order and categories largest first (General, posts without a subject, last),

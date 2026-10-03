@@ -109,13 +109,18 @@ function groups(): Map<string, Group> {
 
 const isGeneral = (name: string) => Number(name === GENERAL_CATEGORY)
 
-/** All categories, largest first; General (posts without a subject) last. */
-export function getCategories(): Category[] {
-  return cached('categories', () =>
+/**
+ * All categories, largest first, or with `'latest'` the one with the newest video first (the home);
+ * General (posts without a subject) last either way.
+ */
+export function getCategories(order: 'size' | 'latest' = 'size'): Category[] {
+  const newestOf = (slug: string) => getCategoryVideos(slug)[0]
+  return cached(`categories:${order}`, () =>
     [...groups().values()]
       .sort(
         (a, b) =>
           isGeneral(a.name) - isGeneral(b.name) ||
+          (order === 'latest' ? newestFirst(newestOf(a.slug), newestOf(b.slug)) : 0) ||
           b.videos.length - a.videos.length ||
           a.name.localeCompare(b.name),
       )
@@ -146,10 +151,13 @@ export function getCategoryVideos(slug: string, sort: CategorySort = 'newest'): 
   })
 }
 
-/** Home sections: one per category with at least three videos, largest first, each capped. */
+/**
+ * Home sections: one per category with at least three videos, the one with the newest video
+ * first, each capped.
+ */
 export function getRows(capPerRow = 8): CategoryRow[] {
   return cached(`rows:${capPerRow}`, () =>
-    getCategories()
+    getCategories('latest')
       .filter((c) => c.count >= MIN_ROW_SIZE && c.name !== GENERAL_CATEGORY)
       .map((c) => ({
         id: `cat-${c.slug}`,

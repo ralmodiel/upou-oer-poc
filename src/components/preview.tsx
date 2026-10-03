@@ -71,7 +71,7 @@ type Phase = 'idle' | 'playing' | 'ending' | 'done'
  * focused, or hovered for a moment on devices that hover (outside dialogs); unmounts on blur,
  * pointer leave or Esc. After the reel ends its end card stays briefly, then the thumbnail returns
  * until the pointer leaves. Reduced motion: no automatic previews. Spread `hostProps` on the card and
- * render `overlay` inside its Thumbnail.
+ * render `overlay` inside its Thumbnail; `start` / `stop` let a viewer play it on selection.
  */
 export function useCardPreview(video: Video) {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -144,5 +144,5 @@ export function useCardPreview(video: Video) {
     </div>
   ) : null
 
-  return { hostProps, overlay, previewing }
+  return { hostProps, overlay, previewing, start, stop }
 }

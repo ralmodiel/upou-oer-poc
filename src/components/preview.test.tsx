@@ -3,6 +3,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
+import Featured from './Featured'
 import VideoGrid from './VideoGrid'
 import { stopPreview } from './preview'
 import { fixtureVideos } from './test-fixtures'
@@ -155,5 +156,38 @@ describe('card previews', () => {
     renderGrid()
     act(() => cardLink(0).focus())
     expect(previews()).toHaveLength(0)
+  })
+})
+
+describe('featured viewer previews', () => {
+  beforeEach(() => mediaQueries(false))
+
+  function renderFeatured() {
+    const router = createMemoryRouter([
+      { path: '/', element: <Featured videos={withStills.slice(0, 3)} alsoNew={[]} start={0} /> },
+      { path: '/watch/:id', element: <p>Player</p> },
+    ])
+    render(<RouterProvider router={router} />)
+  }
+  // The preview mounts inside the (decorative) featured image.
+  const heroPreview = () => document.querySelector('a[aria-hidden="true"] [data-preview]')
+
+  it('plays the shown video on keyboard focus in the viewer, and stops when focus leaves', () => {
+    renderFeatured()
+    expect(heroPreview()).toBeNull()
+    act(() => screen.getByRole('link', { name: 'Play' }).focus())
+    expect(heroPreview()).not.toBeNull()
+    act(() => screen.getByRole('link', { name: 'Play' }).blur())
+    expect(previews()).toHaveLength(0)
+  })
+
+  it('plays each video picked with previous / next', () => {
+    renderFeatured()
+    fireEvent.click(screen.getByRole('button', { name: 'Next featured video' }))
+    expect(screen.getByText('2 of 3')).toBeInTheDocument()
+    expect(heroPreview()).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Previous featured video' }))
+    expect(screen.getByText('1 of 3')).toBeInTheDocument()
+    expect(heroPreview()).not.toBeNull()
   })
 })

@@ -138,6 +138,31 @@ describe('catalog API', () => {
     expect(getCategory('nope')).toBeUndefined()
   })
 
+  it('orders categories by their newest video for the home, General still last', () => {
+    setCatalog(fixture)
+    expect(getCategories('latest').map((c) => c.slug)).toEqual([
+      'law',
+      'arts-design-2',
+      'arts-design',
+      'research',
+      'general',
+    ])
+  })
+
+  it('puts the home row with the newest video first, whatever its size', () => {
+    setCatalog([
+      make('r1', { category: 'Big', publishedAt: '2025-01-01' }),
+      make('r2', { category: 'Big', publishedAt: '2025-02-01' }),
+      make('r3', { category: 'Big', publishedAt: '2025-03-01' }),
+      make('r4', { category: 'Big', publishedAt: '2025-04-01' }),
+      make('s1', { category: 'Small', publishedAt: '2026-01-01' }),
+      make('s2', { category: 'Small', publishedAt: '2025-01-15' }),
+      make('s3', { category: 'Small', publishedAt: '2025-01-20' }),
+    ])
+    expect(getRows().map((r) => r.slug)).toEqual(['small', 'big'])
+    expect(getCategories().map((c) => c.slug)).toEqual(['big', 'small'])
+  })
+
   it('finds a category by its exact name, even when its slug carries a suffix', () => {
     setCatalog(fixture)
     expect(getCategoryByName('Arts/Design')?.slug).toBe('arts-design-2')

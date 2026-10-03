@@ -1,4 +1,5 @@
 import type { Video } from '../../types'
+import { reelImages } from './stills'
 
 /** Longest the reel waits for its stills before starting anyway. */
 export const DECODE_CAP_MS = 1200
@@ -65,5 +66,7 @@ export function preloadReel(video: Video) {
   if (warmed.has(video.id)) return
   warmed.add(video.id)
   import('../../pages/WatchPage').catch(() => {})
-  for (const src of [video.backdrop, ...video.frames]) void decodeImage(src)
+  // The stills and the poster the watch stage ends on (flagged ones never load).
+  const { poster, stills } = reelImages(video)
+  for (const src of new Set([poster, ...stills.map((s) => s.src)])) if (src) void decodeImage(src)
 }

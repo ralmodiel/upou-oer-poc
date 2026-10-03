@@ -20,6 +20,6 @@ export default defineConfig([
   {
     files: ['**/*.{js,mjs}'],
     extends: [js.configs.recommended],
-    languageOptions: { ecmaVersion: 2024, globals: globals.node },
+    languageOptions: { ecmaVersion: 2025, globals: globals.node },
   },
 ])

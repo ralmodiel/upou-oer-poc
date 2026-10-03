@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setFrameFlags } from '../data/frameFlags'
 import type { Video } from '../types'
 import { heroImageOf, imagesOf, largeImageOf } from './media'
 import { fixtureVideos } from './test-fixtures'
@@ -33,14 +34,41 @@ describe('heroImageOf', () => {
   })
 })
 
+describe('hero slots and the frame filter', () => {
+  afterEach(() => setFrameFlags({}))
+  const v = {
+    ...video('mq3', yt('maxres3')),
+    frames: [yt('maxres1'), yt('maxres2'), yt('maxres3')],
+  }
+  const flag = (mask: number) => setFrameFlags({ [v.youtubeId]: mask })
+
+  it('prefers the poster, and never shows a flagged image', () => {
+    expect(heroImageOf({ ...v, poster: yt('maxres2') })).toBe(yt('maxres2'))
+    // The original is flagged: the first clean still instead, with its own 320px version.
+    flag(0b0001)
+    expect(heroImageOf(v)).toBe(yt('maxres1'))
+    expect(imagesOf(v, true)).toMatchObject({ small: yt('mq1'), large: yt('maxres1') })
+    flag(0b0011)
+    expect(heroImageOf({ ...v, poster: yt('maxresdefault') })).toBe(yt('maxres2'))
+  })
+
+  it('leaves the slot without an image when every image is flagged', () => {
+    flag(0b1111)
+    expect(heroImageOf(v)).toBeNull()
+    expect(imagesOf(v, true)).toBeNull()
+    // Card thumbnails too: the data's last-resort original is flagged.
+    expect(imagesOf(v)).toBeNull()
+  })
+})
+
 describe('imagesOf', () => {
   const v = video('mq3', yt('maxres3'))
 
-  it('rotates by default and gives a srcSet of both sizes', () => {
+  it('rotates by default and gives a srcSet of all three sizes', () => {
     expect(imagesOf(v)).toEqual({
       small: yt('mq3'),
       large: yt('maxres3'),
-      srcSet: `${yt('mq3')} 320w, ${yt('maxres3')} 1280w`,
+      srcSet: `${yt('mq3')} 320w, ${yt('sd3')} 640w, ${yt('maxres3')} 1280w`,
     })
     expect(largeImageOf(v)).toBe(yt('maxres3'))
   })
@@ -49,13 +77,13 @@ describe('imagesOf', () => {
     expect(imagesOf(v, true)).toEqual({
       small: yt('mqdefault'),
       large: yt('maxresdefault'),
-      srcSet: `${yt('mqdefault')} 320w, ${yt('maxresdefault')} 1280w`,
+      srcSet: `${yt('mqdefault')} 320w, ${yt('sddefault')} 640w, ${yt('maxresdefault')} 1280w`,
     })
   })
 
   it('has no srcSet for a 320px-only video', () => {
     const low = video('mq1', yt('mq1'))
-    expect(imagesOf(low).srcSet).toBeUndefined()
+    expect(imagesOf(low)?.srcSet).toBeUndefined()
     expect(imagesOf(low, true)).toMatchObject({ small: yt('mqdefault'), large: yt('mqdefault') })
   })
 })

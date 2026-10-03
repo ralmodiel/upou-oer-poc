@@ -1,7 +1,7 @@
 // SectionHeading: `title` rendered `as` h1|h2|h3 (default h2, h1 uses the page-title scale) under a
 // short gold rule (`rule={false}` drops it), optional `eyebrow`, `count`, a "See all (n)" link via `seeAllTo` (+ `seeAllLabel`; `seeAllContext` names the
 // section for assistive tech so repeated links stay distinct), `description`, and `children` for
-// controls on the right.
+// controls on the right. Remote arrows from other sections pass over the link (lib/spatial.ts).
 import type { ReactNode } from 'react'
 import { Link, type To } from 'react-router'
 import { ChevronRightIcon } from '../icons'
@@ -66,6 +66,7 @@ export default function SectionHeading({
           {seeAllTo && (
             <Link
               to={seeAllTo}
+              data-spatial="heading"
               className="group inline-flex h-10 items-center gap-0.5 text-sm font-semibold text-maroon hover:text-maroon-2"
             >
               {/* Visible text first, then the section name: repeated links stay distinct. */}

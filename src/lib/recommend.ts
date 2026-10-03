@@ -54,8 +54,9 @@ const SLOT_BLOCK = 8
 const SAME_TALK = 0.8
 // Explanations
 const MAX_REASON = 40
-/** Uses of one reason in a list before another true one is preferred. */
+/** Uses of one reason in any SAME_WINDOW rows of a list before another (or a rewording) is used. */
 const MAX_SAME = 3
+const SAME_WINDOW = 8
 const MIN_QUOTE = 16
 const MIN_AFFINITY = 0.08
 /** "Also about …" needs two shared title terms, one of them in at most 3% of the catalog. */
@@ -480,6 +481,9 @@ export const warmRecommender = (): void => {
   getIndex()
 }
 
+/** Whether the index is built, so a recommendation now takes about a millisecond. */
+export const isRecommenderReady = (): boolean => index?.source === videos
+
 interface Scheduler {
   yield?: () => Promise<void>
 }
@@ -741,7 +745,21 @@ export function recommendFor(
     window: WATCH_WINDOW,
     free: video.category,
   })
-  return picked.map((d) => idx.source[d])
+  // A pick that could only be called "Related video" gives way to a later one with a real reason.
+  // The same collection is always a reason ("More from …"), so only the others are explained.
+  let ctx: Context | undefined
+  const plain = (d: number) => {
+    const v = idx.source[d]
+    if (sameCategory && v.category === video.category) return false
+    ctx ??= contextOf(idx, video, profile)
+    return reasonsFor(ctx, v).length === 1
+  }
+  let spare: number[] | undefined
+  return picked.map((d) => {
+    if (!plain(d)) return idx.source[d]
+    spare ??= ranked.filter((r) => !picked.includes(r) && !plain(r))
+    return idx.source[spare.shift() ?? d]
+  })
 }
 
 /** The documents matching every informative term of `query`, best first, one per talk. */
@@ -841,7 +859,8 @@ celebration anniversary story experience perspective insight reflection conversa
 documentary feature update report review guide primer fundamental essential challenge opportunity
 issue trend future role impact toward beyond initiative prepare preparing masterclass microvideo
 briefing phase first second third fourth fifth upou university faculty
-office department college institute center centre de del dela la los san`
+office department college institute center centre de del dela la los san amid amidst person people
+towards based various different way thing pro proceedings`
     .split(/\s+/)
     .map(stem),
 )
@@ -919,6 +938,25 @@ const quoted = (prefix: string, text: string): string =>
 
 /** The title without its speaker credit. */
 const shortTitle = (v: Video): string => v.title.slice(0, bodyEnd(v.title)).trim()
+
+const LEADING_LABEL =
+  /^(?:episode|ep|part|pt|session|module|lesson|chapter|vol|volume|no)\.?\s*#?\d+\s*[|:–—-]?\s*/i
+
+/**
+ * The part of a title worth quoting: in a series, what follows its name ("FASTLearn Episode 29 –
+ * Food Safety" → "Food Safety"), so a reason does not just repeat the series.
+ */
+function quotable(idx: Index, v: Video): string {
+  const title = shortTitle(v)
+  const key = seriesKeyOf(title)
+  const sep = key && (idx.seriesSize.get(key) ?? 0) > 1 ? SEPARATOR_RE.exec(title) : null
+  if (!sep) return title
+  const rest = title
+    .slice(sep.index + sep[0].length)
+    .replace(LEADING_LABEL, '')
+    .trim()
+  return rest.length >= 8 ? rest : title
+}
 
 const idfOf = (idx: Index, term: string): number => {
   const id = idx.terms.get(term)
@@ -1226,8 +1264,8 @@ function reasonsFor(ctx: Context, candidate: Video): string[] {
   const watched = closest(idx, candidate, ctx.watched)
   const saved = closest(idx, candidate, ctx.saved)
   const bySearch = searched && quoted('Because you searched', searched.q)
-  const byWatch = watched && quoted('Because you watched', shortTitle(watched))
-  const bySave = saved && quoted('Because you saved', shortTitle(saved))
+  const byWatch = watched && quoted('Because you watched', quotable(idx, watched))
+  const bySave = saved && quoted('Because you saved', quotable(idx, saved))
   // Without a video the latest search leads: "Recommended for you" keeps places for it.
   const searchFirst = !video && searched !== undefined && searched === ctx.searches[0]
   for (const r of searchFirst ? [bySearch, byWatch, bySave] : [byWatch, bySearch, bySave]) {
@@ -1239,15 +1277,28 @@ function reasonsFor(ctx: Context, candidate: Video): string[] {
   ) {
     out.push(collectionReason(candidate.category, !!video))
   }
-  out.push(video ? 'Related video' : 'Recommended for you')
+  // Never "Recommended for you": that is the heading of the row these cards sit in.
+  out.push(video ? 'Related video' : tasteReason(ctx))
   return out
 }
 
-// Rewordings for when every true reason of a row already ends a run of two.
+const tasteReason = ({ watched, searches, saved }: Context): string =>
+  watched.length
+    ? 'Based on what you watched'
+    : searches.length
+      ? 'Based on your searches'
+      : saved.length
+        ? 'Based on your list'
+        : 'Picked for you'
+
+// Rewordings for when every true reason of a row is used up.
 const REWORDED: Record<string, readonly string[]> = {
   'Same series': ['Also in this series', 'From the same series'],
   'Related video': ['You may also like', 'Related'],
-  'Recommended for you': ['Picked for you', 'You may also like'],
+  'Based on what you watched': ['Picked for you', 'You may also like'],
+  'Based on your searches': ['Picked for you', 'You may also like'],
+  'Based on your list': ['Picked for you', 'You may also like'],
+  'Picked for you': ['You may also like'],
 }
 
 const rewordingsOf = (text: string): readonly string[] =>
@@ -1268,8 +1319,8 @@ export function explain(
 
 /**
  * Reasons for a whole list, one per item: explain() for each, except that no reason shows on three
- * rows in a row (the row's next true reason takes over, or else a rewording), and one used three
- * times gives way to another true reason where the row has one.
+ * rows in a row or more than three times in any eight rows (the row's next true reason takes over,
+ * or else a rewording).
  */
 export function explainList(
   video: Video | null | undefined,
@@ -1278,19 +1329,18 @@ export function explainList(
 ): string[] {
   const ctx = contextOf(getIndex(), video, profile)
   const out: string[] = []
-  const used = new Map<string, number>()
   for (const item of items) {
     const n = out.length
+    const recent = out.slice(-(SAME_WINDOW - 1))
     const repeats = (text: string) => n >= 2 && out[n - 1] === text && out[n - 2] === text
+    const fresh = (text: string) =>
+      !repeats(text) && recent.filter((r) => r === text).length < MAX_SAME
     const options = reasonsFor(ctx, item)
-    // The last option is the generic one: no better than a repeat.
-    const specific = options.slice(0, -1)
     const reason =
-      specific.find((t) => !repeats(t) && (used.get(t) ?? 0) < MAX_SAME) ??
+      options.find(fresh) ??
+      options.flatMap(rewordingsOf).find(fresh) ??
       options.find((t) => !repeats(t)) ??
-      options.flatMap(rewordingsOf).find((t) => !repeats(t)) ??
       options[0]
-    used.set(reason, (used.get(reason) ?? 0) + 1)
     out.push(reason)
   }
   return out

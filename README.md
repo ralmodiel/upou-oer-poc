@@ -23,7 +23,7 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
 ## Features
 
 - **Browse (`/`)** — an editorial Featured block with manual prev/next and an "Also new" list, a
-  "Continue watching" strip, a row of collection chips, and one capped grid per collection
+  "Recently viewed" strip, a row of collection chips, and one capped grid per collection
   (sections below the fold render lazily). A dismissible "How it works" strip greets first-time
   visitors; the footer's "Help" link brings it back.
 - **Collections (`/collections`, `/collections/:slug`)** — every category with its cover, count
@@ -45,6 +45,14 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   reel inside the card; it stops on leave, blur or Esc, and never starts under reduced motion.
 - **Backdrops** — the featured block, quick look and watch page sit on a blurred still from the
   video, falling back to the thumbnail (and then to a plain surface) when an image is missing.
+- **Brand colors** — UPOU maroon, forest and gold bands, rules and badges in both themes, and a
+  color per collection, in catalog order, on its chip, collection card and page band
+  (`src/components/tones.ts`).
+- **Rotating thumbnails, friendly faces** — every page load shows another still of each video
+  (the YouTube thumbnail or one of its three frames), and stills that catch a face not smiling
+  are never shown in cards, reels or hero slots (see [Catalog data](#catalog-data)).
+- **Topic chips** — tags tidied into topics: no people's names, titles or episode labels, merged
+  spellings (COVID19 = COVID-19, FMDS = its full name) and fixed acronym case (`src/lib/tags.ts`).
 - **Recommendations** — "Recommended for you" and "Because you watched …" on the home page and
   "Up next" on the watch page, from an in-browser engine (see [Recommendations](#recommendations)).
 - **SEO** — a static, crawlable shell per video and collection, `sitemap.xml`, `robots.txt` and
@@ -109,11 +117,22 @@ home sections (`getRows`), featured and latest picks, search and similar titles,
 Images come from YouTube in sets: the original thumbnail plus the three still frames YouTube
 generates, at 320 px for cards and at 1280 px (`maxres`) for backdrops and reels. Each page load
 shows one member of the set per video (seeded by the id), so grids look different on every visit
-while a video's thumbnail and backdrop always match. Two flags mark videos with fewer images:
-`m: 0` means no 1280 px stills exist (the 640 px `sd` ones are used), and `s: 0` means the `sd`
-stills are missing too (only the 320 px `mq` images exist). `b` carries the source page's own
-backdrop when it beats the YouTube default. The SEO shells always use the first member of a set,
-so link previews are stable.
+while a video's thumbnail and backdrop always match. Three flags mark videos with fewer images:
+`m: 0` means no 1280 px stills exist (the 640 px `sd` ones are used), `s: 0` means the `sd`
+stills are missing too (only the 320 px `mq` images exist), and `q: 0` means YouTube has no stills
+at all (only the thumbnail; the reel then plays on type or the thumbnail). `b` carries the source page's own
+backdrop when it beats the YouTube default.
+
+`src/data/frame-flags.json` marks the stills that catch a face not smiling, mid-word or looking
+angry: one 4-bit mask per YouTube id (bit 0 the thumbnail, bits 1–3 the frames), written by local
+scripts that score the public 320 px YouTube stills with MediaPipe's face landmarker (smile,
+open-mouth and frown blendshapes). Only these flags are kept; no images or face data are committed. `src/data/images.ts` turns a record and its flags into the
+image fields of a `Video`: `thumbnail` and `backdrop` (this load's pick among the clean stills),
+`poster` (the canonical image for hero slots, the player and the reel's end card: the original
+unless it is flagged, else the first clean still), `frames` (the reel's three shots) and `original`
+(the video's own image, used only for link previews). The original comes back only when every
+candidate is flagged. The SEO generator uses the same module, so the static shells and the app
+show the same canonical images.
 
 The snapshot was produced by a local crawler that:
 
@@ -128,6 +147,21 @@ kept out of the home sections. The crawler is a local tool and is not part of th
 skipped with a console warning, and the catalog test checks ids, dates and image hosts. Component
 tests swap in fixtures with `setCatalog()` from `src/data/testing.ts`.
 
+### Local tooling (not committed)
+
+`scripts/` and `tmp/` are ignored by git; these tools only matter when the data is refreshed.
+
+| Script                                            | What it does                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------------- |
+| `scripts/crawl.mjs`                               | The crawler above; writes `src/data/catalog.json`                 |
+| `scripts/probe-sd.mjs`                            | Marks low-res records whose 640 px stills are missing (`s: 0`)    |
+| `scripts/probe-stills.mjs`                        | Marks records with no YouTube stills at all (`q: 0`)              |
+| `scripts/faces/score.py`, `apply.mjs`, `stats.py` | Frame filter: scores the stills, writes `frame-flags.json`, stats |
+| `scripts/text/*.mjs`                              | Optional transcripts for recommendations (see below)              |
+
+After a new crawl, run `probe-sd.mjs`, `probe-stills.mjs` and the face scripts again so the flags
+match the catalog.
+
 ## Recommendations
 
 "Up next" on the watch page and "Recommended for you" on the home page come from a small
@@ -136,19 +170,26 @@ tracking.
 
 - **Index.** On first use the app builds a TF-IDF index over every video's text. `src/lib/text.ts`
   tokenizes titles (with bigrams), tags, category, channel and description, drops English and
-  Filipino function words and stems English plurals, -ing and -ed. The build takes tens of
-  milliseconds for 2,124 videos and is reused until the catalog changes; a query takes about 1 ms.
+  Filipino function words and stems English plurals, -ing and -ed. The build takes about a tenth
+  of a second for 2,124 videos and is reused until the catalog changes; the home page builds it
+  in ~8 ms slices while the browser is idle (`warmRecommenderAsync`). A query takes about 1 ms.
 - **Up next** (`recommendFor(video, { profile, limit })`) ranks by cosine similarity, plus boosts for
   the same category, shared topic tags and the same series (titles with a common prefix such as
   "FASTLearn Episode 29 –" or "Chronic Heart Failure:"); publish date breaks ties. A profile reorders
   near-ties and demotes what was already watched, and at most four videos of another category
-  appear in the first eight.
+  appear in the first eight. A list shows one row per talk (speaker cuts, re-uploads and
+  near-identical titles collapse), and a pick that could only be called "Related video" gives way
+  to a later one with a real reason.
 - **Recommended for you** (`recommendForProfile(profile)`) builds a taste vector from the watch
   history (half-life of seven days), the last ten searches and My List, skips what was already
-  watched and spreads the result across categories and series. An empty profile gives an empty
-  list, so the page can fall back to the latest videos.
-- **Reasons.** `explain(video, candidate, profile)` returns a short eyebrow such as "Same series",
-  "Shares topics: Climate Change", "Also about PowerPoint" or "Because you watched “…”".
+  watched and spreads the result across categories and series; two of every eight places go to
+  the best matches for the latest search. An empty profile gives an empty list, so the page can
+  fall back to the latest videos.
+- **Reasons.** `explainList(video, items, profile)` gives each card a short eyebrow such as "Same
+  series", "Shares topics: Climate Change", "Also about PowerPoint" or "Because you watched
+  “Food Safety”" (what follows a series name). Reasons never name a person or a generic word,
+  never repeat the row's heading, and none shows on three rows in a row or more than three times
+  in eight rows (the next true reason, or a rewording, takes over).
 - **Transcripts (optional).** Without transcripts the engine uses the metadata above. To add them,
   put caption files in `tmp/transcripts/` (yt-dlp names such as `<youtubeId>.en.vtt` work) and run
   `node scripts/text/ingest-transcripts.mjs && node scripts/text/build-recs.mjs`. The first writes
@@ -166,7 +207,8 @@ tracking.
 ```
 src/
   App.tsx                routes (the watch page is lazy-loaded)
-  data/                  catalog.json (slim records) + catalog API (categories, rows, search)
+  data/                  catalog.json (slim records), frame-flags.json, image sets (images.ts)
+                         + catalog API (categories, rows, search)
   lib/                   localStorage hooks, theme, shortcuts, spatial (arrow-key) navigation,
                          recommender (recommend, text, history), SEO presets, seeded RNG, helpers
   layouts/ pages/        app shell (header, tab bar, footer, dialogs) and pages
@@ -222,8 +264,10 @@ it on an existing `dist/`) and takes a few seconds:
   meta description, canonical URL, robots, Open Graph and Twitter tags, JSON-LD (`WebSite` with a
   `SearchAction`, `CollectionPage` + `ItemList`, `VideoObject`, `BreadcrumbList`) and a plain-HTML
   summary inside `#root` (title, facts, links to YouTube, the source page and the collection) that
-  React replaces on mount. `404.html` stays the plain app. Because the shells are directories,
-  canonical URLs end with a slash (`/watch/<id>/`); Pages redirects `/watch/<id>` there.
+  React replaces on mount. A watch page previews the video's own image (`og:image`), the home page
+  the featured video's canonical image; `VideoObject` lists only the stills the frame filter
+  allows. `404.html` stays the plain app. Because the shells are directories, canonical URLs end
+  with a slash (`/watch/<id>/`); Pages redirects `/watch/<id>` there.
 - **`sitemap.xml`** with every indexable URL (`lastmod` from the publish date) and **`robots.txt`**
   (allow all, `Disallow` for `/search` and `/my-list`, `Sitemap:` line). `public/robots.txt` is
   the development default; the generator overwrites it.

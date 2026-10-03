@@ -160,3 +160,10 @@ export const FilmIcon = (props: IconProps) => (
     <path d="M7 4.5v15M17 4.5v15M3 9h4M3 15h4M17 9h4M17 15h4M10.5 9.5v5l4-2.5z" />
   </Icon>
 )
+
+export const ShieldIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z" />
+    <path d="m9 12 2 2 4-4" />
+  </Icon>
+)

@@ -31,7 +31,9 @@ const SIZE = {
   sm: 'h-9 px-3 text-xs [@media(hover:none)]:h-10',
 }
 const OFF = 'border-line bg-surface text-ink-2 hover:border-ink-3 hover:bg-surface-2 hover:text-ink'
-const ON = 'border-maroon/30 bg-maroon-soft text-maroon'
+// Selected: a solid maroon fill (UP maroon; the deep band maroon in dark). A brand dot keeps a ring.
+const ON =
+  'border-action bg-action text-on-action [&_[data-dot]]:ring-1 [&_[data-dot]]:ring-on-action'
 
 const chipClass = (active: boolean, size: 'md' | 'sm', extra: string) =>
   `${BASE} ${SIZE[size]} ${active ? ON : OFF} ${extra}`.trim()
@@ -51,7 +53,9 @@ export default function Chip({
 }: ChipProps) {
   const content = (
     <>
-      {dot && <span aria-hidden="true" className={`size-2 shrink-0 rounded-pill ${dot}`} />}
+      {dot && (
+        <span aria-hidden="true" data-dot="" className={`size-2 shrink-0 rounded-pill ${dot}`} />
+      )}
       <span className="truncate">{children}</span>
       {count !== undefined && <span className="shrink-0 text-xs tabular-nums">{count}</span>}
     </>

@@ -10,6 +10,7 @@ import {
 import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router'
 import { getVideo } from '../data/catalog'
 import { useHelp } from '../lib/howitworks'
+import { openPrivacy } from '../lib/privacy'
 import { FOCUS_SEARCH_EVENT, openShortcuts, useAppEvent } from '../lib/shortcuts'
 import { useMyList } from '../lib/storage'
 import { THEMES, useTheme, type Theme } from '../lib/theme'
@@ -25,6 +26,7 @@ import {
   MoonIcon,
   SearchIcon,
   SunIcon,
+  ShieldIcon,
 } from './icons'
 import ThemeToggle from './ThemeToggle'
 import Menu, { type MenuSection } from './ui/Menu'
@@ -45,7 +47,7 @@ function CountBadge({ count, className = '' }: { count: number; className?: stri
   return (
     <span
       aria-hidden="true"
-      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-maroon px-1.5 text-xs leading-none font-bold text-on-accent tabular-nums ${className}`}
+      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-action px-1.5 text-xs leading-none font-bold text-on-action tabular-nums dark:bg-band-gold dark:text-charcoal ${className}`}
     >
       {count}
     </span>
@@ -105,11 +107,9 @@ export default function Header() {
           </NavLink>
         </nav>
         <SearchBox />
-        {/* Phones: one tap flips light/dark. Tablets: theme lives in the Help menu. Desktop: all three. */}
-        <ThemeToggle compact className="ml-auto md:hidden" />
-        <div className="hidden lg:block">
-          <ThemeToggle />
-        </div>
+        {/* One stop: a flip button on phones and desktop (tablets use the Help menu); light, dark
+            and system are all in the Help menu. */}
+        <ThemeToggle className="ml-auto md:hidden lg:ml-0 lg:inline-flex" />
         <HelpMenu />
       </div>
     </header>
@@ -122,7 +122,7 @@ const THEME_ICONS: Record<Theme, typeof SunIcon> = {
   system: MonitorIcon,
 }
 
-// Help and shortcuts without scrolling to the footer; below lg it also holds the theme choice.
+// Help, shortcuts and the theme choice (light, dark, system) without scrolling to the footer.
 // Keyboard shortcuts are listed only where there is a keyboard to speak of (mouse / trackpad).
 function HelpMenu() {
   const wide = useMediaQuery('(min-width: 64rem)')
@@ -134,6 +134,7 @@ function HelpMenu() {
     {
       items: [
         { label: 'How it works', icon: <HelpIcon />, onSelect: help },
+        { label: 'Privacy and history', icon: <ShieldIcon />, onSelect: openPrivacy },
         ...(touchOnly
           ? []
           : [
@@ -147,25 +148,23 @@ function HelpMenu() {
       ],
     },
   ]
-  if (!wide) {
-    sections.push({
-      title: 'Theme',
-      items: THEMES.map(({ value, label }) => {
-        const Icon = THEME_ICONS[value]
-        return {
-          label,
-          icon: <Icon />,
-          checked: theme === value,
-          onSelect: () => setTheme(value),
-        }
-      }),
-    })
-  }
+  sections.push({
+    title: 'Theme',
+    items: THEMES.map(({ value, label }) => {
+      const Icon = THEME_ICONS[value]
+      return {
+        label,
+        icon: <Icon />,
+        checked: theme === value,
+        onSelect: () => setTheme(value),
+      }
+    }),
+  })
 
   // Wide screens show the word, so help is discoverable; phones keep the icon.
   return (
     <Menu
-      label={wide ? 'Help' : 'Help and theme'}
+      label="Help and theme"
       sections={sections}
       triggerClassName={wide ? buttonClass('ghost', 'sm') : iconButtonClass('ghost', 'sm')}
     >
@@ -306,7 +305,7 @@ function SearchBox() {
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="h-10 w-full rounded-pill border border-line bg-surface pr-10 pl-10 text-sm text-ink transition-colors placeholder:text-ink-3 hover:border-ink-3 focus:border-maroon [&::-webkit-search-cancel-button]:appearance-none"
+          className="h-10 w-full rounded-pill border border-line bg-surface pr-10 pl-10 text-sm text-ink transition-colors placeholder:text-ink-3 hover:border-ink-3 focus:border-focus [&::-webkit-search-cancel-button]:appearance-none"
         />
         {value && (
           <button

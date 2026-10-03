@@ -6,6 +6,8 @@ interface Props {
   title: string
   className: string
   iconClassName?: string
+  /** Classes for the visible Save / Saved text (e.g. visually hidden on phones). */
+  labelClassName?: string
   tabIndex?: number
 }
 
@@ -15,6 +17,7 @@ export default function MyListButton({
   title,
   className,
   iconClassName = 'size-4',
+  labelClassName,
   tabIndex,
 }: Props) {
   const [saved, toggle] = useInMyList(id)
@@ -32,7 +35,13 @@ export default function MyListButton({
       ) : (
         <BookmarkIcon className={iconClassName} />
       )}
-      {saved ? 'Saved' : 'Save'}
+      {labelClassName ? (
+        <span className={labelClassName}>{saved ? 'Saved' : 'Save'}</span>
+      ) : saved ? (
+        'Saved'
+      ) : (
+        'Save'
+      )}
     </button>
   )
 }

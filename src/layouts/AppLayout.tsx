@@ -3,6 +3,7 @@ import { Outlet } from 'react-router'
 import DetailModal from '../components/DetailModal'
 import Footer from '../components/Footer'
 import Header, { TabBar } from '../components/Header'
+import PrivacyDialog from '../components/PrivacyDialog'
 import ShortcutsSheet from '../components/ShortcutsSheet'
 import { useReturnFocus } from '../components/hooks'
 import { useWarmRecommender } from '../components/recs'
@@ -30,7 +31,7 @@ export default function AppLayout() {
         href="#main"
         onClick={skipToMain}
         data-spatial="skip"
-        className="sr-only z-50 rounded-pill bg-maroon font-semibold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-2"
+        className="sr-only z-50 rounded-pill bg-action font-semibold text-on-action focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-2"
       >
         Skip to content
       </a>
@@ -42,6 +43,7 @@ export default function AppLayout() {
       <Footer />
       <DetailModal />
       <ShortcutsSheet />
+      <PrivacyDialog />
     </div>
   )
 }

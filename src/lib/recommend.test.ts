@@ -12,6 +12,7 @@ import {
   recommendForProfile,
   seriesKeyOf,
   titleKey,
+  isRecommenderReady,
   warmRecommenderAsync,
 } from './recommend'
 
@@ -303,7 +304,21 @@ describe('explain', () => {
     expect(reason.startsWith('Because you watched “A Very Long')).toBe(true)
     expect(reason.length).toBeLessThanOrEqual(40)
     expect(explain(null, g, profile({}))).toBe('More from Health')
-    expect(explain(null, h)).toBe('Recommended for you')
+    // Never the heading of the row the card sits in ("Recommended for you").
+    expect(explain(null, h)).toBe('Picked for you')
+    expect(explain(null, h, profile({ watched: [{ id: 'e', at: NOW }] }))).toBe(
+      'Based on what you watched',
+    )
+  })
+
+  it('quotes what follows a series name', () => {
+    const episodes = [1, 2].map((n) =>
+      make(`ft${n}`, { title: `FASTLearn Episode ${n} – Food Safety Part ${n}`, category: 'Food' }),
+    )
+    setCatalog([...list, ...episodes])
+    expect(explain(null, videos.at(-1)!, profile({ watched: [{ id: 'ft1', at: NOW }] }))).toBe(
+      'Because you watched “Food Safety Part 1”',
+    )
   })
 })
 
@@ -417,6 +432,18 @@ describe('explainList', () => {
     for (const r of reasons) expect(r.length).toBeLessThanOrEqual(40)
   })
 
+  it('shows no reason more than three times in eight rows', () => {
+    const misc = Array.from({ length: 8 }, (_, i) =>
+      make(`m${i}`, { title: `Unrelated Thing ${'abcdefgh'[i]}`, category: 'General' }),
+    )
+    setCatalog([...misc, ...filler])
+    const [first, ...rest] = videos.slice(0, 8)
+    const reasons = explainList(first, rest)
+    const counts = new Map<string, number>()
+    for (const r of reasons) counts.set(r, (counts.get(r) ?? 0) + 1)
+    expect(Math.max(...counts.values())).toBeLessThanOrEqual(3)
+  })
+
   it('names no generic words and no people', () => {
     setCatalog([
       make('a', {
@@ -451,9 +478,11 @@ describe('explainList', () => {
 
 describe('warmRecommenderAsync', () => {
   it('builds the index in steps that later calls share', async () => {
+    expect(isRecommenderReady()).toBe(false)
     const first = warmRecommenderAsync()
     expect(warmRecommenderAsync()).toBe(first)
     await first
+    expect(isRecommenderReady()).toBe(true)
     expect(ids(recommendFor(list[0]))[0]).toBe('b')
     await expect(warmRecommenderAsync()).resolves.toBeUndefined()
   })

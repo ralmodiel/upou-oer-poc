@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { openPrivacy } from '../lib/privacy'
 import { Link } from 'react-router'
 import { factsOf } from '../data/catalog'
 import type { Video } from '../types'
@@ -18,8 +19,20 @@ export function GridHint() {
   )
 }
 
-/** "Published Nov 25, 2024 · Health Sciences (165 videos) · UP Open University", collection linked. */
-export function FactsLine({ video, className = '' }: { video: Video; className?: string }) {
+/**
+ * "Published Nov 25, 2024 · Health Sciences (165 videos) · UP Open University", collection linked.
+ * `passOver`: remote ↑ / ↓ from outside the section skip the link (the hero: ↓ from the header lands
+ * on Play).
+ */
+export function FactsLine({
+  video,
+  className = '',
+  passOver = false,
+}: {
+  video: Video
+  className?: string
+  passOver?: boolean
+}) {
   // Inline text (not flex items), so the separators keep their spaces for assistive tech.
   return (
     <p className={`text-sm/relaxed text-ink-2 ${className}`}>
@@ -29,6 +42,7 @@ export function FactsLine({ video, className = '' }: { video: Video; className?:
           {fact.to ? (
             <Link
               to={fact.to}
+              data-spatial={passOver ? 'heading' : undefined}
               className="-my-2.5 inline-block py-2.5 font-semibold text-ink underline-offset-4 hover:text-maroon hover:underline"
             >
               {fact.label}
@@ -46,9 +60,18 @@ export function FactsLine({ video, className = '' }: { video: Video; className?:
 
 /**
  * Placeholder with the geometry of a section grid (card for card), shown while recommendations
- * compute; `reasons` gives each card the two-line reason slot.
+ * compute and for home sections not yet near the viewport; `reasons` gives each card the two-line
+ * reason slot, `eyebrow={false}` drops the eyebrow line (category sections).
  */
-export function GridSkeleton({ count, reasons = false }: { count: number; reasons?: boolean }) {
+export function GridSkeleton({
+  count,
+  reasons = false,
+  eyebrow = true,
+}: {
+  count: number
+  reasons?: boolean
+  eyebrow?: boolean
+}) {
   return (
     <div
       aria-hidden="true"
@@ -58,9 +81,11 @@ export function GridSkeleton({ count, reasons = false }: { count: number; reason
         <div key={i}>
           <Skeleton className="aspect-video w-full" rounded="card" />
           {/* Eyebrow, two title lines, date, actions: the line heights of VideoCard. */}
-          <div className={`mt-3 flex ${reasons ? 'h-8 items-end pb-0.5' : 'h-4 items-center'}`}>
-            <Skeleton className={`h-3 ${reasons ? 'w-3/4' : 'w-1/3'}`} />
-          </div>
+          {eyebrow && (
+            <div className={`mt-3 flex ${reasons ? 'h-8 items-end pb-0.5' : 'h-4 items-center'}`}>
+              <Skeleton className={`h-3 ${reasons ? 'w-3/4' : 'w-1/3'}`} />
+            </div>
+          )}
           <div className="mt-1 flex h-11 flex-col justify-center gap-1.5">
             <Skeleton className="h-4 w-11/12" />
             <Skeleton className="h-4 w-2/3" />
@@ -75,5 +100,18 @@ export function GridSkeleton({ count, reasons = false }: { count: number; reason
         </div>
       ))}
     </div>
+  )
+}
+
+/** Opens the Privacy and history panel (history and personalization switches). */
+export function ManageLink({ children = 'Privacy settings' }: { children?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={openPrivacy}
+      className={`${TEXT_LINK} inline-flex min-h-10 items-center`}
+    >
+      {children}
+    </button>
   )
 }

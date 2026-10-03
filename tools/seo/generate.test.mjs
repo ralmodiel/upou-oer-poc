@@ -10,6 +10,7 @@ import records from '../../src/data/catalog.json'
 import { expandRecord } from '../../src/data/expand'
 import { setCatalog } from '../../src/data/testing'
 import { pageTitle } from '../../src/lib/seo'
+import { loadCatalog } from './catalog.mjs'
 
 const SITE = 'https://example.github.io/upou-networks'
 const LIMIT = 40
@@ -93,5 +94,18 @@ describe('tools/seo/generate.mjs', () => {
 
     run()
     expect(readFileSync(join(dist, 'index.html'), 'utf8')).toBe(home)
+  })
+
+  it('sees the catalog as the app does: videos, canonical images and collection order', () => {
+    const node = loadCatalog(records)
+    const app = new Map(records.map((r) => [r.id, expandRecord(r)]))
+    expect(node.videos).toHaveLength(app.size)
+    for (const v of node.videos) {
+      // Only the per-load picks (thumbnail, backdrop) may differ.
+      expect(v).toEqual({ ...app.get(v.id), thumbnail: v.thumbnail, backdrop: v.backdrop })
+    }
+    setCatalog(records)
+    expect(node.categories.map((c) => c.slug)).toEqual(getCategories().map((c) => c.slug))
+    expect(node.categories.at(-1).name).toBe('General')
   })
 })

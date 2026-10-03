@@ -7,9 +7,12 @@ import type { Video } from '../types'
 import { isGenericTag } from './tags.ts'
 import { watchUrl } from './youtube.ts'
 
-// Social images use the original still, never a rotating frame (maxres1.jpg …).
-const canonicalImage = (url?: string) =>
-  url?.replace(/\/(maxres|sd|mq)[123]\.jpg(\?|$)/, '/$1default.jpg$2')
+// The original image, never a rotating frame (maxres1.jpg …).
+const canonicalImage = (url: string) =>
+  url.replace(/\/(maxres|sd|mq)[123]\.jpg(\?|$)/, '/$1default.jpg$2')
+
+/** The link-preview image (og:image): the video's own image, as YouTube and the source show it. */
+export const socialImageOf = (v: Video): string => v.original ?? canonicalImage(v.backdrop)
 
 export const SITE_NAME = 'UPOU OER'
 export const PUBLISHER = 'University of the Philippines Open University'
@@ -123,7 +126,8 @@ export function videoJsonLd(v: Video): JsonLd {
     '@type': 'VideoObject',
     name: v.title,
     description: v.description || describeVideo(v),
-    thumbnailUrl: [...new Set([...(v.thumbnails ?? [v.thumbnail]), v.backdrop])],
+    // Canonical images only, so never a still flagged for a face that is not smiling.
+    thumbnailUrl: [...new Set([v.poster ?? v.backdrop, ...(v.thumbnails ?? [v.thumbnail])])],
     uploadDate: v.publishedAt,
     embedUrl: embedUrlOf(v.youtubeId),
     url: canonicalUrl(`/watch/${v.id}`),
@@ -291,11 +295,11 @@ export function collectionsSeo(categories: readonly Category[]): SeoOptions {
   return {
     title: pageTitle('Collections'),
     description: clamp(
-      `All ${categories.length} UPOU OER collections (${videoCount.toLocaleString('en')} free videos from UP Open University), from ${categories[0]?.name ?? 'the largest'} to the smallest. Open one to see everything in it, newest first.`,
+      `All ${categories.length} UPOU OER collections: ${videoCount.toLocaleString('en')} free videos from UP Open University, from ${categories[0]?.name ?? 'the largest'} to the smallest, each newest first.`,
       DESCRIPTION_MAX,
     ),
     canonicalPath: '/collections',
-    image: canonicalImage(categories[0]?.cover.backdrop),
+    image: categories[0] && socialImageOf(categories[0].cover),
     jsonLd: breadcrumbJsonLd([{ label: 'Browse', to: '/' }, { label: 'Collections' }]),
   }
 }
@@ -305,7 +309,7 @@ export function collectionSeo(category: Category, list: readonly Video[]): SeoOp
     title: pageTitle(`${category.name} · Collections`),
     description: describeCollection(category),
     canonicalPath: `/collections/${category.slug}`,
-    image: canonicalImage(category.cover.backdrop),
+    image: socialImageOf(category.cover),
     jsonLd: [
       collectionJsonLd(category, list),
       breadcrumbJsonLd([
@@ -325,7 +329,7 @@ export function videoSeo(video: Video, category?: Pick<Category, 'name' | 'slug'
     title: pageTitle(video.title),
     description: describeVideo(video),
     canonicalPath: `/watch/${video.id}`,
-    image: canonicalImage(video.backdrop),
+    image: socialImageOf(video),
     type: 'video.other',
     embed: embedUrlOf(video.youtubeId),
     jsonLd: [videoJsonLd(video), breadcrumbJsonLd(crumbs)],

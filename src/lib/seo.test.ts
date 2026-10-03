@@ -104,7 +104,23 @@ describe('JSON-LD', () => {
       license: 'https://creativecommons.org/licenses/by/4.0/',
       publisher: { '@type': 'Organization', name: 'University of the Philippines Open University' },
     })
-    expect(ld.thumbnailUrl).toEqual([...v.thumbnails!, v.backdrop])
+    expect(ld.thumbnailUrl).toEqual([v.backdrop, ...v.thumbnails!])
+  })
+
+  it('previews the original image but lists only clean stills as thumbnails', () => {
+    const still = (name: string) => `https://i.ytimg.com/vi/abcdefghijk/${name}.jpg`
+    // The original is flagged (a face not smiling): the poster is the first clean still.
+    const v: Video = {
+      ...video,
+      thumbnails: [still('mq2'), still('mq2'), still('mq3'), still('mq2')],
+      backdrop: still('maxres3'),
+      poster: still('maxres2'),
+      original: still('maxresdefault'),
+    }
+    expect(videoSeo(v).image).toBe(still('maxresdefault'))
+    expect(videoJsonLd(v).thumbnailUrl).toEqual([still('maxres2'), still('mq2'), still('mq3')])
+    // Without `original`, the rotating frame maps back to the original.
+    expect(videoSeo({ ...v, original: undefined }).image).toBe(still('maxresdefault'))
   })
 
   it('lists at most 100 videos of a collection', () => {

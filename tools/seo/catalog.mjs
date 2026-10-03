@@ -1,12 +1,15 @@
 // Node-side view of the catalog. It mirrors src/data/expand.ts and the category grouping in
-// src/data/catalog.ts, which Node cannot import (JSON import, extensionless paths);
-// src/lib/seo.test.ts checks that the two agree.
+// src/data/catalog.ts, which Node cannot import (JSON import, extensionless paths); images come
+// from the same src/data/images.ts. tools/seo/generate.test.mjs checks that the two agree.
+import FLAGS from '../../src/data/frame-flags.json' with { type: 'json' }
+import { flagsOf, videoImages } from '../../src/data/images.ts'
+
 const SOURCE_ORIGIN = 'https://oer.upou.edu.ph'
 const DEFAULT_CHANNEL = 'UP Open University'
+const GENERAL_CATEGORY = 'General'
 const ID_RE = /^[a-z0-9-]+$/
 const YOUTUBE_ID_RE = /^[\w-]{11}$/
 
-const image = (youtubeId, name) => `https://i.ytimg.com/vi/${youtubeId}/${name}.jpg`
 const text = (value) => typeof value === 'string' && value.trim() !== ''
 
 export const isValidRecord = (r) =>
@@ -21,10 +24,8 @@ export const isValidRecord = (r) =>
   typeof r.p === 'string' &&
   !Number.isNaN(Date.parse(r.p))
 
-/** The Video a record expands to, with the first member of each image set (the app rotates them). */
-export function expandRecord(r) {
-  const size = r.m !== 0 ? 'maxres' : r.s === 0 ? 'mq' : 'sd'
-  const thumbnails = ['mqdefault', 'mq1', 'mq2', 'mq3'].map((n) => image(r.y, n))
+/** The Video a record expands to, showing the canonical image where the app rotates them. */
+export function expandRecord(r, flags = FLAGS) {
   return {
     id: r.id,
     youtubeId: r.y,
@@ -35,10 +36,7 @@ export function expandRecord(r) {
     channel: r.ch ?? DEFAULT_CHANNEL,
     publishedAt: r.p,
     sourceUrl: `${SOURCE_ORIGIN}/${r.id}/`,
-    thumbnail: thumbnails[0],
-    thumbnails,
-    backdrop: r.b ?? image(r.y, `${size}default`),
-    frames: [1, 2, 3].map((n) => image(r.y, `${size}${n}`)),
+    ...videoImages(r, flagsOf(flags[r.y])),
     ...(r.f ? { featured: true } : {}),
   }
 }
@@ -54,9 +52,14 @@ export const slugifyCategory = (name) =>
 const stamp = (v) => Date.parse(v.publishedAt)
 export const newestFirst = (a, b) => stamp(b) - stamp(a)
 
-/** Videos in catalog order and categories largest first, each with its videos newest first. */
-export function loadCatalog(records) {
-  const videos = records.filter(isValidRecord).map(expandRecord)
+const isGeneral = (name) => Number(name === GENERAL_CATEGORY)
+
+/**
+ * Videos in catalog order and categories largest first (General, posts without a subject, last),
+ * each with its videos newest first.
+ */
+export function loadCatalog(records, flags = FLAGS) {
+  const videos = records.filter(isValidRecord).map((r) => expandRecord(r, flags))
   const bySlug = new Map()
   const byName = new Map()
   for (const v of videos) {
@@ -72,7 +75,12 @@ export function loadCatalog(records) {
     group.videos.push(v)
   }
   const categories = [...bySlug.values()]
-    .sort((a, b) => b.videos.length - a.videos.length || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        isGeneral(a.name) - isGeneral(b.name) ||
+        b.videos.length - a.videos.length ||
+        a.name.localeCompare(b.name),
+    )
     .map((group) => {
       const list = [...group.videos].sort(newestFirst)
       return {

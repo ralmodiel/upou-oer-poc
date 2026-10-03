@@ -45,6 +45,18 @@ describe('thumbnail set', () => {
     expect(v.frames.map(name)).toEqual(['mq1.jpg', 'mq2.jpg', 'mq3.jpg'])
   })
 
+  it('shows only the thumbnail and no reel frames when YouTube has no stills (q: 0)', () => {
+    const og = 'https://oer.upou.edu.ph/x.jpg'
+    for (let seed = 0; seed < 4; seed++) {
+      setLoadSeed(seed)
+      const v = expandRecord({ ...rec, m: 0, s: 0, q: 0, b: og })
+      expect(name(v.thumbnail)).toBe('mqdefault.jpg')
+      expect(v.thumbnails!.map(name)).toEqual(['mqdefault.jpg'])
+      expect([v.backdrop, v.poster, v.original]).toEqual([og, og, og])
+      expect(v.frames).toEqual([])
+    }
+  })
+
   it('keeps a source-site backdrop instead of rotating it', () => {
     setLoadSeed(seedFor(2))
     const v = expandRecord({ ...rec, m: 0, b: 'https://oer.upou.edu.ph/x.jpg' })

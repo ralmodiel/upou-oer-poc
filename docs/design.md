@@ -82,7 +82,7 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
      with its text _beside/below_ the image (eyebrow category · serif title · summary · Play and
      Quick look buttons), and a right column "Also new" list of 4 items (small thumb, title,
      category). Manual prev/next controls only, no auto-rotation.
-  2. **Continue watching** strip (only when history exists): compact horizontal list with
+  2. **Recently viewed** strip (only when history exists): compact horizontal list with
      scroll snapping, no hover scaling.
   3. **Collections** chip row: every category with its count, linking to `/collections/:slug`;
      "All collections" link.
@@ -160,7 +160,7 @@ feature must be easy to find without instructions.
   remembered in `localStorage`): three cards — "Every video opens with a 10-second preview reel
   (press Skip to jump in)", "Save titles to My List", "Browse by collection or search
   everything". Shown again from a "Help" link in the footer.
-- **Teach through empty states:** My List, Search and Continue watching explain what they do and
+- **Teach through empty states:** My List and Search explain what they do and
   offer one clear next step.
 - **Keyboard help:** a `?` key opens a small shortcuts sheet (Esc = Back, / = Search, Space/K in
   the player belong to YouTube); the watch page shows "Esc to go back" once, subtly.
@@ -198,7 +198,9 @@ colour rule stands (UPOU maroon, forest, paper and ink; never a black-and-red st
   `useSeo()` and baked into a static shell per route at build time (title, description,
   canonical with a trailing slash, Open Graph, Twitter, JSON-LD, a plain-HTML summary that React
   replaces), plus `sitemap.xml` and `robots.txt`. Search, My List and not-found pages are
-  `noindex`. Shells use the first member of each image set so link previews are stable.
+  `noindex`. Shells and the running app describe a page identically: og:image is the video's own
+  image (`original`; the home page uses the featured video's `poster`), and JSON-LD `thumbnailUrl`
+  lists only stills the frame filter allows.
 - **Image sets**: cards and backdrops rotate among the YouTube thumbnail and its three stills per
   page load (seeded by the id); `m: 0` and `s: 0` in the catalog mark videos without 1280 px or
   640 px stills, which fall back to the next size down.
@@ -252,14 +254,25 @@ the existing tokens:
 ## Round 3 addendum: reels and stills
 
 - **Frame filter:** candidate stills that catch a face not smiling, mid-word or looking angry are
-  flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation or
-  the reel; the original thumbnail is the fallback.
-- **Repeated stills:** when only one or two stills survive, a repeat gets the opposite crop side,
-  zoom and pan direction and a tighter crop (pixels are never mirrored); with a single surviving
-  image the reel plays one long slow move instead of three cuts.
+  flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation,
+  the reel or the canonical slots (hero, quick look, poster), where the first clean still stands
+  in for a flagged original; the original returns only when every candidate is flagged.
+- **Repeated stills:** three cuts play only between three different stills; with fewer (repeats,
+  or near-twins from a static lecture camera) the reel plays one long slow move on the first still.
+- **No usable image:** when every image is flagged or missing (`q: 0` videos have no YouTube stills
+  at all, only the thumbnail), the reel plays kinetic type on the night frame and ends on the night
+  card, with no poster or backdrop behind the player.
+- **Low-res stills** are framed rather than blown up, on a deep forest stage in both themes.
 - **Title-card thumbnails:** reels whose only image is the designed original thumbnail use the
-  split template, so the reel title sits beside the card instead of over its baked-in text.
-- **Previews:** the card's own image dissolves to footage within ~0.5 s (1.1 s preview lead); text
-  travel is capped at large stages; kinetic titles enter a line at a time without overlapping words.
+  split template, so the reel title sits beside the card instead of over its baked-in text; the
+  card is never cropped: it settles from 92% to full size over a blurred grey copy of itself.
+- **Previews:** the card's own image dissolves to footage within ~0.5 s (1.1 s preview lead) and
+  the footage stays in colour, with the text on a band along the bottom; text travel is capped at
+  large stages; kinetic titles enter a line at a time without overlapping words.
 - **Hand-off:** the reel's end card and the player poster share `video.poster` (the original still
-  unless flagged, else this load's pick), so the cut to the player is seamless.
+  unless flagged, else the first clean still), so the cut to the player is seamless.
+- **Topic chips and reasons** (`src/lib/tags.ts`): never a person's name (titled, credited in a
+  title, or unmistakably a name), a title fragment, an instalment label ("FASTLearn Episode 62")
+  or a catalogue tag ("Conference E-Proceedings"); acronyms keep their spelling (CHED, ASEAN,
+  COVID-19) and small words stay lowercase. Recommendation reasons never repeat the row heading,
+  appear at most three times in eight rows, and quote what follows a series name.

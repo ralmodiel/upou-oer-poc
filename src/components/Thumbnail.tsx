@@ -32,7 +32,8 @@ interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'f
 
 /**
  * 16:9 still on a surface-2 well that shows the collection's initial underneath, so a slow or
- * missing image never reads as a blank block. Lazy images fade in; eager ones (LCP) paint at once.
+ * missing image never reads as a blank block (a canonical slot whose every image is flagged shows
+ * the well alone). Lazy images fade in; eager ones (LCP) paint at once.
  */
 export default function Thumbnail({
   video,
@@ -54,23 +55,25 @@ export default function Thumbnail({
       >
         {video.category.charAt(0)}
       </span>
-      <img
-        key={video.id}
-        src={large ? images.large : images.small}
-        srcSet={images.srcSet}
-        sizes={sizes}
-        alt=""
-        loading={loading}
-        fetchPriority={fetchPriority}
-        decoding="async"
-        onLoad={markLoaded}
-        onError={(e) => retryOrFail(e.currentTarget, images.small)}
-        className={`relative size-full object-cover data-failed:hidden ${
-          fade
-            ? 'opacity-0 transition-opacity duration-300 data-loaded:opacity-100 motion-reduce:transition-none'
-            : ''
-        }`}
-      />
+      {images && (
+        <img
+          key={video.id}
+          src={large ? images.large : images.small}
+          srcSet={images.srcSet}
+          sizes={sizes}
+          alt=""
+          loading={loading}
+          fetchPriority={fetchPriority}
+          decoding="async"
+          onLoad={markLoaded}
+          onError={(e) => retryOrFail(e.currentTarget, images.small)}
+          className={`relative size-full object-cover data-failed:hidden ${
+            fade
+              ? 'opacity-0 transition-opacity duration-300 data-loaded:opacity-100 motion-reduce:transition-none'
+              : ''
+          }`}
+        />
+      )}
       {children}
     </div>
   )

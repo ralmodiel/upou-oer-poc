@@ -33,7 +33,7 @@ function RootError() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="mt-6 rounded-pill bg-maroon px-5 py-2.5 font-semibold text-on-accent transition hover:bg-maroon-2"
+          className="mt-6 rounded-pill bg-action px-5 py-2.5 font-semibold text-on-action transition hover:bg-action-2"
         >
           Reload
         </button>

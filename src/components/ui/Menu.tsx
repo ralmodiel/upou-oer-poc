@@ -104,6 +104,7 @@ export default function Menu({
         aria-controls={open ? id : undefined}
         aria-label={label}
         title={label}
+        data-spatial="aside"
         onClick={() => setOpen((o) => !o)}
         className={triggerClassName}
       >

@@ -10,7 +10,7 @@ import { FactsLine, LONG_TITLE } from './browse-ui'
 import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, PlayIcon } from './icons'
 import { useCardPreview } from './preview'
 import IconButton from './ui/IconButton'
-import { buttonClass } from './ui/button-styles'
+import { PRESSED, buttonClass } from './ui/button-styles'
 
 interface Props {
   videos: readonly Video[]
@@ -25,6 +25,9 @@ const LOAD_PICK = Math.random()
 
 // Fades the blurred still into the page, fully by the bottom edge where the text sits.
 const SCRIM = 'bg-linear-to-b from-paper/70 via-paper/85 via-55% to-paper'
+
+// A round icon button below 640px.
+const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
 
 /**
  * Editorial opener on a full-bleed backdrop of the featured video: the video with its text,
@@ -85,29 +88,31 @@ function Featured({ videos, alsoNew, start }: Props) {
                 >
                   {video.title}
                 </h3>
-                <FactsLine video={video} className="mt-3" />
+                <FactsLine video={video} className="mt-3" passOver />
                 {video.description && (
                   <p className="mt-3 line-clamp-3 max-w-2xl text-base text-ink-2">
                     {video.description}
                   </p>
                 )}
-                <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <PlayLink video={video} className={buttonClass('primary')}>
+                {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves
+                    the hero instead of stopping on a wrapped Save. */}
+                <div className="mt-5 flex items-center gap-3">
+                  <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
                     <PlayIcon />
                     Play
                   </PlayLink>
-                  <DetailsLink id={video.id} className={buttonClass('secondary')}>
+                  <DetailsLink
+                    id={video.id}
+                    className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
+                  >
                     <InfoIcon />
-                    Details
+                    <span className="max-sm:sr-only">Details</span>
                   </DetailsLink>
                   <MyListButton
                     id={video.id}
                     title={video.title}
-                    className={buttonClass(
-                      'secondary',
-                      'md',
-                      'aria-pressed:border-maroon aria-pressed:text-maroon',
-                    )}
+                    className={buttonClass('secondary', 'md', `${ICON_ON_PHONE} ${PRESSED}`)}
+                    labelClassName="max-sm:sr-only"
                   />
                 </div>
               </div>
@@ -119,7 +124,8 @@ function Featured({ videos, alsoNew, start }: Props) {
               <h3 id={`${headingId}-new`} className="eyebrow">
                 Also new
               </h3>
-              <ol className="mt-3 divide-y divide-line border-y border-line">
+              {/* One stop for ↑ / ↓ (entered at its first title); ← / → walk the titles. */}
+              <ol data-spatial="group" className="mt-3 divide-y divide-line border-y border-line">
                 {alsoNew.map((v) => (
                   <li key={v.id}>
                     <AlsoNewItem video={v} />

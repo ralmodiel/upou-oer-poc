@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setCatalog } from '../data/testing'
@@ -17,11 +17,17 @@ vi.mock('../features/reel/PromoReel', () => ({
 
 setCatalog(fixtureVideos)
 
-// No hover (previews start from focus), reduced motion as given.
-const mediaQueries = (reduce: boolean) => {
+// Previews need stills; the third video has none and keeps its thumbnail.
+const still = (n: number) => `https://i.ytimg.com/vi/abcdefghijk/maxres${n}.jpg`
+const withStills = fixtureVideos
+  .slice(0, 4)
+  .map((v, i) => (i === 3 ? v : { ...v, frames: [still(1), still(2), still(3)] }))
+
+// No hover unless asked (previews start from focus), reduced motion as given.
+const mediaQueries = (reduce: boolean, hover = false) => {
   window.matchMedia = (query: string) =>
     ({
-      matches: query.includes('reduce') ? reduce : false,
+      matches: query.includes('reduce') ? reduce : hover && query.includes('hover'),
       media: query,
       onchange: null,
       addEventListener: () => {},
@@ -32,9 +38,10 @@ const mediaQueries = (reduce: boolean) => {
     }) as MediaQueryList
 }
 
-function renderGrid() {
+function renderGrid(inDialog = false) {
+  const grid = <VideoGrid videos={withStills} />
   const router = createMemoryRouter([
-    { path: '/', element: <VideoGrid videos={fixtureVideos.slice(0, 3)} /> },
+    { path: '/', element: inDialog ? <dialog open>{grid}</dialog> : grid },
     { path: '/watch/:id', element: <p>Player</p> },
   ])
   render(<RouterProvider router={router} />)
@@ -90,6 +97,36 @@ describe('card previews', () => {
     act(() => cardLink(1).focus())
     expect(previews()).toHaveLength(1)
     act(() => stopPreview())
+    expect(previews()).toHaveLength(0)
+  })
+
+  it('starts on hover after a moment, but not inside an open dialog', () => {
+    vi.useFakeTimers()
+    try {
+      mediaQueries(false, true)
+      const hover = () => {
+        fireEvent.pointerEnter(cardLink(0).closest('article')!, { pointerType: 'mouse' })
+        act(() => vi.advanceTimersByTime(1000))
+      }
+      renderGrid()
+      hover()
+      expect(previews()).toHaveLength(1)
+      act(() => stopPreview())
+      cleanup()
+      renderGrid(true)
+      hover()
+      expect(previews()).toHaveLength(0)
+      // Keyboard focus still previews there.
+      act(() => cardLink(1).focus())
+      expect(previews()).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('never starts for a video without stills', () => {
+    renderGrid()
+    act(() => cardLink(3).focus())
     expect(previews()).toHaveLength(0)
   })
 

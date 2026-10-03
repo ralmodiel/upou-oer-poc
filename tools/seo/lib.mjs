@@ -16,8 +16,10 @@ import {
   headTags,
   homeSeo,
   siteUrl,
+  socialImageOf,
   videoSeo,
 } from '../../src/lib/seo.ts'
+import { registerNameTokens } from '../../src/lib/tags.ts'
 import { watchUrl } from '../../src/lib/youtube.ts'
 import { loadCatalog, newestFirst } from './catalog.mjs'
 
@@ -195,15 +197,20 @@ export async function generate({
   const template = templateOf(await readFile(join(dist, 'index.html'), 'utf8'))
   records ??= JSON.parse(await readFile(CATALOG, 'utf8'))
   const { videos, categories } = loadCatalog(limit ? records.slice(0, limit) : records)
+  // Same names as the app learns, so descriptions leave out the same people.
+  registerNameTokens(() => videos)
   const newest = [...videos].sort(newestFirst)
   const byName = new Map(categories.map((c) => [c.name, c]))
   const files = []
   const urls = []
 
+  // The app's hero (the newest featured video, else the newest) with its canonical image: the
+  // site's preview, so never a flagged still (a video page previews the video's own image).
+  const hero = newest.find((v) => v.featured) ?? newest[0]
   const home = homeSeo(
     videos.length,
     categories.length,
-    (videos.find((v) => v.featured) ?? newest[0])?.backdrop,
+    hero && (hero.poster ?? socialImageOf(hero)),
   )
   files.push([
     join(dist, 'index.html'),

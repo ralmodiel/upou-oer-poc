@@ -1,5 +1,16 @@
 import { useCallback, useMemo } from 'react'
-import { type HistoryEntry, useMyList, usePersistentState, useWatchHistory } from './storage'
+import {
+  type HistoryEntry,
+  historyAllowed,
+  readPrefs,
+  SEARCHES_KEY,
+  useMyList,
+  usePersistentState,
+  usePrefs,
+  useWatchHistory,
+} from './storage'
+
+export { SEARCHES_KEY }
 
 export interface SearchEntry {
   q: string
@@ -14,7 +25,6 @@ export interface Profile {
 }
 
 // Keys shared with storage.ts (history and My List) plus this module's own.
-export const SEARCHES_KEY = 'upou:searches'
 const HISTORY_KEY = 'upou:history'
 const MY_LIST_KEY = 'upou:my-list'
 const MAX_SEARCHES = 20
@@ -48,19 +58,37 @@ export function useSearchHistory() {
   const [raw, setRaw] = usePersistentState<unknown>(SEARCHES_KEY, NO_SEARCHES)
   const searches = useMemo(() => toSearches(raw), [raw])
   const record = useCallback(
-    (q: string) => setRaw((prev: unknown) => addSearch(toSearches(prev), q)),
+    (q: string) => {
+      if (!readPrefs().searches) return
+      setRaw((prev: unknown) => addSearch(toSearches(prev), q))
+    },
     [setRaw],
   )
   const clear = useCallback(() => setRaw(NO_SEARCHES), [setRaw])
   return { searches, record, clear }
 }
 
-/** Watch history, searches and My List as one object; same identity until storage changes. */
+const NONE: never[] = []
+
+/**
+ * Watch history, searches and My List as one object; same identity until storage changes.
+ * Leaves out whatever the viewer opted out of (Privacy and history panel).
+ */
 export function useProfile(): Profile {
   const { entries } = useWatchHistory()
   const { searches } = useSearchHistory()
   const { ids } = useMyList()
-  return useMemo(() => ({ watched: entries, searches, saved: ids }), [entries, searches, ids])
+  const [prefs] = usePrefs()
+  const watchedOk = historyAllowed(prefs)
+  const searchesOk = prefs.searches
+  return useMemo(
+    () => ({
+      watched: watchedOk ? entries : NONE,
+      searches: searchesOk ? searches : NONE,
+      saved: ids,
+    }),
+    [watchedOk, searchesOk, entries, searches, ids],
+  )
 }
 
 const readJson = (key: string): unknown => {
@@ -74,9 +102,10 @@ const readJson = (key: string): unknown => {
 
 /** The profile outside React (scripts, loaders, tests): a fresh read of localStorage. */
 export function readProfile(): Profile {
+  const prefs = readPrefs()
   return {
-    watched: toEntries(readJson(HISTORY_KEY)),
-    searches: toSearches(readJson(SEARCHES_KEY)),
+    watched: historyAllowed(prefs) ? toEntries(readJson(HISTORY_KEY)) : NONE,
+    searches: prefs.searches ? toSearches(readJson(SEARCHES_KEY)) : NONE,
     saved: toIds(readJson(MY_LIST_KEY)),
   }
 }

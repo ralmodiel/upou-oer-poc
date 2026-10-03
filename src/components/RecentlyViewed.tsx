@@ -3,6 +3,7 @@ import type { Video } from '../types'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { useCardPreview } from './preview'
+import { ManageLink } from './browse-ui'
 import SectionHeading from './ui/SectionHeading'
 
 /** Compact, snap-scrolling strip of videos opened lately; hidden until there are any. */
@@ -16,7 +17,9 @@ function RecentlyViewed({ videos }: { videos: readonly Video[] }) {
           id={headingId}
           title="Recently viewed"
           description="Videos you opened lately, newest first. Only this browser keeps the list."
-        />
+        >
+          <ManageLink>Manage history</ManageLink>
+        </SectionHeading>
       </div>
       <ul
         role="list"

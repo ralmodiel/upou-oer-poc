@@ -39,3 +39,24 @@ describe('tags', () => {
     for (const topic of all) expect(isGenericTag(topic), topic).toBe(false)
   })
 })
+
+describe('tidyTag', () => {
+  it('fixes case: acronyms, small words, lowercase and shouting tags', () => {
+    expect(tidyTag('asean studies')).toBe('ASEAN Studies')
+    expect(tidyTag('Ched')).toBe('CHED')
+    expect(tidyTag('Health And Wellbeing')).toBe('Health and Wellbeing')
+    expect(tidyTag('ugnayan ng pahinungod')).toBe('Ugnayan ng Pahinungod')
+    expect(tidyTag('MORAL RESPONSIBILITY IN A CHANGING WORLD')).toBe(
+      'Moral Responsibility in a Changing World',
+    )
+    expect(tidyTag('covid19')).toBe('COVID-19')
+    expect(tidyTag('Vitamin A')).toBe('Vitamin A')
+    expect(tidyTag('WILLS 2024')).toBe('WILLS 2024')
+  })
+
+  it('merges spellings and full names with their short tag', () => {
+    expect(
+      topicTags(['COVID19', 'Covid-19', 'FMDS', 'Faculty of Management and Development Studies']),
+    ).toEqual(['COVID-19', 'FMDS'])
+  })
+})

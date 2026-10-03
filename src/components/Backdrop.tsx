@@ -43,19 +43,24 @@ export function MosaicBackdrop({
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
     >
       <div className="backdrop-mosaic flex h-full gap-0.5">
-        {videos.map((video) => (
-          <div key={video.id} className="aspect-video h-full shrink-0 bg-surface-2">
-            <img
-              src={imagesOf(video, true).small}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              onLoad={markLoaded}
-              onError={hide}
-              className="size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
-            />
-          </div>
-        ))}
+        {videos.map((video) => {
+          const images = imagesOf(video, true)
+          return (
+            <div key={video.id} className="aspect-video h-full shrink-0 bg-surface-2">
+              {images && (
+                <img
+                  src={images.small}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  onLoad={markLoaded}
+                  onError={hide}
+                  className="size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
+                />
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className={`absolute inset-0 ${scrim}`} />
     </div>
@@ -67,23 +72,26 @@ export function MosaicBackdrop({
  * content (the parent needs `relative isolate`), so it never affects layout.
  */
 export default function Backdrop({ video, scrim, className = '' }: Props) {
-  // The original still, fully grey in browse.css: a tone behind the page, never a colour wash.
-  const { small, large } = imagesOf(video, true)
+  // The canonical still, fully grey in browse.css: a tone behind the page, never a colour wash
+  // (none when every image is flagged).
+  const images = imagesOf(video, true)
   return (
     <div
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${className}`}
     >
-      <img
-        key={video.id}
-        src={large}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        onLoad={markLoaded}
-        onError={(e) => retryOrFail(e.currentTarget, small)}
-        className="backdrop-img size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-60 data-failed:hidden motion-reduce:transition-none"
-      />
+      {images && (
+        <img
+          key={video.id}
+          src={images.large}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onLoad={markLoaded}
+          onError={(e) => retryOrFail(e.currentTarget, images.small)}
+          className="backdrop-img size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-60 data-failed:hidden motion-reduce:transition-none"
+        />
+      )}
       <div className={`absolute inset-0 ${scrim}`} />
     </div>
   )

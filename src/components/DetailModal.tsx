@@ -27,7 +27,7 @@ import { stopPreview } from './preview'
 import { CardReasons, moreLikeThis, reasonsFor } from './recs'
 import Chip from './ui/Chip'
 import IconButton from './ui/IconButton'
-import { buttonClass } from './ui/button-styles'
+import { PRESSED, buttonClass } from './ui/button-styles'
 import './browse.css'
 
 // Matches the data-closing transition in browse.css.
@@ -37,6 +37,13 @@ const SIMILAR = 6
 const SCRIM = 'bg-linear-to-b from-surface/40 via-surface/80 via-60% to-surface'
 
 /** Quick look dialog driven by `?v=<id>`; unknown ids render nothing. */
+function focusPageTitle() {
+  const title = document.querySelector<HTMLElement>('main h1') ?? document.getElementById('main')
+  if (!title) return
+  if (!title.hasAttribute('tabindex')) title.tabIndex = -1
+  title.focus({ preventScroll: true })
+}
+
 export default function DetailModal() {
   const [params] = useSearchParams()
   const video = getVideo(params.get('v'))
@@ -93,7 +100,12 @@ function DetailDialog({ video }: { video: Video }) {
 
   // Close natively first (focus returns to the trigger), so we never navigate with it open.
   const leave = () => {
-    dialog.current?.close()
+    const el = dialog.current
+    el?.close()
+    // Opened from a shared link there is no trigger to return focus to (it stays on the closed
+    // dialog's button, or the body): start on the page title.
+    const active = document.activeElement
+    if (!active || active === document.body || el?.contains(active)) focusPageTitle()
     if (wasOpenedInApp(state)) navigate(-1)
     else navigate({ search: base }, { replace: true, preventScrollReset: true })
   }
@@ -188,11 +200,7 @@ function DetailDialog({ video }: { video: Video }) {
             <MyListButton
               id={video.id}
               title={video.title}
-              className={buttonClass(
-                'secondary',
-                'md',
-                'aria-pressed:border-maroon aria-pressed:text-maroon',
-              )}
+              className={buttonClass('secondary', 'md', PRESSED)}
             />
           </div>
 

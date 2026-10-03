@@ -1,5 +1,6 @@
 import { getCategoryByName, getLatest } from '../data/catalog'
 import { thumbnailSetOf } from '../data/expand'
+import { flaggedMaskOf } from '../data/frameFlags'
 import type { Video } from '../types'
 
 /** Route slug of a category name (names that collide after slugifying get a suffix). */
@@ -24,25 +25,61 @@ export const largeImageOf = (video: Video) => (hasHiRes(video) ? video.backdrop 
 // A rotating still frame (`maxres1.jpg` …); the original is `…default.jpg` next to it.
 const FRAME = /\/(maxres|sd|mq)[123]\.jpg(\?|$)/
 
+// Candidate index as in frame-flags.json: YouTube's still frames are 1-3; anything else (the
+// original at any size, or the source site's og:image) is the original, 0.
+const candidateOf = (src: string) =>
+  Number(/\/(?:maxres|sd|hq|mq)([1-3])\.jpg(\?|$)/.exec(src)?.[1] ?? 0)
+
+/** False for a missing image or one the frame filter flagged (a face not smiling or angry). */
+const isClean = (video: Video, src: string | undefined): src is string =>
+  !!src && !(flaggedMaskOf(video.youtubeId) & (1 << candidateOf(src)))
+
 /**
- * The canonical large image of a video (og:image or `…default.jpg`) for hero slots: the featured
- * block, the quick look and their backdrops. Never one of the rotating still frames, which can be
- * a flash or near-black frame that colours a whole page.
+ * The canonical large image of a video for hero slots (the featured block, the quick look and
+ * their backdrops): its poster (the original, or the first clean still when that is flagged),
+ * never a rotating still that could be a flash or near-black frame, and never a flagged image:
+ * null when every image is flagged (the slot shows its plain well).
  */
-export function heroImageOf(video: Video): string {
+export function heroImageOf(video: Video): string | null {
   const original = video.backdrop.replace(FRAME, '/$1default.jpg$2')
-  return widthOf(original) >= 640 ? original : thumbnailSetOf(video)[0]
+  const fallback = widthOf(original) >= 640 ? original : thumbnailSetOf(video)[0]
+  return [video.poster, fallback, ...video.frames].find((src) => isClean(video, src)) ?? null
+}
+
+// The 640px "sd" version of a 1280px YouTube still (YouTube serves both sizes whenever the large
+// one exists; its 4:3 letterbox bars fall outside a 16:9 slot), for 2x screens and mid-size slots.
+const SD = /\/maxres(default|[123])\.jpg(\?|$)/
+const sdOf = (url: string) => (SD.test(url) ? url.replace('/maxres', '/sd') : null)
+
+export interface SlotImages {
+  small: string
+  large: string
+  srcSet: string | undefined
 }
 
 /**
  * Sources for a 16:9 slot: this page load's pick from the thumbnail set, or with `canonical` the
- * original images (hero slots and lists, where one odd frame stands out).
+ * hero image (hero slots and lists, where one odd frame stands out). Null when the slot has no
+ * clean image (every image of the video flagged): it then shows its plain well.
  */
-export function imagesOf(video: Video, canonical = false) {
-  const small = canonical ? thumbnailSetOf(video)[0] : video.thumbnail
+export function imagesOf(video: Video, canonical = false): SlotImages | null {
+  // The data falls back to the flagged original when nothing else is left: never show it.
+  if (!canonical && !isClean(video, video.thumbnail)) return imagesOf(video, true)
   const large = canonical ? heroImageOf(video) : largeImageOf(video)
+  if (!large) return null
+  // The 320px member of the same candidate (any clean one, else the large image itself).
+  const small = canonical
+    ? (thumbnailSetOf(video).find(
+        (s) => candidateOf(s) === candidateOf(large) && isClean(video, s),
+      ) ?? large)
+    : video.thumbnail
   const width = widthOf(large)
-  return { small, large, srcSet: width >= 640 ? `${small} 320w, ${large} ${width}w` : undefined }
+  const sd = sdOf(large)
+  const srcSet =
+    width >= 640
+      ? [`${small} 320w`, sd && `${sd} 640w`, `${large} ${width}w`].filter(Boolean).join(', ')
+      : undefined
+  return { small, large, srcSet }
 }
 
 const NEW_COUNT = 10

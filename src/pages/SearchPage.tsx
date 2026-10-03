@@ -124,7 +124,7 @@ export default function SearchPage() {
   })
 
   // The header searches as you type, so a query is recorded once it rests; choosing a
-  // collection filter commits it at once.
+  // collection filter or opening a result commits it at once.
   const { record } = useSearchHistory()
   useEffect(() => {
     if (!q) return
@@ -210,7 +210,7 @@ export default function SearchPage() {
           data-search-page=""
           placeholder="Title, topic or tag"
           autoComplete="off"
-          className="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface px-5 text-base text-ink placeholder:text-ink-3 focus:border-maroon"
+          className="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface px-5 text-base text-ink placeholder:text-ink-3 focus:border-focus"
         />
         <Button type="submit" icon={<SearchIcon />}>
           Search
@@ -274,7 +274,7 @@ export default function SearchPage() {
           )}
           {count > 0 ? (
             <>
-              <div ref={grid} className="mt-8">
+              <div ref={grid} onClickCapture={() => record(q)} className="mt-8">
                 <GridHint />
                 <DetailsContext value={target}>
                   <VideoGrid videos={visible} />

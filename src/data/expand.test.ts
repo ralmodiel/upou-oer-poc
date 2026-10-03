@@ -30,8 +30,15 @@ describe('expandRecord', () => {
       thumbnails: [image('mqdefault'), image('mq1'), image('mq2'), image('mq3')],
       backdrop: image('maxresdefault'),
       poster: image('maxresdefault'),
+      original: image('maxresdefault'),
       frames: [image('maxres1'), image('maxres2'), image('maxres3')],
     })
+  })
+
+  it('uses the 320px stills when the 640px ones are missing (s: 0)', () => {
+    const v = expandRecord({ ...base, m: 0, s: 0 })
+    expect(v.poster).toBe(image('mqdefault'))
+    expect(v.frames).toEqual([image('mq1'), image('mq2'), image('mq3')])
   })
 
   it('falls back to mq images, with an optional backdrop override', () => {

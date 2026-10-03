@@ -43,7 +43,7 @@
   --color-line: #e6e1dd;
   --color-maroon: #8d0c34;
   --color-maroon-2: #7f001f;
-  --color-maroon-soft: #f9e6ed;
+  --color-maroon-soft: #f4e9e4;
   --color-forest: #00563f;
   --color-forest-soft: #e2efe9;
   --color-amber: #f5a71d;
@@ -60,6 +60,17 @@
   --color-band-gold: #fcb51b;
   --color-band-charcoal: #373637;
   --color-on-band: #faf8f6;
+  /* Primary action fills (buttons, active chips, count badges): UP maroon, the band colour, in
+     both themes (the deep dark band in dark). */
+  --color-action: #7b1113;
+  --color-action-2: #640d0f;
+  --color-on-action: #ffffff;
+  /* Keyboard focus ring: maroon in light, gold in dark. */
+  --color-focus: #8d0c34;
+  /* Small brand marks (chip dots, card bars): band colours, lifted in dark so they stay visible. */
+  --color-mark-maroon: #7b1113;
+  --color-mark-forest: #014421;
+  --color-mark-charcoal: #373637;
 
   --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
@@ -106,8 +117,9 @@
     --color-ink-2: #c9c5c7;
     --color-ink-3: #9b9699;
     --color-line: #3a383b;
-    --color-maroon: #ec7097;
-    --color-maroon-2: #f28cab;
+    /* Brand text and links: gold (maroon stays in the bands and fills). */
+    --color-maroon: #fcc75a;
+    --color-maroon-2: #ffd98a;
     --color-maroon-soft: #3f1a2a;
     --color-forest: #5fc59c;
     --color-forest-soft: #173328;
@@ -118,6 +130,13 @@
     --color-band-maroon: #6e0f26;
     --color-band-forest: #0f4a35;
     --color-band-gold: #e3a91a;
+    --color-action: #6e0f26;
+    --color-action-2: #86172f;
+    --color-on-action: #faf8f6;
+    --color-focus: #fcc75a;
+    --color-mark-maroon: #c23a5f;
+    --color-mark-forest: #2f8f68;
+    --color-mark-charcoal: #9b9699;
     --shadow-lift: 0 10px 30px -12px rgb(0 0 0 / 0.6);
   }
   /* Mirror of the block above: right first paint for system-dark users before the theme bootstrap runs. */
@@ -131,8 +150,9 @@
       --color-ink-2: #c9c5c7;
       --color-ink-3: #9b9699;
       --color-line: #3a383b;
-      --color-maroon: #ec7097;
-      --color-maroon-2: #f28cab;
+      /* Brand text and links: gold (maroon stays in the bands and fills). */
+      --color-maroon: #fcc75a;
+      --color-maroon-2: #ffd98a;
       --color-maroon-soft: #3f1a2a;
       --color-forest: #5fc59c;
       --color-forest-soft: #173328;
@@ -143,6 +163,13 @@
       --color-band-maroon: #6e0f26;
       --color-band-forest: #0f4a35;
       --color-band-gold: #e3a91a;
+      --color-action: #6e0f26;
+      --color-action-2: #86172f;
+      --color-on-action: #faf8f6;
+      --color-focus: #fcc75a;
+      --color-mark-maroon: #c23a5f;
+      --color-mark-forest: #2f8f68;
+      --color-mark-charcoal: #9b9699;
       --shadow-lift: 0 10px 30px -12px rgb(0 0 0 / 0.6);
     }
   }
@@ -162,7 +189,7 @@
   }
   /* The one keyboard focus ring (components may swap it for a ring of their own with outline-none). */
   :focus-visible {
-    outline: 2px solid var(--color-maroon);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
   ::selection {

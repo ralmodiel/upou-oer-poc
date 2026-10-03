@@ -53,13 +53,10 @@ describe('Header and tab bar', () => {
     expect(screen.getByRole('searchbox', { name: 'Search videos' })).toBeInTheDocument()
   })
 
-  it('switch the theme from the header', async () => {
+  it('keep the theme to one header control, with every choice in the Help menu', () => {
     renderAt('/', <Header />)
-    await userEvent.click(screen.getByRole('button', { name: 'Dark' }))
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(screen.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByRole('button', { name: 'Light' }))
-    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(screen.queryByRole('group', { name: 'Theme' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Theme: / })).toHaveLength(1)
   })
 
   it('flip the effective theme with the compact toggle on the first tap', async () => {

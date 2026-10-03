@@ -10,7 +10,7 @@ import {
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
-import { canHover } from './browse-hooks'
+import { canHover, onIdle } from './browse-hooks'
 import { prefersReducedMotion } from './hooks'
 
 const HOVER_DELAY_MS = 800
@@ -42,6 +42,23 @@ function release(id: string) {
   document.removeEventListener('keydown', onKeyDown, true)
 }
 
+// The reel chunk (shared with the watch page), fetched once: when the browser is first idle after a
+// card mounts, or at the first hover or focus on a card, so a preview never waits on the network.
+let reelRequested = false
+let idleScheduled = false
+function prefetchReel() {
+  if (reelRequested) return
+  reelRequested = true
+  import('../features/reel/PromoReel').catch(() => {
+    reelRequested = false
+  })
+}
+function prefetchReelWhenIdle() {
+  if (idleScheduled || reelRequested) return
+  idleScheduled = true
+  onIdle(prefetchReel, 4000)
+}
+
 /** Stops whichever preview is playing (dialogs opening, for instance). */
 export const stopPreview = () => current?.stop()
 
@@ -49,9 +66,9 @@ type Phase = 'idle' | 'playing' | 'ending' | 'done'
 
 /**
  * Preview reel for one card: mounts the muted reel in the card's 16:9 box when the card is
- * focused, or hovered for a moment on devices that hover; unmounts on blur, pointer leave or
- * Esc. After the reel ends its end card stays briefly, then the thumbnail returns until the
- * pointer leaves. Reduced motion: no automatic previews. Spread `hostProps` on the card and
+ * focused, or hovered for a moment on devices that hover (outside dialogs); unmounts on blur,
+ * pointer leave or Esc. After the reel ends its end card stays briefly, then the thumbnail returns
+ * until the pointer leaves. Reduced motion: no automatic previews. Spread `hostProps` on the card and
  * render `overlay` inside its Thumbnail.
  */
 export function useCardPreview(video: Video) {
@@ -70,11 +87,15 @@ export function useCardPreview(video: Video) {
     setPhase('idle')
   }, [id])
 
+  // Without usable stills a video keeps its static thumbnail.
+  const hasStills = video.frames.length > 0
   const start = useCallback(() => {
-    if (prefersReducedMotion() || done.current) return
+    if (prefersReducedMotion() || done.current || !hasStills) return
     claim(id, stop)
     setPhase((p) => (p === 'idle' ? 'playing' : p))
-  }, [id, stop])
+  }, [id, stop, hasStills])
+
+  useEffect(prefetchReelWhenIdle, [])
 
   // Unmount (navigation) or another video in the same card: let go.
   useEffect(() => stop, [stop])
@@ -92,8 +113,11 @@ export function useCardPreview(video: Video) {
 
   const previewing = phase === 'playing' || phase === 'ending'
   const hostProps = {
-    onPointerEnter: (e: PointerEvent) => {
+    onPointerEnter: (e: PointerEvent<HTMLElement>) => {
       if (e.pointerType === 'touch' || !canHover()) return
+      // A dialog opens (or scrolls) under a still pointer: its cards preview on keyboard focus only.
+      if (e.currentTarget.closest('dialog[open]')) return
+      prefetchReel()
       clearTimeout(hoverTimer.current)
       hoverTimer.current = window.setTimeout(start, HOVER_DELAY_MS)
     },
@@ -101,6 +125,7 @@ export function useCardPreview(video: Video) {
     // Focus previews follow keyboard focus only: a click on a card's button, or the focus "Load
     // more" gives the first new card after a click, plays nothing (pointers get hover previews).
     onFocus: () => {
+      prefetchReel()
       if (lastInput() !== 'pointer') start()
     },
     onBlur: (e: FocusEvent) => {

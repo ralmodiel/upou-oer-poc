@@ -8,8 +8,7 @@ import RecentlyViewed from '../components/RecentlyViewed'
 import Recommended from '../components/Recommended'
 import Section from '../components/Section'
 import { onIdle, useFrozen, useMediaQuery } from '../components/browse-hooks'
-import { GridHint } from '../components/browse-ui'
-import { heroImageOf } from '../components/media'
+import { GridHint, ManageLink } from '../components/browse-ui'
 import { forYou, moreLikeThis, reasonsFor } from '../components/recs'
 import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
@@ -17,7 +16,7 @@ import { getCategories, getFeatured, getLatest, getRows, getVideo, videos } from
 import { isEmptyProfile, useProfile, type Profile } from '../lib/history'
 import { warmRecommenderAsync } from '../lib/recommend'
 import { homeSeo, useSeo } from '../lib/seo'
-import { useWatchHistory, type HistoryEntry } from '../lib/storage'
+import { historyAllowed, usePrefs, useWatchHistory, type HistoryEntry } from '../lib/storage'
 import type { Video } from '../types'
 import '../components/browse.css'
 
@@ -47,20 +46,21 @@ function useShownHistory() {
   return shown
 }
 
-const SECTIONS_PER_FRAME = 4
+let homeShownBefore = false
 
-// The first paint carries the top sections; the rest follow a few per frame so the home page
-// is interactive sooner. Coming Back (POP) everything renders at once, so the restored scroll
-// position lands on content.
-function useSectionCount(total: number) {
+const loadType = () =>
+  (performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined)?.type
+
+// Back / Forward within the app, or a reload, restores a scroll position: every section then
+// renders its cards at once so the position lands on them. A fresh visit (the first load is a
+// POP too) renders a section's cards as it nears the viewport.
+function useRestoring() {
   const popped = useNavigationType() === 'POP'
-  const [count, setCount] = useState(() => (popped ? total : SECTIONS_PER_FRAME))
+  const [restoring] = useState(() => popped && (homeShownBefore || loadType() !== 'navigate'))
   useEffect(() => {
-    if (count >= total) return
-    const frame = requestAnimationFrame(() => setCount((c) => c + SECTIONS_PER_FRAME))
-    return () => cancelAnimationFrame(frame)
-  }, [count, total])
-  return Math.min(count, total)
+    homeShownBefore = true
+  }, [])
+  return restoring
 }
 
 interface HomeRecs {
@@ -73,7 +73,8 @@ interface HomeRecs {
 }
 
 const NO_RECS: HomeRecs = { limit: 0, pending: false, forYou: [], reasons: new Map() }
-// As last computed, so Back lands on the same layout at once.
+// As last computed, so Back lands on the same layout at once (a fresh visit computes anew: the
+// profile may have changed since).
 let lastRecs: HomeRecs | null = null
 
 // `shown`: every title already on the page (featured, also new, recently viewed, category rows),
@@ -113,10 +114,16 @@ function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>
 // indexes the catalog in short slices first, and the grids render a frame later, so no task is long.
 // An empty profile skips the recommender entirely. The profile is frozen at mount so saving a
 // card here does not reshuffle the grids.
-function useHomeRecommendations(limit: number, shown: ReadonlySet<string>): HomeRecs {
+function useHomeRecommendations(
+  limit: number,
+  shown: ReadonlySet<string>,
+  restoring: boolean,
+  enabled: boolean,
+): HomeRecs {
   const profile = useFrozen(useProfile(), limit)
-  const empty = isEmptyProfile(profile)
-  const [recs, setRecs] = useState(() => (lastRecs?.limit === limit ? lastRecs : null))
+  // Every personal row switched off (Privacy and history): the recommender never runs.
+  const empty = isEmptyProfile(profile) || !enabled
+  const [recs, setRecs] = useState(() => (restoring && lastRecs?.limit === limit ? lastRecs : null))
   useEffect(() => {
     if (empty) return
     let frame = 0
@@ -141,19 +148,37 @@ function useHomeRecommendations(limit: number, shown: ReadonlySet<string>): Home
 
 // Phones: the strongest collections only, four cards each, then a link to the rest.
 const PHONE_SECTIONS = 7
+const NO_VIDEOS: Video[] = []
 const PHONE_CARDS = 4
 const CARDS = 8
 const MIN_ROW = 3
 
-const shortTitle = (title: string) => (title.length > 48 ? `${title.slice(0, 46).trim()}…` : title)
+const without = (list: Video[], ids: ReadonlySet<string>) => {
+  const rest = list.filter((v) => !ids.has(v.id))
+  return rest.length ? rest : list
+}
+
+// A long title is cut at a word boundary, without trailing punctuation.
+function shortTitle(title: string, max = 48): string {
+  if (title.length <= max) return title
+  const cut = title.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,:;–—-]+$/, '')}…`
+}
 
 export default function BrowsePage() {
   const first = getFeatured()[0]
-  useSeo(homeSeo(videos.length, getCategories().length, first && heroImageOf(first)))
+  // The poster, as in the static shell (link previews never reach the page UI).
+  useSeo(homeSeo(videos.length, getCategories().length, first?.poster ?? first?.backdrop))
   const entries = useShownHistory()
+  const [prefs] = usePrefs()
+  const historyOn = historyAllowed(prefs)
+  const showRecent = historyOn && prefs.recentlyViewed
+  const showBecause = historyOn && prefs.becauseYouWatched
   const recent = useMemo(
-    () => entries.map((e) => getVideo(e.id)).filter((v) => v !== undefined),
-    [entries],
+    () =>
+      showRecent ? entries.map((e) => getVideo(e.id)).filter((v) => v !== undefined) : NO_VIDEOS,
+    [entries, showRecent],
   )
   // Catalog getters are memoized, so these identities are stable between renders.
   const featured = getFeatured()
@@ -168,14 +193,17 @@ export default function BrowsePage() {
   // A title already above (featured, also new, recently viewed) is left out of its category
   // row, which takes the next newest instead.
   const rows = getRows(CARDS * 2)
+  const above = useMemo(
+    () => new Set([...featured, ...alsoNew, ...recent].map((v) => v.id)),
+    [featured, alsoNew, recent],
+  )
   const shownRows = useMemo(() => {
-    const above = new Set([...featured, ...alsoNew, ...recent].map((v) => v.id))
     return (wide ? rows : rows.slice(0, PHONE_SECTIONS)).map((row) => {
       const rest = row.videos.filter((v) => !above.has(v.id))
       // A small collection shown almost entirely above keeps its own list rather than going bare.
       return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, cards) }
     })
-  }, [featured, alsoNew, recent, rows, wide, cards])
+  }, [above, rows, wide, cards])
   const shown = useMemo(
     () =>
       new Set(
@@ -185,8 +213,15 @@ export default function BrowsePage() {
       ),
     [featured, alsoNew, recent, shownRows],
   )
-  const recs = useHomeRecommendations(cards, shown)
-  const sectionCount = useSectionCount(shownRows.length)
+  const restoring = useRestoring()
+  const recs = useHomeRecommendations(cards, shown, restoring, prefs.recommendations || showBecause)
+  // Recs computed before the latest watch (Back from the player) may hold a title now shown above:
+  // never repeat one across the top rows (unless that would leave a row bare: a tiny catalog).
+  const forYouList = useMemo(() => without(recs.forYou, above), [recs.forYou, above])
+  const becauseList = useMemo(
+    () => without(recs.because?.list ?? [], new Set([...above, ...forYouList.map((v) => v.id)])),
+    [recs.because, above, forYouList],
+  )
 
   if (!videos.length) {
     return (
@@ -208,29 +243,39 @@ export default function BrowsePage() {
       <HowItWorks />
       {/* Sections alternate tinted and paper bands (browse.css). */}
       <div className="home-bands">
-        <Recommended
-          title="Recommended for you"
-          description="Picked from what you watched, searched and saved in this browser."
-          videos={recs.forYou}
-          reasons={recs.reasons}
-          pending={recs.pending}
-          cards={cards}
-        />
+        {prefs.recommendations && (
+          <Recommended
+            title="Recommended for you"
+            description={
+              <>
+                Picked from what you watched, searched and saved in this browser. <ManageLink />
+              </>
+            }
+            videos={forYouList}
+            reasons={recs.reasons}
+            pending={recs.pending}
+            cards={cards}
+          />
+        )}
         <RecentlyViewed videos={recent} />
         <CollectionChips />
-        {recs.because && (
+        {showBecause && recs.because && becauseList.length > 0 && (
           <Recommended
             title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
-            description="Titles close to the one you watched last."
-            videos={recs.because.list}
+            description={
+              <>
+                Titles close to the one you watched last. <ManageLink />
+              </>
+            }
+            videos={becauseList}
             reasons={recs.because.reasons}
             cards={cards}
           />
         )}
-        {shownRows.slice(0, sectionCount).map((row) => (
-          <Section key={row.id} row={row} />
+        {shownRows.map((row) => (
+          <Section key={row.id} row={row} eager={restoring} />
         ))}
-        {!wide && sectionCount === shownRows.length && (
+        {!wide && (
           <section aria-label="More collections" className="px-(--gutter) py-10 text-center">
             <p className="text-sm text-ink-2">
               {rows.length - shownRows.length} more collections, plus everything in these.

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useHelp } from '../lib/howitworks'
+import { openPrivacy } from '../lib/privacy'
 import { openShortcuts } from '../lib/shortcuts'
 
 // The footer is a deep maroon band: paper text, gold on hover and for headings (band-focus turns
@@ -99,6 +100,11 @@ export default function Footer() {
             <li>
               <button type="button" onClick={openShortcuts} className={ACTION}>
                 Keyboard shortcuts
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={openPrivacy} className={ACTION}>
+                Privacy and history
               </button>
             </li>
           </ul>

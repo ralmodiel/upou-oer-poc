@@ -1,23 +1,34 @@
-import { heroImageOf } from '../../components/media'
-import { useState } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
+import { reelImages } from '../reel/stills'
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 
 /**
- * The player's first frame: the backdrop at half strength over night. The stage keeps it under
- * the reel as well, so the reel's closing move lands on it and the swap has nothing to load.
+ * The player's first frame: the poster at half strength over night (night alone when every image
+ * is flagged). The stage keeps it under the reel as well, so the reel's closing move lands on it
+ * and the swap has nothing to load.
  */
 export function PlayerPoster({ video }: { video: Video }) {
+  const [failed, setFailed] = useState(false)
+  const { poster } = reelImages(video)
+  // YouTube answers a missing still with a 120px placeholder.
+  const check = (e: SyntheticEvent<HTMLImageElement>) => {
+    if (e.currentTarget.naturalWidth <= 120) setFailed(true)
+  }
   if (!isYouTubeId(video.youtubeId)) return null
   return (
     <div className="pointer-events-none absolute inset-0 bg-[#1b1a17]" aria-hidden="true">
-      <img
-        src={video.poster ?? heroImageOf(video)}
-        alt=""
-        className="size-full object-cover opacity-50"
-      />
+      {poster && !failed && (
+        <img
+          src={poster}
+          alt=""
+          onLoad={check}
+          onError={() => setFailed(true)}
+          className="size-full object-cover opacity-50"
+        />
+      )}
     </div>
   )
 }

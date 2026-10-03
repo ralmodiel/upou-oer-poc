@@ -97,20 +97,80 @@ export interface HistoryEntry {
   at: number
 }
 
+const HISTORY_KEY = 'upou:history'
+export const SEARCHES_KEY = 'upou:searches'
+
+/** The viewer's privacy and personalization choices (Privacy and history panel). */
+export interface Prefs {
+  /** Save watch history on this device; off deletes it and stops recording. */
+  history: boolean
+  /** Use watch history for anything: rows, recommendations, Up next ranking. */
+  useHistory: boolean
+  /** The "Recommended for you" row on the home page. */
+  recommendations: boolean
+  /** The "Recently viewed" row on the home page. */
+  recentlyViewed: boolean
+  /** The "Because you watched" rows on the home page. */
+  becauseYouWatched: boolean
+  /** Save committed searches (they seed recommendations); off deletes them. */
+  searches: boolean
+}
+
+const PREFS_KEY = 'upou:prefs'
+const PREF_KEYS = [
+  'history',
+  'useHistory',
+  'recommendations',
+  'recentlyViewed',
+  'becauseYouWatched',
+  'searches',
+] as const
+const DEFAULT_PREFS = Object.fromEntries(PREF_KEYS.map((k) => [k, true])) as unknown as Prefs
+
+const toPrefs = (value: unknown): Prefs => {
+  if (typeof value !== 'object' || value === null) return DEFAULT_PREFS
+  const v = value as Record<string, unknown>
+  return Object.fromEntries(
+    PREF_KEYS.map((k) => [k, typeof v[k] === 'boolean' ? v[k] : true]),
+  ) as unknown as Prefs
+}
+
+/** Whether anything may draw on watch history. */
+export const historyAllowed = (p: Prefs) => p.history && p.useHistory
+
+/** Current choices outside React. */
+export const readPrefs = (): Prefs => toPrefs(read<unknown>(PREFS_KEY, DEFAULT_PREFS))
+
+/** Updates choices; opting out of saving a history deletes what was saved. */
+export function setPrefs(patch: Partial<Prefs>) {
+  write(PREFS_KEY, { ...readPrefs(), ...patch })
+  if (patch.history === false) write(HISTORY_KEY, [])
+  if (patch.searches === false) write(SEARCHES_KEY, [])
+}
+
+export function usePrefs() {
+  const [raw] = usePersistentState<unknown>(PREFS_KEY, DEFAULT_PREFS)
+  const prefs = useMemo(() => toPrefs(raw), [raw])
+  return [prefs, setPrefs] as const
+}
+
 const NO_HISTORY: HistoryEntry[] = []
 const toEntries = (value: unknown): HistoryEntry[] =>
   Array.isArray(value) ? value.filter((e) => typeof e?.id === 'string') : NO_HISTORY
 
 export function useWatchHistory() {
-  const [raw, setEntries] = usePersistentState<unknown>('upou:history', NO_HISTORY)
+  const [raw, setEntries] = usePersistentState<unknown>(HISTORY_KEY, NO_HISTORY)
   const entries = useMemo(() => toEntries(raw), [raw])
   const record = useCallback(
-    (id: string) =>
+    (id: string) => {
+      if (!readPrefs().history) return
       setEntries((prev: unknown) => {
         const rest = toEntries(prev).filter((e) => e.id !== id)
         return [{ id, at: Date.now() }, ...rest].slice(0, 20)
-      }),
+      })
+    },
     [setEntries],
   )
-  return { entries, record }
+  const clear = useCallback(() => setEntries(NO_HISTORY), [setEntries])
+  return { entries, record, clear }
 }

@@ -34,12 +34,12 @@ export const BAND: Record<Tone, { fill: string; text: string; rule: string; mute
   },
 }
 
-/** Small marks (chip dots, card bars): band colours, lighter in dark mode so they stay visible. */
+/** Small marks (chip dots, card bars): band colours, lifted in dark mode so they stay visible. */
 export const MARK: Record<Tone, string> = {
-  maroon: 'bg-band-maroon dark:bg-maroon',
-  forest: 'bg-band-forest dark:bg-forest',
+  maroon: 'bg-mark-maroon',
+  forest: 'bg-mark-forest',
   gold: 'bg-band-gold',
-  charcoal: 'bg-band-charcoal dark:bg-ink-3',
+  charcoal: 'bg-mark-charcoal',
 }
 
 // Keyed by the memoized list, so a catalog swap (tests) starts over.

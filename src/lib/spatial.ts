@@ -5,9 +5,14 @@
 // (tabindex="-1" on a link or button), minus anything aria-hidden, inert, hidden, disabled,
 // zero-size or marked data-spatial="skip"; plain containers with tabindex="-1" are not stops.
 // data-spatial="wide" gives a centred control the shape of its full-width row.
-// data-spatial="group" (a wrapped or scrolling row of chips) makes the row one stop for ↑ / ↓: it is
-// entered at its current chip (the roving tab stop, else the active or first one) and left as a
-// whole, while ← / → walk its chips in order.
+// data-spatial="group" (a wrapped or scrolling row of chips, a short list) makes it one stop for
+// ↑ / ↓: it is entered at its current item (the roving tab stop, else the active or first one) and
+// left as a whole, while ← / → walk its items in order.
+// data-spatial="heading" (a See all link beside a section heading): ↑ / ↓ from outside its section
+// pass over it to the section's content; ↑ from inside the section reaches it.
+// data-spatial="aside" (a secondary bar control: theme, Help) is reached along its bar, never by
+// ↑ / ↓ from the page. data-spatial="entry" (the hero's Play): ↓ from the header lands there while
+// it is near the top of the screen.
 // While a <dialog> is open only its contents count. A card's stretched link ([data-card-link])
 // stands for its whole <article>, so a grid moves card by card; inside a card its own controls
 // (Save, Details) come first. Pinned bars (sticky header, tab bar) are targets only when nothing
@@ -36,6 +41,9 @@ const SELECTOR = 'a[href], button, input, select, textarea, [tabindex]'
 const INTERACTIVE = 'a[href], button, input, select, textarea'
 const HIDDEN = '[aria-hidden="true"], [inert], [hidden], [data-spatial="skip"]'
 const GROUP = '[data-spatial="group"]'
+const HEADING = '[data-spatial="heading"]'
+const ASIDE = '[data-spatial="aside"]'
+const ENTRY = '[data-spatial="entry"]'
 // Widgets whose arrow keys mean something natively.
 const OWNS_ARROWS =
   'select, input[type="range"], input[type="number"], input[type="radio"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"], [role="slider"], [role="listbox"], [role="menu"], [role="menubar"], [role="radiogroup"], [role="tablist"], [role="tree"], [role="grid"], [role="combobox"], audio, video'
@@ -82,13 +90,12 @@ function project(b: Box, dir: Direction) {
 /**
  * Cost of moving from `from` to `to` in `dir`; null when `to` does not lie in that direction.
  * Distance along the axis counts once, the gap across it twice (overlapping candidates have none)
- * and the centre offset breaks ties among aligned candidates. `loose` only asks that the centre of
- * `to` lies beyond the centre of `from` (a pinned bar while the start is scrolled partly under it).
+ * and the centre offset breaks ties among aligned candidates.
  */
-export function distance(from: Box, to: Box, dir: Direction, loose = false): number | null {
+export function distance(from: Box, to: Box, dir: Direction): number | null {
   const s = project(from, dir)
   const c = project(to, dir)
-  if (loose ? c.near + c.far <= s.near + s.far : c.near < s.far - 1) return null
+  if (c.near < s.far - 1) return null
   const along = Math.max(0, c.near - s.far)
   const across = Math.max(0, c.lo - s.hi, s.lo - c.hi)
   const centre = Math.abs((c.lo + c.hi) / 2 - (s.lo + s.hi) / 2)
@@ -101,12 +108,11 @@ export function nearest<T>(
   items: readonly T[],
   dir: Direction,
   boxFor: (item: T) => Box,
-  loose = false,
 ): T | undefined {
   let best: T | undefined
   let bestCost = Infinity
   for (const item of items) {
-    const cost = distance(from, boxFor(item), dir, loose)
+    const cost = distance(from, boxFor(item), dir)
     if (cost !== null && cost < bestCost) {
       best = item
       bestCost = cost
@@ -233,14 +239,19 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   const pool = candidates(root).filter(
     (el) => el !== start && !home?.contains(el) && !group?.contains(el),
   )
+  const vertical = dir === 'up' || dir === 'down'
+  // A focused container (main, the player stage) is entered by ↑ / ↓ from its edge, and left
+  // sideways by ← / → as a whole.
   const fromBox = start
     ? isCandidate(start)
-      ? home
-        ? rectOf(home)
-        : group
-          ? rectOf(group)
+      ? group
+        ? rectOf(group)
+        : home
+          ? rectOf(home)
           : boxOf(start)
-      : entryPoint(rectOf(start), dir)
+      : vertical
+        ? entryPoint(rectOf(start), dir)
+        : rectOf(start)
     : entryPoint(viewportBox(), dir)
   const barOf = barFinder(dialog)
   const startBar = start ? barOf(start) : null
@@ -248,8 +259,11 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   const viewport = viewportBox()
 
   // From a bar: `first` holds that bar's items. From the page: the page, with bars in `last`.
-  const first: { el: HTMLElement; box: Box }[] = []
-  const last: { el: HTMLElement; box: Box }[] = []
+  // On ↑ / ↓ the heading links of other sections (`passed`) count only after the page.
+  type Item = { el: HTMLElement; box: Box; bar: Element | null }
+  const first: Item[] = []
+  const last: Item[] = []
+  const passed: Item[] = []
   const groups = new Set<Element>()
   for (const item of pool) {
     // A chip group enters as one target: its whole box, landing on its entry chip.
@@ -261,14 +275,39 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
     if (!visible(box)) continue
     if (onScreenOnly && !overlaps(box, viewport)) continue
     const bar = barOf(el)
-    if (startBar ? bar === startBar : !bar) first.push({ el, box })
-    else last.push({ el, box })
+    if (vertical && bar !== startBar && el.matches(ASIDE)) continue
+    if (vertical && el.matches(HEADING) && !(start && el.closest('section')?.contains(start)))
+      passed.push({ el, box, bar })
+    else if (startBar ? bar === startBar : !bar) first.push({ el, box, bar })
+    else last.push({ el, box, bar })
   }
-  const boxFor = (m: { box: Box }) => m.box
-  // Bars sit above and below the page: there, the start may still be scrolling out from under one.
-  const loose = !startBar && (dir === 'up' || dir === 'down')
+  // ← / → reach at most half a screen up or down: no jump from the footer to a far section.
+  const reach = (m: { box: Box }) =>
+    vertical ||
+    Math.max(0, m.box.top - fromBox.bottom, fromBox.top - m.box.bottom) <= viewport.bottom / 2
+  const pick = (items: typeof first) => nearest(fromBox, items.filter(reach), dir, (m) => m.box)?.el
+  // From the page, a bar at the top of the screen lies above everything on it (the start may be
+  // scrolled under it) and one at the bottom below: the item nearest across wins.
+  const pickBar = () => {
+    const mid = viewport.bottom / 2
+    const side = last.filter((m) => (m.box.top + m.box.bottom) / 2 < mid === (dir === 'up'))
+    return nearest({ ...fromBox, top: mid, bottom: mid }, side, dir, (m) => m.box)?.el
+  }
+  // ↓ from a bar: the page's entry control (the hero's Play) while it is near the top.
+  const entry = () => {
+    const el = dir === 'down' ? root.querySelector<HTMLElement>(ENTRY) : null
+    if (!el || !isCandidate(el)) return undefined
+    const box = boxOf(el)
+    const near = visible(box) && box.top < viewport.bottom * 1.5
+    return near && distance(fromBox, box, dir) !== null ? el : undefined
+  }
+  // ← / → never cross between a bar and the page (nothing to the right means no move); from a
+  // bar they may reach another (the skip link to the header).
+  const otherBars = () => pick(last.filter((m) => m.bar))
   return (
-    (nearest(fromBox, first, dir, boxFor) ?? nearest(fromBox, last, dir, boxFor, loose))?.el ?? null
+    (startBar
+      ? (pick(first) ?? (vertical ? (entry() ?? pick(last) ?? pick(passed)) : otherBars()))
+      : (pick(first) ?? pick(passed) ?? (vertical ? pickBar() : undefined))) ?? null
   )
 }
 

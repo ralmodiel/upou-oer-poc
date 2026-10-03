@@ -9,6 +9,7 @@ import { toneOf } from '../components/tones'
 import { getCategoryByName, getVideo } from '../data/catalog'
 import YouTubePlayer, { PlayerPoster } from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
+import { reelImages } from '../features/reel/stills'
 import EscHint from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
 import { useInputModality } from '../features/watch/modality'
@@ -38,7 +39,9 @@ export default function WatchPage() {
 }
 
 function Watch({ video }: { video: Video }) {
-  const [phase, setPhase] = useState<'reel' | 'player'>('reel')
+  // No face-safe still to show: skip the reel rather than play a blank or dark stage.
+  const [hasReel] = useState(() => reelImages(video).stills.length > 0)
+  const [phase, setPhase] = useState<'reel' | 'player'>(hasReel ? 'reel' : 'player')
   const goBack = useGoBack()
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
@@ -60,8 +63,9 @@ function Watch({ video }: { video: Video }) {
   }, [phase])
 
   // Keys on the stage itself: ↓ steps into its controls (Sound, then Skip), which spatial
-  // navigation would pass by for the nearer breadcrumb, and Enter skips the preview, as a
-  // remote's OK button should. Anything else is left to the shell.
+  // navigation would pass by for the nearer breadcrumb, Enter skips the preview, as a remote's
+  // OK button should, and → reaches "Up next" where it sits beside the stage (spatial navigation
+  // measures from the stage's left edge and would pick Back). Anything else is left to the shell.
   const onStageKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget || e.defaultPrevented) return
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
@@ -76,6 +80,11 @@ function Watch({ video }: { video: Video }) {
       if (!control) return
       e.preventDefault()
       control.focus()
+    } else if (e.key === 'ArrowRight') {
+      const next = document.querySelector<HTMLElement>('.watch-next')
+      if (!next || next.getBoundingClientRect().left < stage.getBoundingClientRect().right) return
+      e.preventDefault()
+      next.focus()
     }
   }
 
@@ -83,6 +92,11 @@ function Watch({ video }: { video: Video }) {
     setPhase('player')
     record(video.id)
   }
+
+  // Without a reel the player starts at once, so the visit counts now.
+  useEffect(() => {
+    if (!hasReel) record(video.id)
+  }, [hasReel, record, video.id])
 
   // Once the user clicks into the video, the iframe swallows key events; take focus back as
   // soon as the pointer leaves the stage so Esc works again.

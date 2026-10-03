@@ -16,12 +16,13 @@ import Badge from './ui/Badge'
 const ACTIONS =
   'relative z-20 -ml-2 flex items-center gap-0.5 text-ink-3 transition-colors duration-200 group-hover/card:text-ink-2 group-focus-within/card:text-ink-2 [@media(hover:none)]:text-ink-2'
 export const ACTION =
-  'inline-flex h-10 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon'
+  'inline-flex h-10 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon dark:aria-pressed:text-gold'
 
-// Instant maroon outline on the thumbnail while the card link has keyboard focus (outline is
-// not in the transition list, unlike ring's box-shadow).
+// Instant 3px focus outline (maroon, gold in dark) on the thumbnail while the card link has keyboard
+// focus, readable from across a room, with a slight lift in scale (outline is not in the transition
+// list, unlike ring's box-shadow).
 const FOCUS =
-  'group-has-[[data-card-link]:focus-visible]/card:outline-2 group-has-[[data-card-link]:focus-visible]/card:outline-maroon group-has-[[data-card-link]:focus-visible]/card:outline-offset-2'
+  'group-has-[[data-card-link]:focus-visible]/card:outline-3 group-has-[[data-card-link]:focus-visible]/card:outline-focus group-has-[[data-card-link]:focus-visible]/card:outline-offset-2 motion-safe:group-has-[[data-card-link]:focus-visible]/card:scale-102'
 
 interface Props {
   video: Video
@@ -84,7 +85,7 @@ function VideoCard({
       <Thumbnail
         video={video}
         sizes={sizes}
-        className={`order-1 rounded-card ring-1 ring-black/5 transition-[translate,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-active/card:translate-y-0 motion-reduce:transition-none ${FOCUS}`}
+        className={`order-1 rounded-card ring-1 ring-black/5 transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-active/card:translate-y-0 motion-reduce:transition-none ${FOCUS}`}
       >
         {overlay}
         {/* Visual cue only: the card link already plays. Hidden while a preview runs. */}

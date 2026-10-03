@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { slugifyCategory } from '../data/catalog'
+import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
 import { REEL_MS } from '../features/reel/PromoReel'
 import { DECODE_CAP_MS } from '../features/reel/preload'
@@ -107,7 +108,19 @@ describe('WatchPage', () => {
     stage.focus()
     fireEvent.keyDown(stage, { key: 'Enter' })
     expect(screen.getByTitle(`${testVideo.title} (YouTube video)`)).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Video player' })).toHaveFocus()
+    const player = screen.getByRole('region', { name: 'Video player' })
+    expect(player).toHaveFocus()
+
+    // → reaches "Up next" where it sits beside the stage; stacked below, it is left to the shell.
+    const next = document.querySelector<HTMLElement>('.watch-next')!
+    const right = vi.spyOn(player, 'getBoundingClientRect')
+    vi.spyOn(next, 'getBoundingClientRect').mockReturnValue({ left: 840 } as DOMRect)
+    right.mockReturnValue({ right: 900 } as DOMRect)
+    fireEvent.keyDown(player, { key: 'ArrowRight' })
+    expect(player).toHaveFocus()
+    right.mockReturnValue({ right: 800 } as DOMRect)
+    fireEvent.keyDown(player, { key: 'ArrowRight' })
+    expect(next).toHaveFocus()
   })
 
   it('shows the description only when the source published one', () => {
@@ -151,6 +164,11 @@ describe('WatchPage', () => {
       '/search?q=Open%20Data',
     )
     expect(screen.queryByRole('link', { name: 'Video Post' })).not.toBeInTheDocument()
+    // The topic chips are one stop for ↑ / ↓ on a remote.
+    expect(screen.getByRole('link', { name: 'Open Data' }).closest('ul')).toHaveAttribute(
+      'data-spatial',
+      'group',
+    )
 
     const upNext = within(screen.getByRole('list', { name: 'Up next' })).getAllByRole('link')
     expect(upNext).toHaveLength(8)
@@ -159,6 +177,29 @@ describe('WatchPage', () => {
       'href',
       slug,
     )
+  })
+
+  it('shares one unflagged poster between the stage, the reel and the backdrop', async () => {
+    vi.useFakeTimers()
+    const poster = 'https://i.ytimg.com/vi/abcDEF12345/maxres2.jpg'
+    setCatalog([{ ...testVideo, poster }, ...similar])
+    const { container } = renderAt([`/watch/${testVideo.id}`])
+    await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+    const srcs = (selector: string) =>
+      [...container.querySelectorAll<HTMLImageElement>(selector)].map((i) => i.src)
+    expect(srcs('.watch-stage > div > img')).toEqual([poster])
+    expect(srcs('.reel-end-art img')).toEqual([poster])
+    expect(srcs('.watch-backdrop img')).toEqual([poster])
+
+    // Every candidate flagged: no image anywhere on the stage or behind it.
+    setFrameFlags({ [testVideo.youtubeId]: 0b1111 })
+    try {
+      const other = renderAt([`/watch/${testVideo.id}`])
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      expect(other.container.querySelector('.watch-stage img, .watch-backdrop img')).toBeNull()
+    } finally {
+      setFrameFlags({})
+    }
   })
 
   it('trims very long titles in the tab and steps the heading down', () => {

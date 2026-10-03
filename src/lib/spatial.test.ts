@@ -164,6 +164,38 @@ describe('findTarget', () => {
     expect(id(findTarget('left'))).toBe('browse')
   })
 
+  it('keeps aside controls to their bar, ← / → off the bars, ↓ from the bar on the entry', () => {
+    page()
+    document.querySelector('header')!.style.position = 'sticky'
+    document.getElementById('theme')!.dataset.spatial = 'aside'
+    // ↑ from the right-hand card passes the theme button (aside) for the search field.
+    focus('#a2-link')
+    expect(id(findTarget('up'))).toBe('q')
+    focus('#q')
+    expect(id(findTarget('right'))).toBe('theme')
+    // A start scrolled up under the header still finds the header above it.
+    place('#a2', [-300, 330, 300, 200])
+    focus('#a2-link')
+    expect(id(findTarget('up'))).toBe('q')
+    place('#a2', [100, 330, 300, 200])
+    // Nothing to the right of the footer link: no move, not a jump into the header.
+    place('#foot', [600, 700, 100, 20])
+    focus('#foot')
+    expect(findTarget('right')).toBeNull()
+    // From the focused skip link (fixed: a bar of its own), → reaches the header, not the page.
+    const skip = document.getElementById('sr')!
+    skip.style.position = 'fixed'
+    place('#sr', [60, 0, 5, 20])
+    focus('#sr')
+    expect(id(findTarget('right'))).toBe('home')
+    // ↓ from any bar item lands on the on-screen entry control (the hero's Play).
+    document.getElementById('b2-link')!.dataset.spatial = 'entry'
+    focus('#theme')
+    expect(id(findTarget('down'))).toBe('b2-link')
+    focus('#home')
+    expect(id(findTarget('down'))).toBe('b2-link')
+  })
+
   it('leaves a text field up or down, towards the overlapping column', () => {
     page()
     focus('#q')
@@ -178,6 +210,20 @@ describe('findTarget', () => {
     ;(document.activeElement as HTMLElement).blur()
     expect(id(findTarget('down'))).toBe('home')
     expect(id(findTarget('right'))).toBe('home')
+  })
+
+  it('enters a focused container up or down, and leaves it sideways as a whole', () => {
+    document.body.innerHTML = `
+      <main>
+        <div id="stage" tabindex="-1"><button id="play">Play</button></div>
+        <a id="next" href="/w/2">Next</a>
+      </main>`
+    place('#stage', [100, 0, 600, 340])
+    place('#play', [110, 10, 60, 30])
+    place('#next', [100, 640, 200, 100])
+    focus('#stage')
+    expect(id(findTarget('down'))).toBe('play')
+    expect(id(findTarget('right'))).toBe('next')
   })
 
   it('stays inside an open dialog', () => {
@@ -247,6 +293,59 @@ describe('chip groups', () => {
     chipsPage(false)
     focus('#play')
     expect(id(findTarget('down'))).toBe('c3')
+  })
+})
+
+describe('lists and heading links', () => {
+  // Play, a grouped list of two cards, then a section whose See all link sits beside its heading.
+  function listPage() {
+    document.body.innerHTML = `
+      <main>
+        <button id="play">Play</button>
+        <ol id="list" data-spatial="group">
+          <li><article id="n1"><a id="n1-link" href="/w/1" data-card-link>One</a></article></li>
+          <li><article id="n2"><a id="n2-link" href="/w/2" data-card-link>Two</a></article></li>
+        </ol>
+        <section id="s">
+          <h2>Section</h2>
+          <a id="all" href="/c/s" data-spatial="heading">See all</a>
+          <article id="k1"><a id="k1-link" href="/w/3" data-card-link>Three</a></article>
+          <article id="k2"><a id="k2-link" href="/w/4" data-card-link>Four</a></article>
+        </section>
+      </main>`
+    place('#play', [0, 10, 100, 40])
+    place('#list', [60, 0, 360, 200])
+    place('#n1', [60, 0, 360, 100])
+    place('#n1-link', [70, 140, 200, 20])
+    place('#n2', [160, 0, 360, 100])
+    place('#n2-link', [170, 140, 200, 20])
+    place('#s', [300, 0, 360, 400])
+    place('#all', [330, 260, 90, 40])
+    place('#k1', [400, 10, 160, 200])
+    place('#k1-link', [530, 10, 150, 20])
+    place('#k2', [400, 190, 160, 200])
+    place('#k2-link', [530, 190, 150, 20])
+  }
+
+  it('enters a list at its first item and leaves it with the next ↓', () => {
+    listPage()
+    focus('#play')
+    expect(id(findTarget('down'))).toBe('n1-link')
+    focus('#n1-link')
+    expect(id(findTarget('right'))).toBe('n2-link')
+    expect(id(findTarget('down'))).toBe('k1-link')
+  })
+
+  it('passes over a heading link from outside its section, reaches it from inside', () => {
+    listPage()
+    focus('#n2-link')
+    expect(id(findTarget('down'))).toBe('k1-link')
+    focus('#k2-link')
+    expect(id(findTarget('up'))).toBe('all')
+    // With nothing else that way, the link is still reached.
+    document.querySelectorAll('article').forEach((a) => a.remove())
+    focus('#play')
+    expect(id(findTarget('down'))).toBe('all')
   })
 })
 

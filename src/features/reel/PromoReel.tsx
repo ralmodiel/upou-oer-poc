@@ -15,6 +15,7 @@ import { createClock, type Clock } from './clock'
 import { SkipIcon, SoundOffIcon, SoundOnIcon } from './icons'
 import { buildReelPlan, INDEX_STYLES, TICK_STYLES, type ReelPlan } from './plan'
 import { DECODE_CAP_MS, settleImages } from './preload'
+import { reelImages } from './stills'
 import './reel.css'
 
 export const REEL_MS = 10_000
@@ -51,6 +52,13 @@ export interface PromoReelProps {
 }
 
 /** Ten-second preview generated from the video's data; calls `onComplete` once when done or skipped. */
+
+// The card image previews open on, never a flagged frame.
+const coverOf = (video: Video) => {
+  const safe = reelImages(video)
+  return safe.thumbnail ?? safe.poster ?? video.thumbnail
+}
+
 export default function PromoReel({
   video,
   onComplete,
@@ -100,8 +108,11 @@ export default function PromoReel({
   useEffect(() => {
     const controller = new AbortController()
     const small = preview && (rootRef.current?.clientWidth ?? 0) <= CARD_STAGE_PX
-    const backdrop = small ? video.thumbnail : (video.poster ?? video.backdrop)
     const shots = plan.shots.map((s) => (small ? s.small : s.src))
+    // Face-safe images only (frame-flags): the card image for small previews, else the shared poster.
+    const safe = reelImages(video)
+    const backdrop =
+      (small ? (safe.thumbnail ?? safe.poster) : safe.poster) ?? shots[0] ?? video.thumbnail
     void settleImages([backdrop, ...shots], DECODE_CAP_MS, controller.signal).then(
       ([backdropOk, ...shotOk]) => {
         if (controller.signal.aborted) return
@@ -190,7 +201,7 @@ export default function PromoReel({
         <Timeline plan={plan} stills={stills} preview={preview} />
       ) : (
         <div className="reel-loading" role={preview ? undefined : 'status'}>
-          <img src={video.thumbnail} alt="" draggable={false} />
+          <img src={coverOf(video)} alt="" draggable={false} />
           {!preview && <span className="sr-only">Loading preview</span>}
         </div>
       )}

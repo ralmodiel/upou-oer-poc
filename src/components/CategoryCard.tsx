@@ -5,9 +5,12 @@ import type { Video } from '../types'
 import { imagesOf } from './media'
 import { MARK, toneOf } from './tones'
 
-// The large tile is two thirds of the card: one, two, three or four cards per row.
-const MAIN_SIZES = '(min-width: 96rem) 15vw, (min-width: 64rem) 20vw, (min-width: 40rem) 30vw, 62vw'
-const SIDE_SIZES = '(min-width: 64rem) 10vw, (min-width: 40rem) 15vw, 31vw'
+// The large tile is two thirds of the card: one, two, three or four cards per row (the content
+// stops growing at 1600px, so do the tiles).
+const MAIN_SIZES =
+  '(min-width: 96rem) min(15vw, 16rem), (min-width: 64rem) 20vw, (min-width: 40rem) 30vw, 62vw'
+const SIDE_SIZES =
+  '(min-width: 96rem) min(7.5vw, 8rem), (min-width: 64rem) 10vw, (min-width: 40rem) 15vw, 31vw'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
@@ -30,8 +33,11 @@ function Tile({
   sizes: string
   className?: string
 }) {
-  // Original stills: a mosaic of three shows any odd rotating frame at once.
-  const { small, srcSet } = imagesOf(video, true)
+  // Canonical stills: a mosaic of three shows any odd rotating frame at once (no image when every
+  // one is flagged).
+  const images = imagesOf(video, true)
+  if (!images) return <div className={`bg-surface-2 ${className}`} />
+  const { small, srcSet } = images
   return (
     <div className={`overflow-hidden bg-surface-2 ${className}`}>
       <img
@@ -73,7 +79,7 @@ function CategoryCard({ category }: { category: Category }) {
   const { slug, name, count } = category
   const newest = getCategoryVideos(slug).slice(0, 3)
   return (
-    <article className="group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-[translate,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-maroon motion-reduce:transition-none">
+    <article className="group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-[translate,scale,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 has-[a:focus-visible]:outline-3 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus motion-safe:has-[a:focus-visible]:scale-102 motion-reduce:transition-none">
       <span aria-hidden="true" className={`h-1.5 shrink-0 ${MARK[toneOf(slug)]}`} />
       <Mosaic videos={newest} />
       <div className="flex flex-1 flex-col p-4 sm:p-5">

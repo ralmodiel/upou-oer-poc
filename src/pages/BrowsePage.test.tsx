@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fixtureVideos } from '../components/test-fixtures'
 import { setCatalog } from '../data/testing'
 import { resetStorageCache } from '../lib/storage'
@@ -19,6 +19,47 @@ function renderHome() {
 }
 
 describe('BrowsePage', () => {
+  it('on a fresh visit renders section cards only as the section nears the viewport', async () => {
+    const watched: { cb: IntersectionObserverCallback; el?: Element }[] = []
+    class FakeObserver {
+      entry: { cb: IntersectionObserverCallback; el?: Element }
+      constructor(cb: IntersectionObserverCallback) {
+        this.entry = { cb }
+        watched.push(this.entry)
+      }
+      observe(el: Element) {
+        this.entry.el = el
+      }
+      disconnect() {}
+    }
+    vi.stubGlobal('IntersectionObserver', FakeObserver)
+    try {
+      const router = createMemoryRouter(
+        [
+          { path: '/', Component: BrowsePage },
+          { path: '/about', element: <p>About</p> },
+        ],
+        { initialEntries: ['/about'] },
+      )
+      render(<RouterProvider router={router} />)
+      await act(() => router.navigate('/'))
+      const research = screen.getByRole('region', { name: 'Research' })
+      // Heading and See all are there at once; the cards wait (a same-size skeleton holds the place).
+      expect(within(research).getByRole('link', { name: /^See all/ })).toBeInTheDocument()
+      expect(within(research).queryAllByRole('article')).toHaveLength(0)
+      const near = watched.find((w) => w.el === research)!
+      act(() =>
+        near.cb(
+          [{ isIntersecting: true, target: research } as unknown as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        ),
+      )
+      expect(await within(research).findAllByRole('article')).toHaveLength(3)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('opens with the featured block, the collection chips and one grid section per category', () => {
     renderHome()
     expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
@@ -62,7 +103,9 @@ describe('BrowsePage', () => {
     const titles = cards.map((c) => within(c).getByRole('link', { name: /^Play / }).textContent)
     expect(titles).not.toContain('Climate Change Basics')
     expect(
-      within(cards[0]).getByText(/^(Because you|More from|From the same|Also in|Related video)/),
+      within(cards[0]).getByText(
+        /^(Because you|Based on|Picked for you|More from|From the same|Also in|Related video)/,
+      ),
     ).toBeInTheDocument()
     const because = await screen.findByRole('region', {
       name: 'Because you watched “Climate Change Basics”',

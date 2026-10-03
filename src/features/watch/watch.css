@@ -419,3 +419,31 @@
     background-size: 0% 100%;
   }
 }
+
+/*
+  The player's Play / Pause key for keyboards and remotes (Enter on the stage reaches it): out of
+  sight and out of the pointer's way until it has keyboard focus, as the embed has its own controls.
+*/
+.watch-player-key {
+  position: absolute;
+  bottom: 4%;
+  left: 3%;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  background: #faf8f6;
+  color: #373637;
+  font-weight: 600;
+  box-shadow: 0 6px 20px -10px rgb(27 26 23 / 0.5);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.watch-player-key:focus-visible {
+  opacity: 1;
+  outline-color: #8d0c34;
+}

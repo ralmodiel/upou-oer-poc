@@ -345,6 +345,24 @@ describe('WatchPage', () => {
       expect(ids).toHaveLength(10)
     })
 
+    it('Enter on the player enters its Play / Pause key, which drives the embed', async () => {
+      listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
+      const post = vi.spyOn(frame.contentWindow!, 'postMessage')
+      fireEvent.keyDown(screen.getByRole('region', { name: 'Video player' }), { key: 'Enter' })
+      const key = screen.getByRole('button', { name: 'Play' })
+      expect(key).toHaveFocus()
+      expect(frame).not.toHaveFocus()
+
+      await send(frame, JSON.stringify({ event: 'infoDelivery', info: { playerState: 1 } }))
+      fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+      expect(post).toHaveBeenLastCalledWith(
+        expect.stringContaining('"func":"pauseVideo"'),
+        'https://www.youtube-nocookie.com',
+      )
+      fireEvent.pointerDown(document.body)
+    })
+
     it('without a playlist goes to the first row, keeping the list as shown', async () => {
       const { router } = renderAt([`/watch/${testVideo.id}`])
       const shown = within(screen.getByRole('list', { name: 'Up next' }))

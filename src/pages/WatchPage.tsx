@@ -66,19 +66,22 @@ function Watch({ video }: { video: Video }) {
     stageRef.current?.focus({ preventScroll: true })
   }, [phase])
 
-  // Keys on the stage itself: ↓ steps into its controls (Sound, then Skip), which spatial
-  // navigation would pass by for the nearer breadcrumb, Enter skips the preview, as a remote's
-  // OK button should, and → reaches "Up next" where it sits beside the stage (spatial navigation
-  // measures from the stage's left edge and would pick Back). Anything else is left to the shell.
+  // Keys on the stage itself: ↓ steps into its controls (Sound, then Skip; on the player its Play /
+  // Pause key), which spatial navigation would pass by for the nearer breadcrumb; Enter skips the
+  // preview, as a remote's OK button should, and on the player enters its controls; → reaches
+  // "Up next" where it sits beside the stage (spatial navigation measures from the stage's left edge
+  // and would pick Back). Anything else is left to the shell.
   const onStageKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget || e.defaultPrevented) return
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
     const stage = e.currentTarget
     if (e.key === 'Enter') {
       const skip = stage.querySelector<HTMLButtonElement>('.reel-skip')
-      if (!skip) return
+      const control = stage.querySelector('button')
+      if (!skip && !control) return
       e.preventDefault()
-      skip.click()
+      if (skip) skip.click()
+      else control?.focus()
     } else if (e.key === 'ArrowDown') {
       const control = stage.querySelector('button')
       if (!control) return
@@ -148,7 +151,12 @@ function Watch({ video }: { video: Video }) {
   crumbs.push({ label: video.title })
 
   return (
-    <div className="watch-page pb-16" data-tone={category ? toneOf(category.slug) : undefined}>
+    // At least a screen tall beside the player: Up next no longer lengthens the page there, and a
+    // footer in view would move with every late reflow of the column (fonts, for one).
+    <div
+      className="watch-page pb-16 lg:min-h-dvh"
+      data-tone={category ? toneOf(category.slug) : undefined}
+    >
       <WatchBackdrop video={video} />
       <div className="mx-auto w-full max-w-[1600px] px-(--gutter)">
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">

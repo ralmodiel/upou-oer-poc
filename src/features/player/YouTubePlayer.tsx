@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState, type SyntheticEvent } from 'react'
+import { PlayIcon } from '../../components/icons'
 import { TitleTile } from '../../components/Thumbnail'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
@@ -6,26 +7,33 @@ import { reelImages } from '../reel/stills'
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 const PLAYER_ORIGIN = 'https://www.youtube-nocookie.com'
-// The embed's widget messages (enablejsapi=1) tell when the video ends, with no YouTube script.
+// The embed's widget messages (enablejsapi=1) report its state, with no YouTube script: 0 ended,
+// 1 playing, 2 paused, 3 buffering. Commands go back the same way.
 const LISTENING = JSON.stringify({ event: 'listening', id: 1, channel: 'widget' })
 const LISTEN_EVERY_MS = 250
 const LISTEN_TRIES = 120
+const command = (func: 'playVideo' | 'pauseVideo') =>
+  JSON.stringify({ event: 'command', func, args: [], id: 1, channel: 'widget' })
 
-/** Whether a widget message from the player says the video has ended (state 0). */
-function isEndedMessage(data: unknown): boolean {
+/** The player state a widget message reports, if any. */
+function stateOf(data: unknown): number | undefined {
   let message: unknown = data
   if (typeof data === 'string') {
     try {
       message = JSON.parse(data)
     } catch {
-      return false
+      return undefined
     }
   }
-  if (!message || typeof message !== 'object') return false
+  if (!message || typeof message !== 'object') return undefined
   const { event, info } = message as { event?: unknown; info?: unknown }
-  if (event === 'onStateChange') return info === 0
-  if (event !== 'infoDelivery' || !info || typeof info !== 'object') return false
-  return (info as { playerState?: unknown }).playerState === 0
+  const state =
+    event === 'onStateChange'
+      ? info
+      : event === 'infoDelivery' && info && typeof info === 'object'
+        ? (info as { playerState?: unknown }).playerState
+        : undefined
+  return typeof state === 'number' ? state : undefined
 }
 
 /**
@@ -63,7 +71,9 @@ export function PlayerPoster({ video }: { video: Video }) {
 
 /**
  * Privacy-enhanced YouTube embed that fills the 16:9 stage, fading in over the poster. It never
- * takes focus by itself: the watch page keeps focus on the stage so Esc = Back keeps working.
+ * takes focus by itself: the watch page keeps focus on the stage so Esc = Back keeps working. For
+ * keyboards and remotes, the stage's own Play / Pause key (shown only while focused) drives the
+ * video through the embed's messages, so focus never has to go into the iframe.
  */
 export default function YouTubePlayer({
   video,
@@ -74,10 +84,12 @@ export default function YouTubePlayer({
   onEnded?: () => void
 }) {
   const [loaded, setLoaded] = useState(false)
+  const [state, setState] = useState<number | undefined>()
   const frameRef = useRef<HTMLIFrameElement>(null)
   const ended = useEffectEvent(() => onEnded?.())
+  const playing = state === 1 || state === 3
 
-  // Says "listening" until the player first answers, then watches its messages for the end.
+  // Says "listening" until the player first answers, then follows its state (and its end).
   useEffect(() => {
     const player = frameRef.current?.contentWindow
     if (!loaded || !player) return
@@ -92,7 +104,10 @@ export default function YouTubePlayer({
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== PLAYER_ORIGIN || e.source !== player) return
       heard = true
-      if (isEndedMessage(e.data)) ended()
+      const next = stateOf(e.data)
+      if (next === undefined) return
+      setState(next)
+      if (next === 0) ended()
     }
     window.addEventListener('message', onMessage)
     return () => {
@@ -137,6 +152,32 @@ export default function YouTubePlayer({
         onLoad={() => setLoaded(true)}
         className={`absolute inset-0 size-full border-0 transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
       />
+      <button
+        type="button"
+        className="watch-player-key"
+        onClick={() =>
+          frameRef.current?.contentWindow?.postMessage(
+            command(playing ? 'pauseVideo' : 'playVideo'),
+            PLAYER_ORIGIN,
+          )
+        }
+      >
+        {playing ? <PauseIcon /> : <PlayIcon className="size-4" />}
+        {playing ? 'Pause' : 'Play'}
+      </button>
     </>
   )
 }
+
+const PauseIcon = () => (
+  <svg
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    aria-hidden="true"
+    focusable="false"
+    className="size-4"
+  >
+    <rect x="3" y="2" width="3.5" height="12" rx="1" />
+    <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
+  </svg>
+)

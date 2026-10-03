@@ -70,12 +70,10 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
             id="autoplay-next-label"
             className="text-[length:clamp(0.7rem,2.4cqi,0.95rem)] font-semibold tracking-wide text-forest uppercase"
           >
-            Next
-            <span className="text-ink-2 tabular-nums" aria-hidden="true">
-              {' '}
-              · {left}
+            <span aria-hidden="true">
+              Next <span className="text-ink-2 tabular-nums">· {left}</span>
             </span>
-            <span className="sr-only">, playing in {AUTOPLAY_SECONDS} seconds</span>
+            <span className="sr-only">Next, playing in {AUTOPLAY_SECONDS} seconds</span>
           </p>
           <p
             id="autoplay-next-title"

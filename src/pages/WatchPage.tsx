@@ -105,6 +105,19 @@ function Watch({ video }: { video: Video }) {
     }
   }
 
+  // ← from a row of Up next beside the stage returns to it, the way → came (spatial navigation would
+  // pick the Back button, as the stage is a container rather than a stop).
+  const onAsideKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (e.key !== 'ArrowLeft' || e.defaultPrevented) return
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+    const stage = stageRef.current
+    const row = e.target instanceof HTMLElement ? e.target.closest('.watch-next') : null
+    if (!stage || !row || row.getBoundingClientRect().left < stage.getBoundingClientRect().right)
+      return
+    e.preventDefault()
+    stage.focus()
+  }
+
   const startPlayer = () => {
     setPhase('player')
     record(video.id)
@@ -219,7 +232,7 @@ function Watch({ video }: { video: Video }) {
             </article>
           </div>
 
-          <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-16">
+          <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-16" onKeyDown={onAsideKeyDown}>
             <UpNext video={video} list={upNext} />
             {category && (
               <Link to={`/collections/${category.slug}`} className="watch-more mt-5">

@@ -137,6 +137,14 @@ describe('WatchPage', () => {
     right.mockReturnValue({ right: 800 } as DOMRect)
     fireEvent.keyDown(player, { key: 'ArrowRight' })
     expect(next).toHaveFocus()
+
+    // ← from a row beside the stage goes back to it; stacked below, it is left to the shell.
+    right.mockReturnValue({ right: 900 } as DOMRect)
+    expect(fireEvent.keyDown(next, { key: 'ArrowLeft' })).toBe(true)
+    expect(next).toHaveFocus()
+    right.mockReturnValue({ right: 800 } as DOMRect)
+    expect(fireEvent.keyDown(next, { key: 'ArrowLeft' })).toBe(false)
+    expect(player).toHaveFocus()
   })
 
   it('shows the description only when the source published one', () => {
@@ -420,6 +428,45 @@ describe('WatchPage', () => {
         'https://www.youtube-nocookie.com',
       )
       fireEvent.pointerDown(document.body)
+    })
+
+    it('takes player messages only from its own frame, so nothing else can end the video or flip the key', async () => {
+      listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
+      const playing = JSON.stringify({ event: 'infoDelivery', info: { playerState: 1 } })
+      // The right origin from another frame, and the right frame from a near-miss origin.
+      const other = document.body.appendChild(document.createElement('iframe'))
+      await act(() => {
+        for (const data of [ended, playing]) {
+          window.dispatchEvent(
+            new MessageEvent('message', { origin: PLAYER, data, source: other.contentWindow }),
+          )
+        }
+      })
+      await send(frame, playing, 'https://www.youtube.com')
+      await send(frame, { event: 'onStateChange', info: '0' })
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Play' })).toBeInTheDocument()
+      other.remove()
+
+      // The same message from the player itself counts.
+      await send(frame, playing)
+      expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    })
+
+    it('talks to the player at its origin only, never to any origin', async () => {
+      listed(['pick-0', 'pick-1'])
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
+      const frame = screen.getByTitle(/YouTube video\)$/) as HTMLIFrameElement
+      const post = vi.spyOn(frame.contentWindow!, 'postMessage')
+      fireEvent.load(frame)
+      await act(() => vi.advanceTimersByTimeAsync(1000))
+      fireEvent.click(screen.getByRole('button', { name: 'Play' }))
+      expect(post).toHaveBeenCalledWith(expect.stringContaining('"event":"listening"'), PLAYER)
+      expect(post).toHaveBeenLastCalledWith(expect.stringContaining('"func":"playVideo"'), PLAYER)
+      // postMessage's last overload types the second argument as options: compare as unknown.
+      expect(post.mock.calls.every((call) => (call as unknown[])[1] === PLAYER)).toBe(true)
     })
 
     it('without a playlist goes to the first row, keeping the list as shown', async () => {

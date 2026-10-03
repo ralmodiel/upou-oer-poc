@@ -63,7 +63,10 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     <section className="watch-upnext">
       <SectionHeading title="Up next" id="up-next-heading">
         <span className="flex items-center gap-2 text-sm font-medium text-ink-2">
-          <span id={switchId}>Autoplay</span>
+          {/* Names the switch; hidden itself, so screen readers do not read it twice. */}
+          <span id={switchId} aria-hidden="true">
+            Autoplay
+          </span>
           {/* The privacy panel's switch: an outlined track off, a forest track on. */}
           <button
             type="button"
@@ -116,7 +119,12 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                         Now playing
                       </span>
                     ) : reason ? (
-                      <span className="block truncate text-xs/snug font-medium text-forest">
+                      // One line, so rows keep one height; cut short on the narrowest phones, the
+                      // whole reason stays in the row's name and, for pointers, its title.
+                      <span
+                        title={sentence(reason)}
+                        className="block truncate text-xs/snug font-medium text-forest"
+                      >
                         {sentence(reason)}
                       </span>
                     ) : (

@@ -48,6 +48,27 @@ describe('upNextFor', () => {
     }
   })
 
+  it('keeps sessions under one long shared name to two rows, as cut-short titles look alike', () => {
+    const forum = 'A Forum on Philippine Higher Education of the Future'
+    const sessions = [
+      'Internationalization',
+      'the Plenary Session',
+      'Sustainability',
+      'Access',
+    ].map((topic, i) => clone(`session-${i}`, `${forum}: Open Forum on ${topic}`, `2021-07-1${i}`))
+    // A short shared name stays readable when cut, so a series under one keeps its episodes.
+    const episodes = [1, 2, 3].map((n) =>
+      clone(`ep-${n}`, `Data Talks | Episode ${n}`, `2022-0${n}-01`),
+    )
+    setCatalog([testVideo, ...sessions, ...episodes])
+    const ids = upNextFor(testVideo, profile).map((i) => i.video.id)
+    expect(ids.filter((id) => id.startsWith('session-'))).toHaveLength(2)
+    expect(ids.filter((id) => id.startsWith('ep-'))).toHaveLength(3)
+    expect(
+      upNextPlaceholder(testVideo).filter((i) => i.video.id.startsWith('session-')),
+    ).toHaveLength(2)
+  })
+
   it('skips re-uploads of the video being watched', () => {
     const copy = clone('copy', testVideo.title, '2025-01-01')
     setCatalog([testVideo, copy, clone('other', 'Another title')])

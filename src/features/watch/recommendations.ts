@@ -25,11 +25,22 @@ const onWatchPage = (reason: string) =>
 const sameTitle = (a: Video, b: Video) =>
   a.title.trim().toLowerCase() === b.title.trim().toLowerCase()
 
+// Sessions of one event under a long shared name ("A Forum on … of the Future: Open Forum on …")
+// look the same once a row cuts their titles short: at most two of them in a batch of rows.
+// The shared name: 40 characters or more before ": " or " | ".
+const SERIES = /^(.{40,}?)(?::\s|\s\|\s)/
+const SERIES_MAX = 2
+const seriesOf = (v: Video) => SERIES.exec(v.title)?.[1].trim().toLowerCase() ?? ''
+const crowded = (rows: readonly Video[], v: Video) => {
+  const series = seriesOf(v)
+  return !!series && rows.filter((p) => seriesOf(p) === series).length >= SERIES_MAX
+}
+
 /** Adds `v` to `picks` unless the list is full, it is the video itself or a talk already in. */
 function taker(video: Video, picks: Video[], limit: number) {
   return (v: Video) => {
     if (picks.length === limit || v.id === video.id || sameTitle(v, video)) return
-    if (picks.some((p) => p.id === v.id || isNearDuplicate(p, v))) return
+    if (picks.some((p) => p.id === v.id || isNearDuplicate(p, v)) || crowded(picks, v)) return
     picks.push(v)
   }
 }
@@ -130,6 +141,7 @@ export function moreUpNext(
   const take = (v: Video) => {
     if (picks.length === count || v.id === current.id || sameTitle(v, current)) return
     if ([...shown, ...picks].some((p) => p.id === v.id || isNearDuplicate(p, v))) return
+    if (crowded(picks, v)) return
     picks.push(v)
   }
   upNextFor(origin, profile, shown.length + count * 2 + 1).forEach(({ video: v }) => take(v))

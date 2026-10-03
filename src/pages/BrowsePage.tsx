@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigationType } from 'react-router'
 import CollectionChips from '../components/CollectionChips'
 import Featured from '../components/Featured'
+import HistoryOff from '../components/HistoryOff'
 import HowItWorks from '../components/HowItWorks'
 import PageBand from '../components/PageBand'
 import RecentlyViewed from '../components/RecentlyViewed'
@@ -277,6 +278,7 @@ export default function BrowsePage() {
           />
         )}
         <RecentlyViewed videos={recent} />
+        <HistoryOff />
         <CollectionChips />
         {showBecause && recs.because && becauseList.length > 0 && (
           <Recommended

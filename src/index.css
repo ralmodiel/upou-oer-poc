@@ -1,0 +1,37 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-brand-300: #ff7a88;
+  --color-brand-400: #f4475a;
+  --color-brand-500: #e11d2e;
+  --color-brand-600: #c01026;
+  --color-brand-700: #7b1113;
+  --color-gold-400: #f6c453;
+  --color-ink-950: #07070a;
+  --color-ink-900: #0e0e13;
+  --color-ink-800: #17171f;
+  --color-ink-700: #23232d;
+  --color-ink-600: #34343f;
+  --ease-cinematic: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply min-h-dvh bg-ink-950 text-neutral-100 antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 2px;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

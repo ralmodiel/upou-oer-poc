@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+*.local
+*.log
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# Local tooling (crawler and helper scripts) is not published
+scripts/

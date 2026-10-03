@@ -1,0 +1,1551 @@
+@reference "../../index.css";
+
+/*
+  Promo reel. The whole 10 s timeline is CSS keyframes that start when the timeline mounts.
+  Per-element timing comes from inline custom properties set by plan.ts:
+  --s shot start, --d entrance, --o exit, --w word, --g chip.
+*/
+
+.reel {
+  --ease: --theme(--ease-cinematic);
+  --ease-in: cubic-bezier(0.6, 0, 0.8, 0.25);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --brand: --theme(--color-brand-500);
+  --brand-hi: --theme(--color-brand-400);
+  --ink: --theme(--color-ink-950);
+  --accent: rgb(var(--accent-rgb));
+  --motion: 1;
+  --o: 600s;
+  --out: calc(var(--reel-ms) - var(--tout));
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  container-type: size;
+  background: #000;
+  color: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reel[data-paused] *,
+.reel[data-paused] *::before,
+.reel[data-paused] *::after {
+  animation-play-state: paused !important;
+}
+
+.reel p,
+.reel ul {
+  margin: 0;
+}
+
+:is(
+  .reel-stage,
+  .reel-shot,
+  .reel-tx,
+  .reel-kb,
+  .reel-shade,
+  .reel-copy,
+  .reel-ident,
+  .reel-end,
+  .reel-vignette,
+  .reel-bars
+) {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- Shots: transition in, Ken Burns, hide once covered ---------- */
+
+.reel-stage {
+  overflow: hidden;
+}
+
+.reel-shot {
+  overflow: hidden;
+  animation: reel-hide 1ms linear var(--o) forwards;
+}
+
+.reel-tx {
+  overflow: hidden;
+  background:
+    radial-gradient(110% 90% at 25% 20%, rgb(var(--accent-rgb) / 0.32), transparent 60%),
+    linear-gradient(140deg, #1d1d27, #07070a);
+  transform-origin: var(--tx-origin, 50% 50%);
+  animation: reel-tx-fade 700ms var(--ease) var(--s) both;
+}
+
+.reel-tx[data-tx='slide'] {
+  animation-name: reel-tx-slide;
+  animation-duration: 760ms;
+  box-shadow: 0 0 5cqmax 1cqmax rgb(0 0 0 / 0.7);
+}
+
+.reel-tx[data-tx='zoom'] {
+  animation-name: reel-tx-zoom;
+  animation-duration: 680ms;
+}
+
+.reel-tx:is([data-tx='wipe'], [data-tx='iris']) {
+  animation-name: reel-tx-wipe;
+  animation-duration: 820ms;
+  animation-timing-function: var(--ease-io);
+}
+
+.reel-kb {
+  animation: reel-kb 3400ms linear var(--s) both;
+}
+
+.reel-kb img,
+.reel-end-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reel-shade,
+.reel-copy,
+.reel-ident,
+.reel-bars,
+.reel-leak,
+.reel-vignette,
+.reel-grain,
+.reel-progress {
+  pointer-events: none;
+}
+
+.reel-shade {
+  z-index: 1;
+}
+
+.reel-frame,
+.reel-index,
+.reel-bars,
+.reel-ident-block {
+  display: none;
+}
+
+/* ---------- Copy: kicker, word-by-word title, hook, chips ---------- */
+
+.reel-copy {
+  z-index: 4;
+  animation: reel-drift calc(var(--tend) - var(--t1)) linear var(--t1) both;
+}
+
+.reel-titleblock {
+  animation: reel-out 520ms var(--ease-in) var(--o) forwards;
+}
+
+.reel-kicker {
+  margin-bottom: 0.9em;
+  font-size: clamp(0.7rem, min(var(--kicker-size, 1.3cqw), 2.4cqh), 1.7rem);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--accent);
+  animation: reel-rise-in 700ms var(--ease) var(--d) both;
+}
+
+.reel-title {
+  font-size: clamp(1.6rem, calc(min(7.6cqw, 13.5cqh) * var(--title-scale)), 15rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  text-shadow: 0 0.05em 0.6em rgb(0 0 0 / 0.5);
+}
+
+.reel-word,
+.reel-word > span {
+  display: inline-block;
+}
+
+.reel-word > span {
+  animation: reel-word-rise 760ms var(--ease) var(--w) both;
+}
+
+.reel-story {
+  display: flex;
+  flex-direction: column;
+  gap: max(0.8rem, 2.4cqh);
+  animation: reel-out 480ms var(--ease-in) var(--o) forwards;
+}
+
+.reel-hook {
+  max-width: 34ch;
+  font-size: clamp(1rem, min(2.2cqw, 4cqh), 3rem);
+  line-height: 1.3;
+  text-wrap: balance;
+  animation: reel-rise-in 800ms var(--ease) var(--d) both;
+}
+
+.reel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  padding: 0;
+  list-style: none;
+  font-size: clamp(0.68rem, min(1.15cqw, 2.1cqh), 1.5rem);
+}
+
+.reel-tags li {
+  max-width: 22em;
+  overflow: hidden;
+  padding: 0.5em 1.05em;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  border-radius: 999px;
+  background: rgb(7 7 10 / 0.5);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: reel-rise-in 650ms var(--ease) var(--g) both;
+}
+
+.reel-tags li::before {
+  content: '';
+  display: inline-block;
+  width: 0.45em;
+  height: 0.45em;
+  margin-right: 0.65em;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 0.1em;
+}
+
+/* ---------- Template: Cinematic (letterbox, centered type) ---------- */
+
+.reel[data-template='cinematic'] .reel-shade {
+  background:
+    radial-gradient(ellipse 66% 56% at 50% 52%, rgb(0 0 0 / 0.66), transparent 78%),
+    rgb(0 0 0 / 0.4);
+}
+
+.reel[data-template='cinematic'] .reel-bars {
+  display: block;
+  z-index: 3;
+}
+
+.reel-bars::before,
+.reel-bars::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: clamp(4cqh, calc((100cqh - 100cqw / 2.39) / 2), 12cqh);
+  background: #000;
+  animation: reel-bar-in 800ms var(--ease) var(--t1) both;
+}
+
+.reel-bars::before {
+  top: 0;
+  transform-origin: top;
+}
+
+.reel-bars::after {
+  bottom: 0;
+  transform-origin: bottom;
+}
+
+.reel[data-template='cinematic'] .reel-copy {
+  display: grid;
+  place-items: center;
+  padding: 0 7cqw;
+  text-align: center;
+}
+
+.reel[data-template='cinematic'] :is(.reel-titleblock, .reel-story) {
+  grid-area: 1 / 1;
+  max-width: min(86cqw, 80rem);
+}
+
+.reel[data-template='cinematic'] .reel-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+}
+
+.reel[data-template='cinematic'] .reel-kicker::before,
+.reel[data-template='cinematic'] .reel-kicker::after {
+  content: '';
+  flex: none;
+  width: 2.4em;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+.reel[data-template='cinematic'] .reel-story {
+  align-items: center;
+}
+
+.reel[data-template='cinematic'] .reel-hook {
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+  font-size: clamp(1.15rem, min(3cqw, 5.4cqh), 4rem);
+  font-style: italic;
+  line-height: 1.25;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.65);
+  animation-name: reel-blur-in;
+}
+
+.reel[data-template='cinematic'] .reel-tags {
+  justify-content: center;
+}
+
+/* ---------- Template: Split (framed panel + type panel) ---------- */
+
+.reel[data-template='split'] {
+  --panel-from: inset(0 100% 0 0);
+  --glow-x: 80%;
+  --kicker-size: 1.1cqw;
+}
+
+.reel[data-template='split'][data-side='right'] {
+  --panel-from: inset(0 0 0 100%);
+  --glow-x: 20%;
+}
+
+.reel[data-template='split'] .reel-shade {
+  z-index: -1;
+  background:
+    radial-gradient(
+      70cqw 80cqh at var(--glow-x) 30%,
+      rgb(var(--accent-rgb) / 0.2),
+      transparent 70%
+    ),
+    linear-gradient(160deg, #16161d, #07070a 70%);
+}
+
+.reel[data-template='split'] :is(.reel-stage, .reel-frame) {
+  inset: auto;
+  top: 50%;
+  left: 5cqw;
+  width: 52cqw;
+  aspect-ratio: 16 / 9;
+  translate: 0 -50%;
+}
+
+.reel[data-template='split'][data-side='right'] :is(.reel-stage, .reel-frame) {
+  left: auto;
+  right: 5cqw;
+}
+
+.reel[data-template='split'] .reel-stage {
+  border-radius: max(4px, 0.5cqmin);
+  box-shadow: 0 2cqw 6cqw rgb(0 0 0 / 0.65);
+  animation: reel-panel 950ms var(--ease) calc(var(--t1) - 150ms) both;
+}
+
+.reel[data-template='split'] .reel-frame {
+  display: block;
+  position: absolute;
+  margin: 1.3cqw 0 0 1.3cqw;
+  border: 1px solid rgb(var(--accent-rgb) / 0.7);
+  border-radius: max(4px, 0.5cqmin);
+  animation: reel-fade-in 800ms var(--ease) calc(var(--t1) + 400ms) both;
+}
+
+.reel[data-template='split'][data-side='right'] .reel-frame {
+  margin: 1.3cqw 1.3cqw 0 0;
+}
+
+.reel[data-template='split'] .reel-index {
+  display: flex;
+  position: absolute;
+  z-index: 4;
+  top: calc(50cqh + 14.625cqw + 3.5cqh);
+  left: 5cqw;
+  gap: 0.5em;
+  font-size: clamp(0.7rem, min(1.2cqw, 2.2cqh), 1.4rem);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: rgb(255 255 255 / 0.5);
+  font-variant-numeric: tabular-nums;
+  animation: reel-fade-in 600ms var(--ease) calc(var(--t1) + 400ms) both;
+}
+
+.reel[data-template='split'][data-side='right'] .reel-index {
+  left: auto;
+  right: 5cqw;
+}
+
+.reel-index-now {
+  display: grid;
+  color: var(--accent);
+}
+
+.reel-index-now > span {
+  grid-area: 1 / 1;
+  animation: reel-window 2000ms linear var(--d) both;
+}
+
+.reel[data-template='split'] .reel-copy {
+  left: 61cqw;
+  right: 5cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: max(1rem, 3.5cqh);
+}
+
+.reel[data-template='split'][data-side='right'] .reel-copy {
+  left: 5cqw;
+  right: 61cqw;
+}
+
+.reel[data-template='split'] .reel-kicker::before {
+  content: '';
+  display: inline-block;
+  width: 1.8em;
+  height: 2px;
+  margin-right: 0.8em;
+  vertical-align: 0.3em;
+  background: currentColor;
+}
+
+.reel[data-template='split'] .reel-title {
+  font-size: clamp(1.4rem, calc(min(4.8cqw, 9cqh) * var(--title-scale)), 10rem);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.reel[data-template='split'] .reel-word {
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+  vertical-align: top;
+}
+
+.reel[data-template='split'] .reel-word > span {
+  animation-name: reel-word-mask;
+  animation-duration: 760ms;
+}
+
+.reel[data-template='split'] .reel-hook {
+  max-width: 40ch;
+  font-size: clamp(0.95rem, min(1.6cqw, 3cqh), 2.2rem);
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.8);
+}
+
+/* ---------- Template: Kinetic (giant stacked type over darkened frames) ---------- */
+
+.reel[data-template='kinetic'] .reel-kb img {
+  filter: grayscale(0.4) contrast(1.1);
+}
+
+.reel[data-template='kinetic'] .reel-shade {
+  background:
+    linear-gradient(100deg, rgb(7 7 10 / 0.88) 15%, rgb(7 7 10 / 0.55) 60%, rgb(7 7 10 / 0.4)),
+    linear-gradient(0deg, rgb(var(--accent-rgb) / 0.22), transparent 60%);
+}
+
+.reel[data-template='kinetic'] .reel-titleblock {
+  position: absolute;
+  top: 14cqh;
+  left: 6cqw;
+  right: 6cqw;
+  transform-origin: left top;
+  animation:
+    reel-k-dim 800ms var(--ease) var(--dim) forwards,
+    reel-k-title-out 500ms var(--ease-in) var(--o) forwards;
+}
+
+.reel[data-template='kinetic'] .reel-title {
+  font-size: min(calc(var(--kw) * 1cqw), calc(var(--kh) * 1cqh));
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+
+.reel[data-template='kinetic'] .reel-line {
+  display: block;
+  white-space: nowrap;
+}
+
+.reel[data-template='kinetic'] .reel-line[data-outline] {
+  color: transparent;
+  -webkit-text-stroke: max(1px, 0.024em) #fff;
+}
+
+.reel[data-template='kinetic'] .reel-word.is-hot {
+  color: var(--accent);
+  -webkit-text-stroke-color: var(--accent);
+}
+
+.reel[data-template='kinetic'] .reel-word > span {
+  animation-name: reel-word-slam;
+  animation-duration: 680ms;
+}
+
+.reel[data-template='kinetic'][data-motion='slide'] .reel-word > span {
+  animation-name: reel-word-slide;
+  animation-duration: 760ms;
+}
+
+.reel[data-template='kinetic'] .reel-story {
+  position: absolute;
+  left: 6cqw;
+  right: 6cqw;
+  bottom: 13cqh;
+  align-items: flex-start;
+  animation-name: reel-k-out;
+}
+
+.reel[data-template='kinetic'] .reel-hook {
+  position: relative;
+  isolation: isolate;
+  width: fit-content;
+  max-width: min(42ch, 80cqw);
+  text-wrap: pretty;
+  padding: 0.3em 0.55em;
+  color: var(--ink);
+  font-size: clamp(1rem, min(2.1cqw, 3.8cqh), 2.8rem);
+  font-weight: 750;
+  line-height: 1.3;
+  animation: none;
+}
+
+.reel[data-template='kinetic'] .reel-hook::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform-origin: left;
+  animation: reel-marker 520ms var(--ease) var(--d) both;
+}
+
+.reel[data-template='kinetic'] .reel-hook > span {
+  display: block;
+  animation: reel-fade-in 380ms linear calc(var(--d) + 220ms) both;
+}
+
+.reel[data-template='kinetic'] .reel-tags {
+  gap: 0.3em 1.1em;
+  font-size: clamp(0.85rem, min(1.7cqw, 3cqh), 2.2rem);
+}
+
+.reel[data-template='kinetic'] .reel-tags li {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.reel[data-template='kinetic'] .reel-tags li::before {
+  content: '#';
+  width: auto;
+  height: auto;
+  margin-right: 0.08em;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  vertical-align: baseline;
+}
+
+/* ---------- Ident: UPOU NETWORKS wordmark (0–1.6 s) ---------- */
+
+.reel-ident {
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: max(0.7rem, 2.2cqh);
+  animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - 320ms) forwards;
+}
+
+.reel-ident-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(48cqw 34cqh at 50% 50%, rgb(123 17 19 / 0.7), transparent 70%);
+  animation: reel-glow 1400ms var(--ease) both;
+}
+
+.reel-wordmark {
+  position: relative;
+  padding: 0 0.12em;
+  font-size: clamp(2.2rem, min(9cqw, 16cqh), 13rem);
+  line-height: 1.1;
+}
+
+.reel-wm {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  animation: reel-wm 1000ms var(--ease) 220ms both;
+}
+
+.reel-wm span span {
+  display: inline-block;
+}
+
+.reel-wm-a {
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.reel-wm-b {
+  margin-right: -0.42em;
+  font-size: 0.4em;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  color: var(--brand-hi);
+}
+
+.reel-streak {
+  width: min(46cqw, 36rem);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-hi), transparent);
+  animation: reel-streak 900ms var(--ease) 80ms both;
+}
+
+.reel-ident-sub {
+  margin-right: -0.5em;
+  font-size: clamp(0.7rem, min(1.3cqw, 2.3cqh), 1.5rem);
+  font-weight: 500;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.72);
+  animation: reel-rise-in 600ms var(--ease) 700ms both;
+}
+
+/* Split: a crimson block wipes across and leaves the wordmark behind. */
+.reel[data-template='split'] .reel-wordmark {
+  overflow: hidden;
+}
+
+.reel[data-template='split'] .reel-ident-block {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--brand);
+  animation: reel-block 900ms var(--ease-io) 150ms both;
+}
+
+.reel[data-template='split'] .reel-wm {
+  animation: reel-pop 1ms linear 560ms both;
+}
+
+/* Kinetic: letters drop in one by one. */
+.reel[data-template='kinetic'] .reel-wm {
+  animation: none;
+}
+
+.reel[data-template='kinetic'] .reel-wm span span {
+  animation: reel-letter 620ms var(--ease) calc(150ms + var(--i) * 45ms) both;
+}
+
+/* ---------- End card (7.5–10 s): key art beside the title, then the art grows into the player ---------- */
+
+/*
+  The art is laid out exactly where the player's 16:9 box will be and transformed down into the
+  card (scale --ps, offset --pdx/--pdy), so the closing move lands on the player's first frame.
+*/
+.reel-end {
+  --pw: min(100cqw, 177.78cqh);
+  --ps: 0.46;
+  --pdx: calc(44cqw - var(--ps) * var(--pw) / 2);
+  --pdy: 0px;
+  z-index: 6;
+  background: #000;
+  animation: reel-end-fade 900ms var(--ease) var(--tend) both;
+}
+
+.reel[data-side='left'] .reel-end {
+  --pdx: calc(var(--ps) * var(--pw) / 2 - 44cqw);
+}
+
+.reel[data-end='iris'] .reel-end {
+  animation-name: reel-end-iris;
+  animation-duration: 1100ms;
+  animation-timing-function: var(--ease-io);
+}
+
+.reel[data-end='rise'] .reel-end {
+  animation-name: reel-end-rise;
+}
+
+.reel-end::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      60cqw 80cqh at calc(50% + var(--pdx)) calc(50% + var(--pdy)),
+      rgb(var(--accent-rgb) / 0.26),
+      transparent 70%
+    ),
+    linear-gradient(150deg, #1c1c25, #07070a 70%);
+  animation: reel-gone var(--out) var(--ease-in) var(--tout) forwards;
+}
+
+.reel-end-poster {
+  position: absolute;
+  inset: 0;
+  width: var(--pw);
+  height: calc(var(--pw) * 0.5625);
+  margin: auto;
+  box-shadow: 0 3cqmin 9cqmin rgb(0 0 0 / 0.6);
+  animation: reel-grow var(--out) var(--ease-io) var(--tout) both;
+}
+
+.reel-end-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 80% at 70% 30%, rgb(var(--accent-rgb) / 0.35), transparent 65%),
+    linear-gradient(150deg, #23232d, #07070a);
+}
+
+.reel-end-art img {
+  animation: reel-push calc(var(--reel-ms) - var(--tend)) linear var(--tend) both;
+}
+
+/* Dims to the player's loading look (backdrop at 50%) as the art grows. */
+.reel-end-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  animation: reel-dim var(--out) var(--ease-in) var(--tout) forwards;
+}
+
+.reel-end-copy {
+  position: absolute;
+  top: 50%;
+  left: 6cqw;
+  right: calc(10cqw + var(--ps) * var(--pw));
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: max(0.6rem, 1.5cqh);
+  animation: reel-gone 380ms var(--ease-in) var(--tout) forwards;
+}
+
+.reel[data-side='left'] .reel-end-copy {
+  left: calc(10cqw + var(--ps) * var(--pw));
+  right: 6cqw;
+}
+
+.reel-end-copy > * {
+  animation: reel-rise-in 800ms var(--ease) calc(var(--tend) + var(--k, 0ms)) both;
+}
+
+.reel-eyebrow {
+  --k: 150ms;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  font-size: clamp(0.7rem, min(1.2cqw, 2.2cqh), 1.5rem);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.reel-live {
+  position: relative;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.reel-live::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  animation: reel-ping 1.3s ease-out infinite;
+}
+
+.reel-end-title {
+  --k: 230ms;
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+  font-size: clamp(1.15rem, calc(min(4.6cqw, 8.5cqh) * var(--title-scale)), 9rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.reel-end-meta,
+.reel-count {
+  font-size: clamp(0.85rem, min(1.45cqw, 2.6cqh), 1.8rem);
+}
+
+.reel-end-meta {
+  --k: 330ms;
+  color: rgb(255 255 255 / 0.72);
+}
+
+.reel-count {
+  --k: 420ms;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55em;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-digit {
+  display: inline-block;
+  min-width: 0.8em;
+  font-weight: 800;
+  color: var(--accent);
+  text-align: center;
+  animation: reel-digit 700ms var(--ease) var(--d) both;
+}
+
+.reel-sep {
+  opacity: 0.4;
+}
+
+/* ---------- Film finish: light leak, vignette, grain, progress ---------- */
+
+.reel-leak {
+  position: absolute;
+  z-index: 7;
+  top: -25%;
+  bottom: -25%;
+  left: -40%;
+  right: -40%;
+  opacity: 0;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(closest-side at 44% 50%, rgb(255 168 92 / 0.55), transparent),
+    radial-gradient(closest-side at 60% 44%, rgb(var(--accent-rgb) / 0.35), transparent 80%);
+  animation: reel-leak 1400ms var(--ease-io) var(--d) both;
+}
+
+.reel-vignette {
+  z-index: 8;
+  animation: reel-gone var(--out) var(--ease-in) var(--tout) forwards;
+  background: radial-gradient(ellipse 80% 75% at 50% 48%, transparent 52%, rgb(0 0 0 / 0.6) 100%);
+}
+
+.reel-grain {
+  position: absolute;
+  inset: -10%;
+  z-index: 9;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+  animation:
+    reel-grain 500ms steps(1) infinite,
+    reel-gone var(--out) var(--ease-in) var(--tout) forwards;
+}
+
+.reel-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  height: max(3px, 0.35cqh);
+  background: rgb(255 255 255 / 0.14);
+}
+
+.reel-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--brand), var(--accent));
+  transform-origin: left;
+  animation: reel-progress var(--reel-ms) linear both;
+}
+
+/* ---------- Controls & loading ---------- */
+
+.reel-controls {
+  position: absolute;
+  z-index: 11;
+  right: max(4cqw, env(safe-area-inset-right));
+  bottom: max(5.5cqh, calc(env(safe-area-inset-bottom) + 1.25rem));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: clamp(0.85rem, min(1.2cqw, 2.4cqh), 1.6rem);
+  animation: reel-fade-in 400ms ease both;
+}
+
+.reel-skip,
+.reel-sound {
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s,
+    transform 0.2s var(--ease);
+}
+
+.reel-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  padding: 0.75em 1.3em;
+  border: 2px solid rgb(255 255 255 / 0.8);
+  border-radius: 0.4rem;
+  background: rgb(14 14 19 / 0.6);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.reel-skip:hover,
+.reel-skip:focus-visible {
+  background: #fff;
+  color: #0b0b0f;
+}
+
+.reel-sound {
+  display: grid;
+  place-items: center;
+  width: 3em;
+  height: 3em;
+  border: 2px solid rgb(255 255 255 / 0.55);
+  border-radius: 50%;
+  background: rgb(14 14 19 / 0.45);
+}
+
+.reel-sound:hover,
+.reel-sound:focus-visible {
+  border-color: #fff;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.reel-skip:active,
+.reel-sound:active {
+  transform: scale(0.96);
+}
+
+.reel-skip svg,
+.reel-sound svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.reel-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.reel-loading::before {
+  content: '';
+  width: min(30cqw, 16rem);
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-hi), transparent);
+  animation:
+    reel-fade-in 400ms ease 250ms both,
+    reel-scan 1.2s var(--ease-io) infinite;
+}
+
+/* ---------- Portrait and narrow screens ---------- */
+
+/* [data-side] keeps these above the side-specific desktop rules. */
+@container (max-aspect-ratio: 1 / 1) {
+  .reel[data-template='cinematic'] .reel-stage {
+    inset: 15cqh 0 auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .reel[data-template='cinematic'] .reel-bars {
+    display: none;
+  }
+
+  .reel[data-template='cinematic'] .reel-copy {
+    place-items: start center;
+    padding: calc(15cqh + 56.25cqw + 6cqh) 6cqw 0;
+  }
+
+  .reel[data-template='cinematic'] .reel-title {
+    font-size: clamp(1.5rem, calc(11cqw * var(--title-scale)), 6rem);
+  }
+
+  .reel[data-template='cinematic'] .reel-hook {
+    font-size: clamp(1.05rem, 5cqw, 2rem);
+  }
+
+  .reel[data-template='split'][data-side] :is(.reel-stage, .reel-frame) {
+    top: 13cqh;
+    left: 6cqw;
+    right: 6cqw;
+    width: auto;
+    translate: none;
+  }
+
+  .reel[data-template='split'][data-side] .reel-frame {
+    margin: 2.4cqw 0 0 2.4cqw;
+  }
+
+  .reel[data-template='split'][data-side] .reel-index {
+    top: calc(13cqh + 49.5cqw + 4cqw);
+    left: 6cqw;
+    right: auto;
+  }
+
+  .reel[data-template='split'][data-side] .reel-copy {
+    inset: calc(13cqh + 49.5cqw + 9cqh) 6cqw auto;
+    justify-content: flex-start;
+  }
+
+  .reel[data-template='split'] .reel-title {
+    font-size: clamp(1.4rem, calc(10cqw * var(--title-scale)), 5rem);
+  }
+
+  .reel[data-template='split'] .reel-hook {
+    font-size: clamp(0.95rem, 4cqw, 1.5rem);
+  }
+
+  .reel[data-template='kinetic'] .reel-titleblock {
+    top: 20cqh;
+  }
+
+  .reel[data-template='kinetic'] .reel-story {
+    bottom: 18cqh;
+  }
+
+  .reel[data-template='kinetic'] .reel-hook {
+    font-size: clamp(1rem, 4.6cqw, 1.8rem);
+  }
+
+  .reel[data-side] .reel-end {
+    --ps: 0.88;
+    --top: max(14cqh, 5rem);
+    --pdx: calc(6cqw + var(--ps) * var(--pw) / 2 - 50cqw);
+    --pdy: calc(var(--top) + var(--ps) * var(--pw) * 0.28125 - 50cqh);
+  }
+
+  .reel[data-side] .reel-end-copy {
+    top: calc(var(--top) + var(--ps) * var(--pw) * 0.5625 + 5cqh);
+    left: 6cqw;
+    right: 6cqw;
+    translate: none;
+  }
+
+  .reel[data-template='cinematic'][data-side] .reel-end {
+    --pdx: 0px;
+  }
+
+  .reel[data-template='cinematic'] .reel-end-copy {
+    align-items: center;
+    text-align: center;
+  }
+
+  .reel-end-title {
+    font-size: clamp(1.5rem, calc(min(10cqw, 5.5cqh) * var(--title-scale)), 5rem);
+  }
+
+  .reel-eyebrow,
+  .reel-end-meta,
+  .reel-count {
+    font-size: clamp(0.75rem, 3.5cqw, 1.2rem);
+  }
+
+  .reel-kicker,
+  .reel-tags {
+    font-size: clamp(0.68rem, 3cqw, 1rem);
+  }
+
+  .reel-controls {
+    font-size: clamp(0.8rem, 3.6cqw, 1.1rem);
+  }
+}
+
+@container (max-aspect-ratio: 1 / 1) and (min-aspect-ratio: 4 / 5) {
+  .reel[data-side] .reel-end {
+    --ps: 0.62;
+  }
+}
+
+/* Short landscape (phones on their side): giant type gets less of the height. */
+@container (max-height: 520px) and (min-aspect-ratio: 1 / 1) {
+  .reel[data-template='kinetic'] .reel-titleblock {
+    top: max(16cqh, 4.5rem);
+  }
+
+  .reel[data-template='kinetic'] .reel-title {
+    font-size: min(calc(var(--kw) * 1cqw), calc(var(--kh) * 0.8cqh));
+  }
+
+  .reel[data-template='kinetic'] .reel-story {
+    bottom: 9cqh;
+  }
+
+  .reel[data-template='kinetic'] .reel-hook {
+    font-size: clamp(0.85rem, 3.8cqh, 1.2rem);
+  }
+}
+
+/* ---------- Reduced motion: same timeline, movement collapses to fades ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .reel {
+    --motion: 0;
+  }
+
+  .reel-tx {
+    animation-name: reel-tx-fade !important;
+    animation-duration: 700ms !important;
+  }
+
+  .reel-kb,
+  .reel-copy,
+  .reel-grain,
+  .reel-end-art img,
+  .reel-live::after,
+  .reel-wm span span {
+    animation: none !important;
+  }
+
+  /* The art stays in the card; the hand-off is a plain cut. */
+  .reel-end-poster {
+    animation: none !important;
+    transform: translate(var(--pdx), var(--pdy)) scale(var(--ps));
+  }
+
+  .reel-leak,
+  .reel-ident-block {
+    display: none !important;
+  }
+
+  .reel .reel-wm {
+    animation: reel-fade-in 600ms ease 200ms both !important;
+  }
+
+  .reel .reel-end {
+    animation-name: reel-end-fade !important;
+  }
+
+  .reel[data-template='split'] .reel-stage {
+    animation-name: reel-fade-in;
+  }
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes reel-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reel-pop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reel-hide {
+  to {
+    visibility: hidden;
+  }
+}
+
+@keyframes reel-tx-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reel-tx-slide {
+  from {
+    transform: translate3d(var(--tx-x), var(--tx-y), 0);
+  }
+}
+
+@keyframes reel-tx-zoom {
+  from {
+    opacity: 0;
+    transform: scale(1.32);
+  }
+}
+
+@keyframes reel-tx-wipe {
+  from {
+    clip-path: var(--wipe-from);
+  }
+  to {
+    clip-path: var(--wipe-to);
+  }
+}
+
+@keyframes reel-kb {
+  from {
+    transform: translate3d(var(--kx0), var(--ky0), 0) scale(var(--ks0));
+  }
+  to {
+    transform: translate3d(var(--kx1), var(--ky1), 0) scale(var(--ks1));
+  }
+}
+
+@keyframes reel-drift {
+  from {
+    transform: translate3d(calc(var(--drift) * 1.2cqw), 0, 0);
+  }
+  to {
+    transform: translate3d(calc(var(--drift) * -1.2cqw), 0, 0);
+  }
+}
+
+@keyframes reel-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * 0.9em), 0);
+  }
+}
+
+@keyframes reel-blur-in {
+  from {
+    opacity: 0;
+    transform: scale(calc(1 + var(--motion) * 0.05));
+    filter: blur(calc(var(--motion) * 10px));
+  }
+}
+
+@keyframes reel-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * -0.6em), 0);
+    filter: blur(calc(var(--motion) * 6px));
+  }
+}
+
+@keyframes reel-word-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * 0.45em), 0);
+    filter: blur(calc(var(--motion) * 12px));
+  }
+}
+
+@keyframes reel-word-mask {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * 105%), 0);
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes reel-word-slam {
+  from {
+    opacity: 0;
+    transform: scale(calc(1 + var(--motion) * 1.1));
+    filter: blur(calc(var(--motion) * 14px));
+  }
+  55% {
+    opacity: 1;
+    transform: scale(calc(1 - var(--motion) * 0.04));
+    filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes reel-word-slide {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--from) * var(--motion) * 30cqw), 0, 0)
+      skewX(calc(var(--from) * var(--motion) * -12deg));
+  }
+}
+
+@keyframes reel-k-dim {
+  to {
+    opacity: 0.4;
+    transform: translate3d(0, calc(var(--motion) * -3cqh), 0) scale(calc(1 - var(--motion) * 0.06));
+  }
+}
+
+@keyframes reel-k-title-out {
+  to {
+    opacity: 0;
+    transform: translate3d(calc(var(--motion) * -6cqw), calc(var(--motion) * -3cqh), 0)
+      scale(calc(1 - var(--motion) * 0.06));
+  }
+}
+
+@keyframes reel-k-out {
+  to {
+    opacity: 0;
+    transform: translate3d(calc(var(--motion) * -6cqw), 0, 0);
+  }
+}
+
+@keyframes reel-marker {
+  from {
+    opacity: 0;
+    transform: scaleX(calc(1 - var(--motion)));
+  }
+}
+
+@keyframes reel-bar-in {
+  from {
+    opacity: 0;
+    transform: scaleY(calc(1 - var(--motion)));
+  }
+}
+
+@keyframes reel-panel {
+  from {
+    opacity: 0;
+    clip-path: var(--panel-from);
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes reel-window {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+}
+
+@keyframes reel-glow {
+  from {
+    opacity: 0;
+    transform: scale(calc(1 - var(--motion) * 0.4));
+  }
+  45% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(calc(1 + var(--motion) * 0.08));
+  }
+}
+
+@keyframes reel-wm {
+  from {
+    opacity: 0;
+    clip-path: inset(-20% 50% -20% 50%);
+    transform: scale(calc(1 + var(--motion) * 0.08));
+  }
+  25% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(-20% -6% -20% -6%);
+    transform: none;
+  }
+}
+
+@keyframes reel-streak {
+  from {
+    opacity: 0;
+    transform: scaleX(calc(1 - var(--motion)));
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes reel-block {
+  0% {
+    transform: translate3d(-101%, 0, 0);
+  }
+  45%,
+  55% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(101%, 0, 0);
+  }
+}
+
+@keyframes reel-letter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * -0.5em), 0) scale(calc(1 + var(--motion) * 0.5));
+  }
+}
+
+@keyframes reel-ident-out {
+  to {
+    opacity: 0;
+    transform: scale(calc(1 + var(--motion) * 0.16));
+    visibility: hidden;
+  }
+}
+
+@keyframes reel-gone {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes reel-dim {
+  to {
+    opacity: 0.5;
+  }
+}
+
+@keyframes reel-grow {
+  from {
+    transform: translate(var(--pdx), var(--pdy)) scale(var(--ps));
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes reel-end-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes reel-end-iris {
+  from {
+    clip-path: circle(0% at 50% 55%);
+  }
+  to {
+    clip-path: circle(100% at 50% 55%);
+  }
+}
+
+@keyframes reel-end-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * 5cqh), 0) scale(calc(1 + var(--motion) * 0.03));
+  }
+}
+
+@keyframes reel-push {
+  from {
+    transform: scale(calc(1 + var(--motion) * 0.12));
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes reel-digit {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: none;
+  }
+  18% {
+    opacity: 1;
+    transform: scale(calc(1 + var(--motion) * 0.45));
+  }
+  70% {
+    opacity: 1;
+    transform: scale(calc(1 + var(--motion) * 0.12));
+  }
+}
+
+@keyframes reel-ping {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@keyframes reel-leak {
+  from {
+    visibility: hidden;
+    opacity: 0;
+    transform: translate3d(calc(var(--leak) * -55%), 0, 0) rotate(-12deg) scaleX(0.6);
+  }
+  45% {
+    visibility: visible;
+    opacity: 0.9;
+  }
+  to {
+    visibility: hidden;
+    opacity: 0;
+    transform: translate3d(calc(var(--leak) * 55%), 0, 0) rotate(-12deg) scaleX(0.6);
+  }
+}
+
+@keyframes reel-grain {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(-4%, 3%, 0);
+  }
+  40% {
+    transform: translate3d(3%, -4%, 0);
+  }
+  60% {
+    transform: translate3d(-5%, -2%, 0);
+  }
+  80% {
+    transform: translate3d(4%, 4%, 0);
+  }
+}
+
+@keyframes reel-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes reel-scan {
+  0%,
+  100% {
+    transform: scaleX(0.15);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+}

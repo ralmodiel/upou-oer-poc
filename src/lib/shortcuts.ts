@@ -60,10 +60,19 @@ function closeDialog(dialog: HTMLDialogElement) {
 
 const isWatch = (path: string) => path.startsWith('/watch/')
 
+// Back on the home with nothing behind it: the top of the page and the hero's Play, as a TV app's
+// Back does (reloading the home would leave focus on a card scrolled out of view).
+function backToTop() {
+  const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
+  document.querySelector<HTMLElement>('[data-spatial="entry"]')?.focus({ preventScroll: true })
+}
+
 /**
- * Back = previous in-app page when there is one, otherwise home (deep links, replaced entries).
- * From the player it steps over the videos watched in a row to the page the first one was opened
- * from (the home, usually); with only videos behind, it goes home.
+ * Back = previous in-app page when there is one, otherwise home (deep links, replaced entries);
+ * on the home itself, the top of the page. From the player it steps over the videos watched in a
+ * row to the page the first one was opened from (the home, usually); with only videos behind, it
+ * goes home.
  */
 export function useGoBack() {
   const navigate = useNavigate()
@@ -83,6 +92,7 @@ export function useGoBack() {
       return void navigate('/', { replace: !hasPrevious })
     }
     if (hasPrevious) void navigate(-1)
+    else if (pathname === '/') backToTop()
     else void navigate('/', { replace: true })
   }, [key, navigate, pathname])
 }

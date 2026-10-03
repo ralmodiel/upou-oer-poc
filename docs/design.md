@@ -284,24 +284,20 @@ the existing tokens:
 - **Frame filter:** candidate stills that catch a face not smiling, mid-word or looking angry are
   flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation,
   the reel or the canonical slots (hero, quick look, poster), where the first clean still stands
-  in for a flagged original; the original returns only when every candidate is flagged.
+  in for a flagged original. When every candidate is flagged, the video's own picture (card,
+  list row, poster) is its least bad one; reels and previews still never use a flagged frame.
 - **Repeated stills:** three cuts play only between three different stills; with fewer (repeats,
   or near-twins from a static lecture camera) the reel plays one long slow move on the first still.
 - **No usable image:** when every image is flagged or missing (`q: 0` videos have no YouTube stills
   at all, only the thumbnail), the watch page skips the reel and the player starts at once over
   the video's least bad image on a light stage (round 5; it used to be kinetic type on a night
   frame).
-- **Low-res stills** are framed rather than blown up, over a blurred fill of the video's backdrop
-  (round 5; it used to be a deep forest stage).
-- **Title-card thumbnails:** reels whose only image is the designed original thumbnail use the
-  split template, so the reel title sits beside the card instead of over its baked-in text; the
-  card is never cropped: it plays whole in the split frame over a light blurred copy of itself
-  (round 5).
+- **Low-res stills, title cards and slides:** superseded by "Reels" under "Round 5: watch page,
+  home notices, reels" below (no framed inset on a forest or paper stage, no forced split).
 - **Previews:** the card's own image dissolves to footage within ~0.5 s (1.1 s preview lead) and
-  the footage stays in colour, with the text on a band along the bottom; text travel is capped at
-  large stages; kinetic titles enter a line at a time without overlapping words.
-- **Hand-off:** the reel's end card and the player poster share `video.poster` (the original still
-  unless flagged, else the first clean still), so the cut to the player is seamless.
+  the footage stays in colour; card-size previews are picture only (see round 5).
+- **Hand-off:** the reel's end card and the player poster share `video.poster` (the best clean
+  candidate, else the least bad), so the cut to the player is seamless.
 - **Topic chips and reasons** (`src/lib/tags.ts`): never a person's name (titled, credited in a
   title, or unmistakably a name), a title fragment, an instalment label ("FASTLearn Episode 62")
   or a catalogue tag ("Conference E-Proceedings"); acronyms keep their spelling (CHED, ASEAN,
@@ -456,8 +452,20 @@ a slide with an image; a title-tile slide stays one press away.
 
 ### Reels
 
-- **Slides and title cards** play whole in the split frame, over a light blurred copy of the slide
-  on screen; the frame floats a little instead of zooming, and no type covers their own text.
+- **Picture and band:** the picture fills the top of the stage in its own colours with nothing on
+  it (no scrim, tint, box or type), and all type (ident, kicker, title, hook, end-card copy) and
+  the Skip / Unmute controls sit in a frosted light band below it: 30% of the stage height on
+  wide stages, 36% at 560px and below, 48% on watch-stage phones. Type never covers a face or a
+  slide's own text. Photos crop around their upper middle and keep their slow move.
+- **Slides and title cards** show whole in a 16:9 box as tall as the picture, over a blurred copy
+  of themselves (a 30% veil), in any template; 640px stills crop only their letterbox bars.
+- **Card previews** (stages 480px and narrower) are picture only, full height, with no band or
+  type: the card's own title sits right below. The featured viewer keeps the band.
+- **End card:** the poster fills the stage exactly as the player poster does, with "Now playing",
+  the title, facts and the 3·2·1 count in the band; the copy fades at 9.5 s, so the cut to the
+  player moves nothing and no white card ever shows. The featured viewer returns to its poster.
+- **Templates:** slides no longer force the split template (about a third each of split,
+  cinematic and kinetic); the split ident's block is gold, never a dark bar.
 - **One still:** a seeded slow push-in about a point in the upper middle that drifts to one side.
   It opens on the full frame, so the card image or loading cover it follows hands over without a
   jump.

@@ -15,7 +15,18 @@ function renderAt(entries: string[]) {
       {
         Component: Shell,
         children: [
-          { path: '/', element: <p>Home</p> },
+          {
+            path: '/',
+            element: (
+              <>
+                <p>Home</p>
+                <button type="button" data-spatial="entry">
+                  Play
+                </button>
+                <button type="button">Card</button>
+              </>
+            ),
+          },
           { path: '/field', element: <input aria-label="Field" /> },
           { path: '/other', element: <p>Other</p> },
           { path: '/watch/:id', element: <p>Video</p> },
@@ -41,6 +52,22 @@ describe('useGlobalShortcuts', () => {
     const router = renderAt(['/other'])
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+
+  it('on the home with nothing behind it, Esc goes back to the top and the hero Play', async () => {
+    const scrollTo = window.scrollTo
+    const calls: unknown[] = []
+    window.scrollTo = ((options: unknown) => void calls.push(options)) as typeof window.scrollTo
+    try {
+      const router = renderAt(['/'])
+      screen.getByRole('button', { name: 'Card' }).focus()
+      await userEvent.keyboard('{Escape}')
+      expect(calls).toContainEqual(expect.objectContaining({ top: 0 }))
+      expect(screen.getByRole('button', { name: 'Play' })).toHaveFocus()
+      expect(router.state.location.pathname).toBe('/')
+    } finally {
+      window.scrollTo = scrollTo
+    }
   })
 
   it('from the player, Back steps over the videos watched in a row to where the first was opened', async () => {

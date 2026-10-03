@@ -5,8 +5,9 @@
   Per-element timing comes from inline custom properties set by plan.ts:
   --s shot start, --d entrance, --o exit, --w word, --lw line, --g chip; --ko, --ks*, --kx*, --ky*
   frame each still's Ken Burns move (a repeated still comes back with the mirrored crop).
-  Stills keep their own colours: no filters or full-frame tints, only light, local gradients
-  behind type.
+  The picture fills the top of the stage in its own colours, with nothing over it: no scrims, no
+  tints and no type. Type, the brand and the controls sit in the light band below it, so they never
+  cover a face or a slide's own text. Slides show whole over a blurred copy of themselves.
   Sizes use container units, so the reel fits whatever 16:9 stage it is given (320–1600 px).
 */
 
@@ -14,7 +15,7 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.6, 0, 0.8, 0.25);
   --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
-  /* The light palette in both themes: the stage is never dark (ident, paper, end card). */
+  /* The light palette in both themes: the stage is never dark (band, end card). */
   --paper: #faf8f6;
   --surface: #ffffff;
   --surface-2: #f2eeeb;
@@ -30,19 +31,20 @@
   --radius: var(--radius-card, 14px);
   --serif: var(--font-display, 'Instrument Serif', Georgia, 'Times New Roman', serif);
   --sans: var(--font-sans, 'Instrument Sans', system-ui, sans-serif);
-  /* Fixed colours for type over the stills, whatever the theme. */
   --night: #1b1a17;
   --light: #faf8f6;
+  /* Text that is not yet (or no longer) highlighted. */
+  --plain: var(--ink);
   --motion: 1;
   /* Blur effects switch off for previews and reduced motion. */
   --fx: 1;
-  /* Previews bring the first beat (shade, kicker, title) forward by this much. */
+  /* Previews bring the first beat (band, kicker, title) forward by this much. */
   --lead: 0ms;
   /* How far kinetic words slide in, and how big they slam in from. */
   --travel: 30cqw;
   --slam: 1.1;
-  /* Paper over footage: the ident and the loading state sit on the first still, not a blank card. */
-  --wash: color-mix(in srgb, var(--paper) 80%, transparent);
+  /* The band's paper: a frosted strip over the blurred picture, never a blank page. */
+  --frost: color-mix(in srgb, var(--paper) 86%, transparent);
   --o: 600s;
   --out: calc(var(--reel-ms) - var(--tout));
 
@@ -58,11 +60,29 @@
   -webkit-user-select: none;
 }
 
-/* Seeded accent: shapes use --accent, text on paper --accent-text, text over stills --accent-hi. */
+/*
+  Geometry, set on the reel's children (container queries cannot restyle the container itself):
+  the band under the picture and the picture above it; the controls' size, and the copy's room
+  beside them (full variant). Smaller stages override the first ones below.
+*/
+.reel > * {
+  --band: 30cqh;
+  --pic: calc(100cqh - var(--band));
+  --ctl: clamp(0.75rem, min(1.15cqw, 2.3cqh), 1.1rem);
+  --copy-r: calc(5cqw + 18 * var(--ctl));
+  /* Kinetic lines: the copy's width and most of the band's height. */
+  --copy-w: calc(95cqw - var(--copy-r));
+  --title-h: calc(var(--band) * 0.66);
+}
+
+.reel[data-variant='preview'] > * {
+  --copy-r: 5cqw;
+}
+
+/* Seeded accent: shapes use --accent, text --accent-text, the kinetic marker --hot. */
 .reel[data-accent='forest'] {
   --accent: var(--forest);
   --accent-text: var(--forest);
-  --accent-hi: #5fc59c;
   --accent-on: var(--on-accent);
   --hot: #5fc59c;
 }
@@ -70,7 +90,6 @@
 .reel[data-accent='amber'] {
   --accent: var(--amber);
   --accent-text: var(--ink);
-  --accent-hi: #f7b545;
   --accent-on: #373637;
   --hot: #f7b545;
 }
@@ -78,7 +97,6 @@
 .reel[data-accent='gold'] {
   --accent: var(--gold);
   --accent-text: var(--ink);
-  --accent-hi: #fcc75a;
   --accent-on: #373637;
   --hot: #fcc75a;
 }
@@ -86,7 +104,6 @@
 .reel[data-accent='ink'] {
   --accent: var(--ink);
   --accent-text: var(--ink);
-  --accent-hi: var(--light);
   --accent-on: var(--paper);
   --hot: #f7b545;
 }
@@ -102,14 +119,17 @@
   margin: 0;
 }
 
-:is(.reel-stage, .reel-shot, .reel-tx, .reel-kb, .reel-shade, .reel-copy, .reel-ident, .reel-end) {
+:is(.reel-shot, .reel-tx, .reel-kb, .reel-end) {
   position: absolute;
   inset: 0;
 }
 
-/* ---------- Shots: transition in, Ken Burns, hide once covered ---------- */
+/* ---------- Picture: shots transition in, Ken Burns, hide once covered ---------- */
 
 .reel-stage {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--pic);
   overflow: hidden;
 }
 
@@ -128,7 +148,6 @@
 .reel-tx[data-tx='slide'] {
   animation-name: reel-tx-slide;
   animation-duration: 760ms;
-  box-shadow: 0 0 5cqmax 1cqmax rgb(27 26 23 / 0.3);
 }
 
 .reel-tx[data-tx='zoom'] {
@@ -156,8 +175,8 @@
 }
 
 /*
-  The first shot waits in place under the ident instead of transitioning in: the ident dissolves
-  straight into it, and being painted early it counts as the page's largest paint (LCP).
+  The first shot waits in place from the start, above the brand in the band, instead of
+  transitioning in; painted early, it counts as the page's largest paint (LCP).
 */
 .reel-shot:first-child .reel-tx {
   animation: none !important;
@@ -165,7 +184,6 @@
 
 .reel-kb img,
 .reel-end-art img,
-.reel-backfill img,
 .reel-fill-shot img,
 .reel-cover img {
   display: block;
@@ -174,11 +192,43 @@
   object-fit: cover;
 }
 
+/* The picture is wider than 16:9: photos keep their upper middle, where faces are. */
+.reel-kb img {
+  object-position: 50% 32%;
+}
+
 /*
-  Low-res stills (cinematic): a blurred fill behind a framed, smaller stage. The fill is laid out
-  at a quarter of the stage and scaled up, so the blur runs on a small layer.
+  Slides and title cards show whole: a 16:9 box as tall as the picture, centred over the blurred
+  copy (640px stills are 4:3 with the picture letterboxed, so `cover` crops just the bars).
 */
-.reel-backfill {
+.reel-shot[data-slide] .reel-tx {
+  background: none;
+}
+
+.reel-shot[data-slide] .reel-kb img {
+  width: auto;
+  aspect-ratio: 16 / 9;
+  margin-inline: auto;
+  object-position: 50% 50%;
+}
+
+/* Behind everything: a blurred copy of the shot on screen, seen beside slides and through the band. */
+.reel-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+
+.reel-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgb(250 248 246 / 0.3);
+}
+
+/* Laid out at a quarter of the stage and scaled up, so the blur runs on a small layer. */
+.reel-fill-shot {
   position: absolute;
   top: 0;
   left: 0;
@@ -186,53 +236,69 @@
   height: 25%;
   transform-origin: 0 0;
   transform: translate(-6cqw, -6cqh) scale(4.48);
-  filter: blur(4px);
-  animation: reel-fade-in 700ms var(--ease) var(--t1) both;
+  filter: blur(6px);
+  animation:
+    reel-fade-in 700ms var(--ease) var(--s) both,
+    reel-hide 1ms linear var(--o) forwards;
 }
 
-/* Exactly 16:9, so `cover` crops the letterbox bars of the 640px 4:3 stills and nothing else shows. */
-.reel[data-lowres][data-template='cinematic'] .reel-stage {
-  inset: 9cqh 0;
-  width: calc(82cqh * 16 / 9);
-  margin-inline: auto;
-  border-radius: var(--radius);
-  box-shadow: 0 10px 30px -12px rgb(27 26 23 / 0.6);
+/* The first one is there from the start, under the band (or the card image in previews). */
+.reel-fill-shot:first-child {
+  animation: reel-hide 1ms linear var(--o) forwards;
 }
 
-.reel-shade,
+.reel-progress,
 .reel-copy,
 .reel-ident,
+.reel-band,
 .reel-rule,
-.reel-backfill,
-.reel-fill,
-.reel-progress {
+.reel-fill {
   pointer-events: none;
 }
 
-/* The shade arrives with the first shot, so the paper ident stays clean. */
-.reel-shade {
-  z-index: 1;
-  animation: reel-fade-in 600ms var(--ease) calc(var(--t1) - var(--lead)) both;
+/* ---------- Band: the light strip under the picture that holds the type ---------- */
+
+.reel-band {
+  position: absolute;
+  inset: var(--pic) 0 0;
+  z-index: 3;
+  background: var(--frost);
+  box-shadow: 0 -1px 0 rgb(55 54 55 / 0.08);
 }
 
-.reel-frame,
 .reel-index,
 .reel-rule,
 .reel-ident-block {
   display: none;
 }
 
-/* ---------- Copy: kicker, word-by-word title, hook, chips ---------- */
+/* ---------- Copy: kicker, word-by-word title, then the hook in its place ---------- */
 
-/* Hidden (not just transparent) until its first beat, so no reflow before then counts as a layout shift. */
+/*
+  Hidden (not just transparent) until its first beat, so no reflow before then counts as a layout
+  shift. Linear, not a step: a finished 1 ms step can land a hair short of its end and stay hidden.
+*/
 .reel-copy {
+  position: absolute;
+  inset: var(--pic) var(--copy-r) 0 5cqw;
   z-index: 4;
+  display: grid;
+  align-content: center;
+  padding-block: 2.4cqh;
   animation:
     reel-drift calc(var(--tend) - var(--t1) + var(--lead)) linear calc(var(--t1) - var(--lead)) both,
-    reel-show 1ms step-end calc(var(--t1) - var(--lead)) both;
+    reel-show 1ms linear calc(var(--t1) - var(--lead)) both;
 }
 
-/* Arrives with the kicker (its small-stage scrim would otherwise sit empty), leaves at --o. */
+/* The title, then the hook, in the same place. */
+.reel-titleblock,
+.reel-story {
+  grid-area: 1 / 1;
+  align-self: center;
+  min-width: 0;
+}
+
+/* Arrives with the kicker, leaves at --o. */
 .reel-titleblock {
   animation:
     reel-fade-in 400ms var(--ease) calc(var(--t1) + 100ms - var(--lead)) both,
@@ -240,25 +306,31 @@
 }
 
 .reel-kicker {
-  margin-bottom: 0.9em;
-  font-size: clamp(0.6rem, min(var(--kicker-size, 1.3cqw), 2.4cqh), 1.5rem);
+  margin-bottom: 0.7em;
+  overflow: hidden;
+  font-size: clamp(0.6rem, min(var(--kicker-size, 1.15cqw), 2.4cqh), 1.3rem);
   font-weight: 600;
   letter-spacing: 0.22em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
-  text-wrap: balance;
-  color: var(--accent-hi);
+  white-space: nowrap;
+  color: var(--accent-text);
   animation: reel-rise-in 700ms var(--ease) calc(var(--d) - var(--lead)) both;
 }
 
 .reel-title {
+  display: -webkit-box;
+  overflow: hidden;
+  padding-bottom: 0.08em;
   font-family: var(--serif);
-  font-size: clamp(0.95rem, calc(min(8cqw, 14cqh) * var(--title-scale)), 15rem);
+  font-size: clamp(0.8rem, calc(min(4.6cqw, 8.4cqh) * var(--title-scale)), 8rem);
   font-weight: 400;
-  line-height: 1.02;
+  line-height: 1.04;
   letter-spacing: -0.01em;
   text-wrap: balance;
-  color: var(--light);
-  text-shadow: 0 0.04em 0.5em rgb(27 26 23 / 0.45);
+  color: var(--ink);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .reel-word,
@@ -273,6 +345,7 @@
 .reel-word.is-hot {
   padding-right: 0.06em;
   font-style: italic;
+  color: var(--accent-text);
 }
 
 /* One still has no cuts to keep time: its highlighted word takes its colour on the second beat. */
@@ -283,16 +356,21 @@
 .reel-story {
   display: flex;
   flex-direction: column;
-  gap: max(0.5rem, 2.4cqh);
+  align-items: flex-start;
+  gap: max(0.4rem, 1.6cqh);
   animation: reel-out 480ms var(--ease-in) var(--o) forwards;
 }
 
 .reel-hook {
-  max-width: 36ch;
-  font-size: clamp(0.7rem, min(2cqw, 3.6cqh), 2.6rem);
-  line-height: 1.35;
+  display: -webkit-box;
+  max-width: 48ch;
+  overflow: hidden;
+  font-size: clamp(0.7rem, min(1.7cqw, 3.4cqh), 1.7rem);
+  line-height: 1.4;
   text-wrap: balance;
-  color: rgb(250 248 246 / 0.88);
+  color: var(--ink-2);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   animation: reel-rise-in 800ms var(--ease) var(--d) both;
 }
 
@@ -300,19 +378,21 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5em;
+  max-height: 2.4em;
+  overflow: hidden;
   padding: 0;
   list-style: none;
-  font-size: clamp(0.6rem, min(1.1cqw, 2cqh), 1.3rem);
+  font-size: clamp(0.6rem, min(1.05cqw, 2cqh), 1.1rem);
 }
 
 .reel-tags li {
   max-width: 22em;
   overflow: hidden;
-  padding: 0.5em 1em;
-  border: 1px solid rgb(250 248 246 / 0.35);
+  padding: 0.45em 0.9em;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgb(27 26 23 / 0.35);
-  color: var(--light);
+  background: var(--surface-2);
+  color: var(--ink-2);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-overflow: ellipsis;
@@ -328,52 +408,25 @@
   height: 0.45em;
   margin-right: 0.6em;
   border-radius: 50%;
-  background: var(--accent-hi);
+  background: var(--accent);
   vertical-align: 0.1em;
 }
 
-/* ---------- Template: Cinematic (full-bleed stills, hairline frame, centred serif) ---------- */
-
-/* A light gradient behind the centred copy only; the title carries its own shadow. */
-.reel[data-template='cinematic'] .reel-shade {
-  background: radial-gradient(
-    ellipse 56% 46% at 50% 52%,
-    rgb(27 26 23 / 0.36),
-    rgb(27 26 23 / 0.14) 55%,
-    transparent 78%
-  );
-}
-
-.reel:is([data-template='cinematic'], [data-template='kinetic']) .reel-title {
-  text-shadow:
-    0 0.02em 0.12em rgb(27 26 23 / 0.4),
-    0 0.04em 0.5em rgb(27 26 23 / 0.45);
-}
-
-.reel:is([data-template='cinematic'], [data-template='kinetic']) :is(.reel-kicker, .reel-tags) {
-  text-shadow: 0 1px 0.6em rgb(27 26 23 / 0.6);
-}
+/* ---------- Template: Cinematic (hairline frame on the picture, centred serif in the band) ---------- */
 
 .reel[data-template='cinematic'] .reel-rule {
   display: block;
   position: absolute;
-  inset: 5cqh 3cqw;
+  inset: 4cqh 3cqw calc(var(--band) + 3cqh);
   z-index: 3;
-  border: 1px solid rgb(250 248 246 / 0.4);
+  border: 1px solid rgb(250 248 246 / 0.45);
   border-radius: calc(var(--radius) / 2);
   animation: reel-rule-in 900ms var(--ease) calc(var(--t1) - var(--lead)) both;
 }
 
 .reel[data-template='cinematic'] .reel-copy {
-  display: grid;
-  place-items: center;
-  padding: 0 8cqw;
+  justify-items: center;
   text-align: center;
-}
-
-.reel[data-template='cinematic'] :is(.reel-titleblock, .reel-story) {
-  grid-area: 1 / 1;
-  max-width: min(84cqw, 80rem);
 }
 
 .reel[data-template='cinematic'] .reel-kicker {
@@ -397,17 +450,12 @@
   align-items: center;
 }
 
-/* A soft charcoal scrim keeps the hook readable over bright stills. */
 .reel[data-template='cinematic'] .reel-hook {
-  padding: 0.35em 0.8em;
-  border-radius: calc(var(--radius) / 2);
-  background: rgb(27 26 23 / 0.5);
   font-family: var(--serif);
-  font-size: clamp(0.85rem, min(2.8cqw, 5cqh), 3.6rem);
+  font-size: clamp(0.85rem, min(2.4cqw, 4.6cqh), 2.6rem);
   font-style: italic;
-  line-height: 1.25;
-  color: var(--light);
-  text-shadow: 0 2px 18px rgb(27 26 23 / 0.6);
+  line-height: 1.2;
+  color: var(--ink);
   animation-name: reel-blur-in;
 }
 
@@ -415,75 +463,25 @@
   justify-content: center;
 }
 
-/* ---------- Template: Split (framed stills beside ink type on paper) ---------- */
+/* ---------- Template: Split (shot count, an accent rule, type that wipes up word by word) ---------- */
 
 .reel[data-template='split'] {
-  --plain: var(--ink);
-  --panel-from: inset(0 100% 0 0);
-  --kicker-size: 1.1cqw;
-}
-
-.reel[data-template='split'][data-side='right'] {
-  --panel-from: inset(0 0 0 100%);
-}
-
-.reel[data-template='split'] .reel-shade {
-  display: none;
-}
-
-.reel[data-template='split'] :is(.reel-stage, .reel-frame) {
-  inset: auto;
-  top: 50%;
-  left: 6cqw;
-  width: 50cqw;
-  aspect-ratio: 16 / 9;
-  translate: 0 -50%;
-}
-
-.reel[data-template='split'][data-side='right'] :is(.reel-stage, .reel-frame) {
-  left: auto;
-  right: 6cqw;
-}
-
-.reel[data-template='split'] .reel-stage {
-  border-radius: var(--radius);
-  box-shadow: 0 10px 30px -12px rgb(27 26 23 / 0.4);
-  animation: reel-panel 950ms var(--ease) calc(var(--t1) - 150ms - var(--lead)) both;
-}
-
-/* An offset accent outline sits behind the panel, like a plate under a photograph. */
-.reel[data-template='split'] .reel-frame {
-  display: block;
-  position: absolute;
-  z-index: -1;
-  margin: 1.4cqw 0 0 1.4cqw;
-  border: 1.5px solid var(--accent);
-  border-radius: var(--radius);
-  animation: reel-fade-in 800ms var(--ease) calc(var(--t1) + 400ms - var(--lead)) both;
-}
-
-.reel[data-template='split'][data-side='right'] .reel-frame {
-  margin: 1.4cqw 1.4cqw 0 0;
+  --kicker-size: 1.05cqw;
 }
 
 .reel[data-template='split'] .reel-index {
   display: flex;
   position: absolute;
   z-index: 4;
-  top: calc(50cqh + 14.0625cqw + 3cqh);
-  left: 6cqw;
+  top: calc(var(--pic) + 2.6cqh);
+  right: 3cqw;
   gap: 0.5em;
-  font-size: clamp(0.6rem, min(1.1cqw, 2cqh), 1.2rem);
+  font-size: clamp(0.6rem, min(1.05cqw, 2cqh), 1.1rem);
   font-weight: 600;
   letter-spacing: 0.2em;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
   animation: reel-fade-in 600ms var(--ease) calc(var(--t1) + 400ms) both;
-}
-
-.reel[data-template='split'][data-side='right'] .reel-index {
-  left: auto;
-  right: 6cqw;
 }
 
 /* One still, one move: no shot count. */
@@ -501,24 +499,6 @@
   animation: reel-window 2000ms linear var(--d) both;
 }
 
-.reel[data-template='split'] .reel-copy {
-  left: 61cqw;
-  right: 6cqw;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: max(0.6rem, 3cqh);
-}
-
-.reel[data-template='split'][data-side='right'] .reel-copy {
-  left: 6cqw;
-  right: 61cqw;
-}
-
-.reel[data-template='split'] .reel-kicker {
-  color: var(--accent-text);
-}
-
 .reel[data-template='split'] .reel-kicker::before {
   content: '';
   display: inline-block;
@@ -527,12 +507,6 @@
   margin-right: 0.8em;
   vertical-align: 0.3em;
   background: var(--accent);
-}
-
-.reel[data-template='split'] .reel-title {
-  font-size: clamp(0.9rem, calc(min(5cqw, 9cqh) * var(--title-scale)), 10rem);
-  color: var(--ink);
-  text-shadow: none;
 }
 
 .reel[data-template='split'] .reel-word {
@@ -547,104 +521,21 @@
   animation-duration: 760ms;
 }
 
-.reel[data-template='split'] .reel-word.is-hot {
-  color: var(--accent-text);
-}
-
-.reel[data-template='split'] .reel-hook {
-  max-width: 40ch;
-  font-size: clamp(0.7rem, min(1.55cqw, 2.9cqh), 2rem);
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-
-.reel[data-template='split'] .reel-tags li {
-  border-color: var(--line);
-  background: var(--surface-2);
-  color: var(--ink-2);
-}
-
-.reel[data-template='split'] .reel-tags li::before {
-  background: var(--accent);
-}
-
-/* ---------- Slides and title cards: whole, in the split frame, over a light blurred copy ---------- */
-
-.reel[data-slides] {
-  --float-ms: calc(var(--tend) + 1200ms - var(--t1) + var(--lead));
-}
-
-/* Below the accent plate (z-index -1). */
-.reel-fill {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  overflow: hidden;
-}
-
-.reel-fill::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgb(250 248 246 / 0.7);
-}
-
-/* Laid out at a quarter of the stage and scaled up, so the blur runs on a small layer. */
-.reel-fill-shot {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 25%;
-  height: 25%;
-  transform-origin: 0 0;
-  transform: translate(-6cqw, -6cqh) scale(4.48);
-  filter: blur(6px);
-  animation:
-    reel-fade-in 700ms var(--ease) var(--s) both,
-    reel-hide 1ms linear var(--o) forwards;
-}
-
-/* The first one is there from the start, under the ident (or the card image in previews). */
-.reel-fill-shot:first-child {
-  animation: reel-hide 1ms linear var(--o) forwards;
-}
-
-/* Slides do not zoom: the frame floats a little instead. */
-.reel[data-slides] .reel-stage {
-  animation:
-    reel-panel 950ms var(--ease) calc(var(--t1) - 150ms - var(--lead)) both,
-    reel-float var(--float-ms) var(--ease-io) calc(var(--t1) - var(--lead)) both;
-}
-
-.reel[data-slides] .reel-frame {
-  animation:
-    reel-fade-in 800ms var(--ease) calc(var(--t1) + 400ms - var(--lead)) both,
-    reel-float var(--float-ms) var(--ease-io) calc(var(--t1) - var(--lead)) both;
-}
-
-/* ---------- Template: Kinetic (giant serif over natural-colour stills) ---------- */
-
-/* Light gradients only where the type sits: the title band up top, the hook bottom left. */
-.reel[data-template='kinetic'] .reel-shade {
-  background:
-    linear-gradient(to bottom, rgb(27 26 23 / 0.42), rgb(27 26 23 / 0.12) 45%, transparent 64%),
-    radial-gradient(ellipse 55% 40% at 18% 100%, rgb(27 26 23 / 0.36), transparent 70%);
-}
+/* ---------- Template: Kinetic (giant serif lines that fill the band) ---------- */
 
 .reel[data-template='kinetic'] .reel-titleblock {
-  position: absolute;
-  top: 12cqh;
-  left: 6cqw;
-  right: 6cqw;
-  transform-origin: left top;
-  animation:
-    reel-k-dim 800ms var(--ease) var(--dim) forwards,
-    reel-k-title-out 500ms var(--ease-in) var(--o) forwards;
+  transform-origin: left center;
 }
 
+.reel[data-template='kinetic'] .reel-kicker {
+  margin-bottom: 0.4em;
+}
+
+/* Lines fill the width (serif glyphs ≈ 0.5em) within the band's height (plan.ts: --chars, --klines). */
 .reel[data-template='kinetic'] .reel-title {
-  font-size: min(calc(var(--kw) * 1cqw), calc(var(--kh) * 1cqh));
-  line-height: 0.95;
+  display: block;
+  font-size: min(calc(var(--copy-w) / var(--chars)), calc(var(--title-h) / var(--klines)));
+  line-height: 0.98;
   letter-spacing: -0.015em;
 }
 
@@ -663,12 +554,11 @@
 
 .reel[data-template='kinetic'] .reel-line[data-outline] {
   color: transparent;
-  -webkit-text-stroke: max(1px, 0.02em) var(--light);
+  -webkit-text-stroke: max(1px, 0.02em) var(--ink);
 }
 
 .reel[data-template='kinetic'] .reel-word.is-hot {
-  color: var(--hot);
-  -webkit-text-stroke-color: var(--hot);
+  -webkit-text-stroke-color: var(--accent-text);
 }
 
 .reel[data-template='kinetic'] .reel-word > span {
@@ -696,26 +586,16 @@
   animation: reel-word-slam 680ms var(--ease) calc(var(--lw) - var(--lead)) both;
 }
 
-.reel[data-template='kinetic'] .reel-story {
-  position: absolute;
-  left: 6cqw;
-  right: 34cqw;
-  bottom: 12cqh;
-  align-items: flex-start;
-  animation-name: reel-k-out;
-}
-
+/* The hook on a highlighter mark that sweeps in. */
 .reel[data-template='kinetic'] .reel-hook {
   position: relative;
   isolation: isolate;
   width: fit-content;
-  max-width: min(42ch, 60cqw);
-  text-wrap: pretty;
   padding: 0.3em 0.55em;
   color: var(--night);
-  font-size: clamp(0.7rem, min(1.9cqw, 3.4cqh), 2.4rem);
   font-weight: 600;
   line-height: 1.3;
+  text-wrap: pretty;
   animation: none;
 }
 
@@ -730,13 +610,11 @@
 }
 
 .reel[data-template='kinetic'] .reel-hook > span {
-  display: block;
   animation: reel-fade-in 380ms linear calc(var(--d) + 220ms) both;
 }
 
 .reel[data-template='kinetic'] .reel-tags {
   gap: 0.3em 1.1em;
-  font-size: clamp(0.8rem, min(1.9cqw, 3.4cqh), 2.2rem);
 }
 
 .reel[data-template='kinetic'] .reel-tags li {
@@ -745,6 +623,7 @@
   border-radius: 0;
   background: none;
   font-family: var(--serif);
+  font-size: 1.2em;
   font-style: italic;
   font-weight: 400;
   letter-spacing: 0;
@@ -758,40 +637,28 @@
   margin-right: 0.05em;
   border-radius: 0;
   background: none;
-  color: var(--hot);
+  color: var(--accent-text);
   vertical-align: baseline;
 }
 
-/* ---------- Ident: serif two-tone wordmark on paper (0–1.6 s) ---------- */
+/* ---------- Ident: the serif two-tone wordmark in the band (0–1.6 s), the first shot above ---------- */
 
 .reel-ident {
+  position: absolute;
+  inset: var(--pic) var(--copy-r) 0 5cqw;
   z-index: 5;
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: max(0.4rem, 2cqh);
-  background: var(--wash);
+  gap: max(0.25rem, 1cqh);
   animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - 320ms) forwards;
-}
-
-/* A paper glow behind the wordmark: the ident sits on the first still, so no colour goes over it. */
-.reel-ident-wash {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: radial-gradient(
-    52cqw 40cqh at 50% 50%,
-    color-mix(in srgb, var(--paper) 70%, transparent),
-    transparent 70%
-  );
-  animation: reel-glow 1400ms var(--ease) both;
 }
 
 .reel-wordmark {
   position: relative;
   padding: 0 0.12em;
   font-family: var(--serif);
-  font-size: clamp(1.6rem, min(10cqw, 17cqh), 12rem);
+  font-size: clamp(1.1rem, min(6.4cqw, calc(var(--band) * 0.44)), 7rem);
   line-height: 1.1;
   letter-spacing: -0.01em;
 }
@@ -816,7 +683,7 @@
 }
 
 .reel-streak {
-  width: min(28cqw, 22rem);
+  width: min(22cqw, 18rem);
   height: 2px;
   background: var(--accent);
   animation: reel-streak 900ms var(--ease) 80ms both;
@@ -824,7 +691,7 @@
 
 .reel-ident-sub {
   margin-right: -0.32em;
-  font-size: clamp(0.6rem, min(1.2cqw, 2.2cqh), 1.3rem);
+  font-size: clamp(0.55rem, min(1cqw, 2.2cqh), 1.1rem);
   font-weight: 500;
   letter-spacing: 0.32em;
   text-transform: uppercase;
@@ -832,29 +699,7 @@
   animation: reel-rise-in 600ms var(--ease) 700ms both;
 }
 
-/* Split has no shot under its ident: the backdrop sits there under the wash, as while loading. */
-.reel[data-template='split'] .reel-ident {
-  background: none;
-}
-
-.reel[data-template='split'] .reel-ident::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--wash);
-}
-
-.reel-ident-cover {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Split: an ink block wipes across and leaves the wordmark behind. */
+/* Split: a gold block wipes across and leaves the wordmark behind (never a dark bar). */
 .reel[data-template='split'] .reel-wordmark {
   overflow: hidden;
 }
@@ -864,7 +709,7 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: var(--ink);
+  background: var(--gold);
   animation: reel-block 900ms var(--ease-io) 150ms both;
 }
 
@@ -881,24 +726,15 @@
   animation: reel-letter 620ms var(--ease) calc(150ms + var(--i) * 45ms) both;
 }
 
-/* ---------- End card (7.5–10 s): key art beside the title, then the art grows into the player ---------- */
+/* ---------- End card (7.5–10 s): the player's picture, whole, with the title in the band ---------- */
 
 /*
-  The art is laid out exactly where the player will be (the whole stage) and transformed down
-  into a card (scale --ps, offset --pdx/--pdy), so the closing move lands on the player's first frame.
+  The art fills the stage exactly as the player's poster does; the band's title leaves at --tout
+  and the art settles to full size by the end, so the cut to the player has nothing to move.
 */
 .reel-end {
-  --pw: 100cqw;
-  --ps: 0.46;
-  --pdx: calc(44cqw - var(--ps) * var(--pw) / 2);
-  --pdy: 0px;
   z-index: 6;
-  background: var(--paper);
   animation: reel-end-fade 900ms var(--ease) var(--tend) both;
-}
-
-.reel[data-side='left'] .reel-end {
-  --pdx: calc(var(--ps) * var(--pw) / 2 - 44cqw);
 }
 
 .reel[data-end='iris'] .reel-end {
@@ -911,34 +747,14 @@
   animation-name: reel-end-rise;
 }
 
-.reel-end::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    60cqw 80cqh at calc(50% + var(--pdx)) calc(50% + var(--pdy)),
-    color-mix(in srgb, var(--accent) 10%, transparent),
-    transparent 70%
-  );
-  animation: reel-gone var(--out) var(--ease-in) var(--tout) forwards;
-}
-
-.reel-end-poster {
-  position: absolute;
-  inset: 0;
-  width: var(--pw);
-  height: calc(var(--pw) * 0.5625);
-  margin: auto;
-  border-radius: var(--radius);
-  box-shadow: 0 10px 30px -12px rgb(27 26 23 / 0.45);
-  animation: reel-grow var(--out) var(--ease-io) var(--tout) both;
-}
-
+.reel-end-poster,
 .reel-end-art {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: inherit;
+}
+
+.reel-end-art {
   background: var(--surface-2);
 }
 
@@ -948,23 +764,21 @@
 
 .reel-end-copy {
   position: absolute;
-  top: 50%;
-  left: 6cqw;
-  right: calc(10cqw + var(--ps) * var(--pw));
-  translate: 0 -50%;
+  inset: var(--pic) 0 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
-  gap: max(0.35rem, 1.4cqh);
+  gap: max(0.25rem, 1cqh);
+  padding: 2.4cqh var(--copy-r) 2.4cqh 5cqw;
+  /* Over the crisp poster rather than a blurred copy: more paper, so its own text stays out of the way. */
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 -1px 0 rgb(55 54 55 / 0.08);
   animation: reel-gone 380ms var(--ease-in) var(--tout) forwards;
 }
 
-.reel[data-side='left'] .reel-end-copy {
-  left: calc(10cqw + var(--ps) * var(--pw));
-  right: 6cqw;
-}
-
 .reel-end-copy > * {
+  max-width: 100%;
   animation: reel-rise-in 800ms var(--ease) calc(var(--tend) + var(--k, 0ms)) both;
 }
 
@@ -973,7 +787,7 @@
   display: flex;
   align-items: center;
   gap: 0.7em;
-  font-size: clamp(0.6rem, min(1.1cqw, 2cqh), 1.3rem);
+  font-size: clamp(0.6rem, min(1.05cqw, 2cqh), 1.2rem);
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
@@ -1000,27 +814,29 @@
 .reel-end-title {
   --k: 230ms;
   display: -webkit-box;
-  max-width: 100%;
   overflow: hidden;
   padding-bottom: 0.06em;
   font-family: var(--serif);
-  font-size: clamp(0.95rem, calc(min(4.8cqw, 8.8cqh) * var(--title-scale)), 9rem);
+  font-size: clamp(0.9rem, calc(min(3.6cqw, 6.6cqh) * var(--title-scale)), 6rem);
   font-weight: 400;
   line-height: 1.04;
   letter-spacing: -0.01em;
   text-wrap: balance;
   color: var(--ink);
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
 }
 
 .reel-end-meta,
 .reel-count {
-  font-size: clamp(0.65rem, min(1.4cqw, 2.5cqh), 1.6rem);
+  font-size: clamp(0.62rem, min(1.2cqw, 2.3cqh), 1.3rem);
 }
 
 .reel-end-meta {
   --k: 330ms;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink-2);
 }
 
@@ -1037,8 +853,8 @@
 .reel-digit {
   display: grid;
   place-items: center;
-  min-width: 1.9em;
-  height: 1.9em;
+  min-width: 1.8em;
+  height: 1.8em;
   padding: 0 0.4em;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1073,15 +889,17 @@
 
 /* ---------- Controls & loading ---------- */
 
+/* At the band's right end, never over the picture. */
 .reel-controls {
   position: absolute;
   z-index: 11;
   right: 3cqw;
-  bottom: calc(4cqh + max(3px, 0.5cqh));
+  bottom: calc(var(--band) / 2);
+  translate: 0 50%;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: clamp(0.75rem, min(1.15cqw, 2.3cqh), 1.1rem);
+  font-size: var(--ctl);
   animation: reel-fade-in 400ms ease both;
 }
 
@@ -1142,32 +960,25 @@
 }
 
 /*
-  While the stills decode, the thumbnail (already on screen in the card the user came from) sits
-  under the same paper wash the ident uses, so the stage never paints as a blank card.
+  While the stills decode, the thumbnail (already on screen in the card the user came from) shows
+  as it is, with a thin scanning line low down, so the stage never paints as a blank card.
 */
 .reel-loading {
   position: absolute;
   inset: 0;
   display: grid;
-  place-items: center;
+  place-items: end center;
+  padding-bottom: calc(var(--band) / 2);
   isolation: isolate;
 }
 
 .reel-loading img {
   position: absolute;
   inset: 0;
-  z-index: -2;
+  z-index: -1;
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.reel-loading::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--wash);
 }
 
 .reel-loading::before {
@@ -1183,25 +994,24 @@
 
 /* ---------- Preview variant (card hover/focus): silent, no chrome, lighter effects ---------- */
 
-/* A hover answers quickly: the first beat comes 1.1 s early; slides stay short on the hero's stage. */
+/* A hover answers quickly: the first beat comes 1.1 s early; the copy has the band to itself. */
 .reel[data-variant='preview'] {
   --fx: 0;
   --lead: 1100ms;
   --travel: min(30cqw, 9rem);
 }
 
-.reel[data-variant='preview'] .reel-tx {
-  box-shadow: none;
-}
-
 /*
   Cards open on footage: no ident, the thumbnail as is while decoding, then the card's own image
-  (.reel-cover) over the first pan until it dissolves into the reel at the (earlier) first beat.
+  (.reel-cover) over the first pan until it dissolves into the reel; the band rises with it.
 */
 .reel[data-variant='preview'] .reel-ident,
-.reel[data-variant='preview'] .reel-loading::before,
-.reel[data-variant='preview'] .reel-loading::after {
+.reel[data-variant='preview'] .reel-loading::before {
   display: none;
+}
+
+.reel[data-variant='preview'] .reel-band {
+  animation: reel-band-in 620ms var(--ease) calc(var(--t1) - var(--lead) - 200ms) both;
 }
 
 .reel-cover {
@@ -1220,186 +1030,50 @@
   display: none;
 }
 
-/* Lower minimum sizes: these stages are 160–480px wide. */
-.reel[data-variant='preview'] .reel-kicker {
-  font-size: clamp(0.45rem, min(var(--kicker-size, 1.3cqw), 2.4cqh), 1.5rem);
-}
+/*
+  Card-size previews (up to 480px, where type would be tiny) are pictures only, at full height:
+  photos, slides whole, then the poster. The card's own title sits right below them. Larger
+  previews (the featured viewer) keep the band and its type.
+*/
+@container (max-width: 480px) {
+  .reel[data-variant='preview'] > * {
+    --band: 0cqh;
+  }
 
-.reel[data-variant='preview'] .reel-title {
-  font-size: clamp(0.65rem, calc(min(8cqw, 14cqh) * var(--title-scale)), 15rem);
-}
-
-.reel[data-variant='preview'][data-template='split'] .reel-title {
-  font-size: clamp(0.6rem, calc(min(5cqw, 9cqh) * var(--title-scale)), 10rem);
-}
-
-.reel[data-variant='preview'] .reel-hook {
-  font-size: clamp(0.55rem, min(2cqw, 3.6cqh), 2.6rem);
-}
-
-.reel[data-variant='preview'][data-template='cinematic'] .reel-hook {
-  font-size: clamp(0.6rem, min(2.8cqw, 5cqh), 3.6rem);
-}
-
-.reel[data-variant='preview'][data-template='split'] .reel-hook {
-  font-size: clamp(0.55rem, min(1.55cqw, 2.9cqh), 2rem);
-}
-
-.reel[data-variant='preview'][data-template='kinetic'] .reel-hook {
-  font-size: clamp(0.55rem, min(1.9cqw, 3.4cqh), 2.4rem);
-}
-
-.reel[data-variant='preview'] .reel-wordmark {
-  font-size: clamp(1rem, min(10cqw, 17cqh), 12rem);
-}
-
-.reel[data-variant='preview'] .reel-ident-sub {
-  font-size: clamp(0.4rem, min(1.2cqw, 2.2cqh), 1.3rem);
-}
-
-.reel[data-variant='preview'] .reel-end-title {
-  font-size: clamp(0.65rem, calc(min(4.8cqw, 8.8cqh) * var(--title-scale)), 9rem);
-}
-
-.reel[data-variant='preview'] .reel-eyebrow {
-  font-size: clamp(0.4rem, min(1.1cqw, 2cqh), 1.3rem);
-}
-
-.reel[data-variant='preview'] .reel-end-meta {
-  font-size: clamp(0.5rem, min(1.4cqw, 2.5cqh), 1.6rem);
-}
-
-@container (max-width: 300px) {
-  .reel[data-variant='preview'] :is(.reel-story, .reel-ident-sub, .reel-end-meta) {
+  .reel[data-variant='preview'] :is(.reel-band, .reel-copy, .reel-end-copy) {
     display: none;
   }
 }
 
-/* ---------- Small stages (phones): fewer, larger things ---------- */
+/* ---------- Small stages (phones, cards): a deeper band, fewer, larger things ---------- */
 
 @container (max-width: 560px) {
-  /* The title sits on a solid scrim and keeps to three lines. */
-  .reel[data-template='cinematic'] .reel-titleblock {
-    padding: 0.5em 0.7em;
-    border-radius: calc(var(--radius) / 2);
-    background: rgb(27 26 23 / 0.72);
+  .reel > * {
+    --band: 36cqh;
+    --ctl: 0.72rem;
   }
 
-  .reel:is([data-template='cinematic'], [data-template='split']) .reel-title {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-
-  /* The controls take the bottom band (3cqh + 2.5rem), so copy keeps clear of it. */
-  .reel[data-template='split'] :is(.reel-stage, .reel-frame) {
-    top: calc(50% - 0.75rem);
-    width: 46cqw;
-  }
-
-  .reel[data-template='split'] .reel-copy {
-    top: 2cqh;
-    bottom: calc(3cqh + 2.5rem + 0.4rem);
-    left: 56cqw;
-    gap: max(0.4rem, 2cqh);
-  }
-
-  .reel[data-template='split'] .reel-hook {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-  }
-
-  .reel[data-template='split'][data-side='right'] .reel-copy {
-    left: 6cqw;
-    right: 56cqw;
-  }
-
+  .reel-tags,
   .reel[data-template='split'] .reel-index {
     display: none;
   }
 
-  /* Previews have no controls to keep clear of. */
-  .reel[data-variant='preview'][data-slides] :is(.reel-stage, .reel-frame) {
-    top: 50%;
-  }
-
-  .reel[data-variant='preview'][data-slides] .reel-copy {
-    bottom: 4cqh;
-  }
-
-  .reel[data-template='cinematic'] .reel-rule {
-    inset: 3.5cqh 2.5cqw;
-  }
-
-  .reel[data-lowres][data-template='cinematic'] .reel-stage {
-    inset: 6cqh 0;
-    width: calc(88cqh * 16 / 9);
-  }
-
-  /* Kinetic: at most four title lines, and the hook sits above the controls. */
-  .reel[data-template='kinetic'] .reel-titleblock {
-    top: 7cqh;
-  }
-
-  .reel[data-template='kinetic'] .reel-title {
-    font-size: min(calc(var(--kw) * 0.96cqw), calc(var(--kh-s) * 1cqh));
-  }
-
-  /* Never below 20px on the watch stage; an over-long line ellipsizes instead. */
-  .reel:not([data-variant='preview'])[data-template='kinetic'] .reel-title {
-    font-size: max(1.25rem, min(calc(var(--kw) * 0.96cqw), calc(var(--kh-s) * 1cqh)));
-  }
-
-  .reel[data-template='kinetic'] .reel-line {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .reel[data-template='kinetic'] .reel-line:nth-child(n + 5) {
-    display: none;
-  }
-
-  .reel[data-template='kinetic'] .reel-line:nth-child(4):not(:last-child)::after {
-    content: '…';
-  }
-
-  .reel[data-template='kinetic'] .reel-story {
-    right: 6cqw;
-    bottom: calc(3cqh + 2.5rem + 0.4rem);
-  }
-
-  .reel[data-template='kinetic'] .reel-hook {
-    max-width: min(42ch, 88cqw);
-  }
-
-  .reel[data-template='kinetic'] .reel-hook > span {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-
   .reel-kicker {
-    margin-bottom: 0.6em;
+    margin-bottom: 0.5em;
+    font-size: clamp(0.5rem, 2.2cqw, 0.8rem);
   }
 
-  .reel-end {
-    --ps: 0.42;
+  .reel-title {
+    font-size: clamp(0.75rem, calc(min(7cqw, 11cqh) * var(--title-scale)), 1.6rem);
   }
 
   .reel-end-title {
-    -webkit-line-clamp: 3;
+    font-size: clamp(0.75rem, calc(min(5.6cqw, 9cqh) * var(--title-scale)), 1.4rem);
   }
 
   .reel-controls {
     right: 2.5cqw;
-    bottom: 3cqh;
     gap: 0.35rem;
-    font-size: 0.72rem;
   }
 
   .reel-btn {
@@ -1407,81 +1081,42 @@
   }
 }
 
+/*
+  Phones: the controls take a row of their own at the foot of the band and the copy the band's
+  full width above them, so neither ever sits on the speaker.
+*/
 @container (max-width: 420px) {
-  .reel-tags {
-    display: none;
+  .reel:not([data-variant='preview']) > * {
+    --band: 48cqh;
+    --copy-r: 5cqw;
+    /* Kinetic lines keep above the controls' row. */
+    --title-h: calc((var(--band) - 3cqh - 2.5rem) * 0.7);
   }
 
-  /*
-    Split stacks: full-width stills on top, copy on the paper band below, controls up top.
-    Slides stay whole beside the copy instead.
-    `[data-side]` outranks the side-specific offsets above, which would otherwise win here.
-  */
-  .reel[data-template='split'][data-side]:not([data-slides]) :is(.reel-stage, .reel-frame) {
-    top: 0;
-    right: 0;
-    left: 0;
-    width: auto;
-    height: 58cqh;
-    aspect-ratio: auto;
+  .reel:not([data-variant='preview']) :is(.reel-copy, .reel-ident) {
+    bottom: calc(3cqh + 2.5rem);
+  }
+
+  .reel:not([data-variant='preview']) .reel-end-copy {
+    padding-bottom: calc(3cqh + 2.5rem);
+  }
+
+  .reel-controls {
+    bottom: 3cqh;
     translate: none;
-    border-radius: 0;
   }
 
-  /* The band crops photos wide: keep the upper part, where faces are. */
-  .reel[data-template='split']:not([data-slides]) .reel-kb img {
-    object-position: 50% 30%;
+  .reel-wordmark {
+    font-size: clamp(1rem, 9cqw, 2.2rem);
   }
 
-  .reel[data-template='split']:not([data-slides]) .reel-frame {
+  /* The end card keeps the title, on one line, and the countdown. */
+  .reel:not([data-variant='preview']) :is(.reel-eyebrow, .reel-end-meta) {
     display: none;
   }
 
-  .reel[data-template='split'][data-side]:not([data-slides]) .reel-copy {
-    top: auto;
-    right: 5cqw;
-    bottom: 0;
-    left: 5cqw;
-    height: 42cqh;
-    gap: 0.25rem;
-  }
-
-  .reel[data-template='split'] .reel-hook {
-    display: none;
-  }
-
-  .reel[data-template='split']:not([data-slides]) .reel-title {
-    -webkit-line-clamp: 2;
-  }
-
-  /* Beside a slide the column is narrow: the kicker keeps to two tighter lines. */
-  .reel[data-slides] .reel-kicker {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    letter-spacing: 0.12em;
-  }
-
-  .reel[data-template='split']:not([data-slides]) .reel-controls {
-    top: 2.5cqh;
-    bottom: auto;
-  }
-
-  /* The byline keeps only "category · year". */
-  .reel-end-meta {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .reel-end-meta span:first-child:not(:only-child) {
-    display: none;
-  }
-
-  .reel-end {
-    --ps: 0.4;
+  .reel-end-title {
+    -webkit-line-clamp: 1;
   }
 }
 
@@ -1511,12 +1146,6 @@
     transform: translate3d(var(--kx0), var(--ky0), 0) scale(var(--ks0));
   }
 
-  /* The art stays in the card; the hand-off is a plain cut. */
-  .reel-end-poster {
-    animation: none !important;
-    transform: translate(var(--pdx), var(--pdy)) scale(var(--ps));
-  }
-
   .reel-ident-block {
     display: none !important;
   }
@@ -1529,8 +1158,7 @@
     animation-name: reel-end-fade !important;
   }
 
-  .reel[data-template='split'] .reel-stage,
-  .reel[data-slides] .reel-frame {
+  .reel[data-variant='preview'] .reel-band {
     animation-name: reel-fade-in;
   }
 }
@@ -1564,6 +1192,12 @@
   }
   to {
     visibility: visible;
+  }
+}
+
+@keyframes reel-band-in {
+  from {
+    transform: translate3d(0, 100%, 0);
   }
 }
 
@@ -1622,21 +1256,12 @@
   }
 }
 
-@keyframes reel-float {
-  from {
-    transform: translate3d(var(--float-x0), var(--float-y0), 0) scale(0.985);
-  }
-  to {
-    transform: translate3d(var(--float-x1), var(--float-y1), 0);
-  }
-}
-
 @keyframes reel-drift {
   from {
-    transform: translate3d(calc(var(--drift) * 1.2cqw), 0, 0);
+    transform: translate3d(calc(var(--drift) * 0.8cqw), 0, 0);
   }
   to {
-    transform: translate3d(calc(var(--drift) * -1.2cqw), 0, 0);
+    transform: translate3d(calc(var(--drift) * -0.8cqw), 0, 0);
   }
 }
 
@@ -1707,32 +1332,10 @@
   }
 }
 
-@keyframes reel-k-dim {
-  to {
-    opacity: 0.45;
-    transform: translate3d(0, calc(var(--motion) * -3cqh), 0) scale(calc(1 - var(--motion) * 0.06));
-  }
-}
-
-@keyframes reel-k-title-out {
-  to {
-    opacity: 0;
-    transform: translate3d(calc(var(--motion) * -6cqw), calc(var(--motion) * -3cqh), 0)
-      scale(calc(1 - var(--motion) * 0.06));
-  }
-}
-
-@keyframes reel-k-out {
-  to {
-    opacity: 0;
-    transform: translate3d(calc(var(--motion) * -6cqw), 0, 0);
-  }
-}
-
 @keyframes reel-hot {
   from {
-    color: var(--plain, var(--light));
-    -webkit-text-stroke-color: var(--plain, var(--light));
+    color: var(--plain);
+    -webkit-text-stroke-color: var(--plain);
   }
 }
 
@@ -1750,19 +1353,6 @@
   }
 }
 
-@keyframes reel-panel {
-  from {
-    opacity: 0;
-    clip-path: var(--panel-from);
-  }
-  30% {
-    opacity: 1;
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
 @keyframes reel-window {
   0%,
   100% {
@@ -1771,20 +1361,6 @@
   10%,
   90% {
     opacity: 1;
-  }
-}
-
-@keyframes reel-glow {
-  from {
-    opacity: 0;
-    transform: scale(calc(1 - var(--motion) * 0.4));
-  }
-  45% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0.85;
-    transform: scale(calc(1 + var(--motion) * 0.08));
   }
 }
 
@@ -1841,7 +1417,7 @@
 @keyframes reel-ident-out {
   to {
     opacity: 0;
-    transform: scale(calc(1 + var(--motion) * 0.1));
+    transform: scale(calc(1 + var(--motion) * 0.06));
     visibility: hidden;
   }
 }
@@ -1849,15 +1425,6 @@
 @keyframes reel-gone {
   to {
     opacity: 0;
-  }
-}
-
-@keyframes reel-grow {
-  from {
-    transform: translate(var(--pdx), var(--pdy)) scale(var(--ps));
-  }
-  to {
-    transform: none;
   }
 }
 
@@ -1869,10 +1436,10 @@
 
 @keyframes reel-end-iris {
   from {
-    clip-path: circle(0% at 50% 55%);
+    clip-path: circle(0% at 50% 40%);
   }
   to {
-    clip-path: circle(100% at 50% 55%);
+    clip-path: circle(100% at 50% 40%);
   }
 }
 
@@ -1885,7 +1452,7 @@
 
 @keyframes reel-push {
   from {
-    transform: scale(calc(1 + var(--motion) * 0.12));
+    transform: scale(calc(1 + var(--motion) * 0.08));
   }
   to {
     transform: none;

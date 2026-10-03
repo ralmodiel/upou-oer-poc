@@ -65,7 +65,7 @@ describe('buildReelPlan', () => {
     expect(Math.min(+b['--ks0'], +b['--ks1'])).toBeGreaterThan(Math.min(+a['--ks0'], +a['--ks1']))
   })
 
-  it('gives one still a single long move, and a title card the split frame', () => {
+  it('gives one still a single long move, and shows a title card whole in any template', () => {
     const one = buildReelPlan({ ...testVideo, frames: Array(3).fill(still('maxres3')) })
     expect(one.single).toBe(true)
     expect(one.shots).toHaveLength(1)
@@ -78,24 +78,24 @@ describe('buildReelPlan', () => {
         frames: Array(3).fill(still('maxresdefault')),
       }),
     )
-    expect(cards.every((p) => p.single && p.template === 'split')).toBe(true)
+    expect(cards.every((p) => p.single && p.slides && p.shots[0].slide)).toBe(true)
+    // Type never sits on the picture, so title cards and slides take every template.
+    expect(new Set(cards.map((p) => p.template)).size).toBeGreaterThan(1)
   })
 
-  it('shows slides whole in the split frame: no zoom or pan, a sliver on 640px stills', () => {
+  it('shows slides whole, without zoom or pan (a sliver on 640px stills)', () => {
     const plan = buildReelPlan({
       ...testVideo,
       frames: ['maxres1', 'maxres2', 'maxres3'].map(still),
       slides: [true, false, true],
     })
     expect(plan.slides).toBe(true)
-    expect(plan.template).toBe('split')
     expect(plan.shots.map((s) => s.slide)).toEqual([true, false, true])
     const [slide, photo] = plan.shots.map((s) => vars(s.style))
     expect(slide).toMatchObject({ '--ko': '50% 50%', '--ks0': 1, '--ks1': 1 })
     for (const k of ['--kx0', '--ky0', '--kx1', '--ky1']) expect(slide[k]).toBe('0%')
-    // The photo between them keeps its Ken Burns move; the frame floats instead of the slides.
+    // The photo between them keeps its Ken Burns move.
     expect(+photo['--ks0']).not.toBe(+photo['--ks1'])
-    expect(vars(plan.style)['--float-x1']).toMatch(/cqw$/)
 
     const sd = buildReelPlan({
       ...testVideo,

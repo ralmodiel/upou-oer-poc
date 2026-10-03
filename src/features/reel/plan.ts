@@ -46,7 +46,7 @@ export interface Shot {
   src: string
   /** 320px version of the same still, for preview stages. */
   small: string
-  /** A slide or title card: shown whole, without a zoom, over a light blurred copy of itself. */
+  /** A slide or title card: shown whole, without a zoom, over a blurred copy of itself. */
   slide: boolean
   tx: Transition
   style: CSSProperties
@@ -62,7 +62,7 @@ export interface ReelPlan {
   lowRes: boolean
   /** Every shot is the same still: one long move replaces the three cuts. */
   single: boolean
-  /** Some shot is a slide or title card: the split frame, so no type ever covers its own text. */
+  /** Some shot is a slide or title card (shown whole; no template sets type on a picture). */
   slides: boolean
   /** Kinetic long titles enter a line at a time (`line`), everything else word by word. */
   unit: 'word' | 'line'
@@ -232,19 +232,6 @@ function longMoveVars(rand: () => number, src: string): Vars {
   }
 }
 
-// The split panel holding slides floats a little across the montage, as slides cannot zoom.
-function floatVars(rand: () => number): Vars {
-  const way = rand() < 0.5 ? -1 : 1
-  const dx = way * (0.5 + rand() * 0.4)
-  const dy = (rand() < 0.5 ? -1 : 1) * (0.3 + rand() * 0.3)
-  return {
-    '--float-x0': `${(-dx).toFixed(2)}cqw`,
-    '--float-y0': `${(-dy).toFixed(2)}cqh`,
-    '--float-x1': `${dx.toFixed(2)}cqw`,
-    '--float-y1': `${dy.toFixed(2)}cqh`,
-  }
-}
-
 function moveVars({ s0, s1, ox, oy, angle }: Move): Vars {
   const dx = Math.cos(angle)
   const dy = Math.sin(angle) * 0.7
@@ -307,11 +294,11 @@ export function buildReelPlan(video: Video): ReelPlan {
   // One still three times would stutter: it gets a single slow move under the whole montage.
   const single = new Set(frames).size === 1
   // The original thumbnail standing in for all three stills is often a title card with its own
-  // type: like a slide it goes in the split template's frame, beside the reel's title.
+  // type: like a slide it shows whole. No template sets type on the picture, so slides take the
+  // seeded template like everything else.
   const card = single && !/\/(maxres|sd|mq)[1-3]\.jpg$/.test(frames[0])
   const slides = card || sources.some((s) => s.slide)
-  const seeded = pick(rand, TEMPLATES)
-  const template = slides ? 'split' : seeded
+  const template = pick(rand, TEMPLATES)
   const accent = pick(rand, ACCENTS)
   const side = rand() < 0.5 ? 'left' : 'right'
   const motion = rand() < 0.5 ? 'slam' : 'slide'
@@ -391,14 +378,14 @@ export function buildReelPlan(video: Video): ReelPlan {
   const hookIn = long ? 4600 : 4100
   const chipsIn = hookIn + 1000
   const exitAt = END_AT - 350
-  // Cinematic swaps the title for the hook in the centre; with no hook the title stays.
-  const titleOut = template === 'cinematic' && hook ? hookIn - 450 : exitAt
+  // The band holds one thing at a time: the hook takes the title's place; with none the title stays.
+  const titleOut = hook ? hookIn - 450 : exitAt
 
   const longest = Math.max(...words.map((w) => w.length))
   const hotCandidates = words.flatMap((w, i) => (w.length === longest ? [i] : []))
   const hot = longest >= 4 ? pick(rand, hotCandidates) : -1
-  // Kinetic sets each line on its own; more, shorter lines keep long titles large on phones.
-  const wordLines = toLines(words, kinetic ? 7 : 4)
+  // Kinetic sets each line on its own, at most three in the band.
+  const wordLines = toLines(words, kinetic ? 3 : 4)
   const outline = wordLines.length > 1 && rand() < 0.6 ? Math.floor(rand() * wordLines.length) : -1
   const from = rand() < 0.5 ? 1 : -1
   const lineStep = Math.min(300, 1400 / Math.max(1, wordLines.length - 1))
@@ -443,15 +430,11 @@ export function buildReelPlan(video: Video): ReelPlan {
       '--t3': ms(SHOT_AT[2]),
       '--tend': ms(END_AT),
       '--tout': ms(OUT_AT),
-      '--dim': ms(hookIn - 150),
       '--drift': drift,
-      ...(slides && floatVars(frameRand)),
       '--title-scale': titleScale,
-      // Kinetic type fills the width (serif glyphs ≈ 0.52em) within ~50% of the height;
-      // phone stages show at most four lines (reel.css hides the rest).
-      '--kw': (88 / (maxLine * 0.52)).toFixed(2),
-      '--kh': (50 / (wordLines.length * 0.95)).toFixed(2),
-      '--kh-s': (46 / (Math.min(wordLines.length, 4) * 0.95)).toFixed(2),
+      // Kinetic lines fill the band's width (serif glyphs ≈ 0.5em) within its height (reel.css).
+      '--chars': (maxLine * 0.5).toFixed(2),
+      '--klines': (wordLines.length * 0.98).toFixed(2),
     }),
     title,
     // Non-breaking around the dot so the year never wraps onto a line of its own.

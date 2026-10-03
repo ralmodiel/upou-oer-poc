@@ -247,28 +247,19 @@ interface TimelineProps {
 // Static once mounted: the CSS timeline runs without React re-rendering it. The montage is
 // decorative for assistive tech; the end card carries the one readable summary.
 const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps) {
-  const framed = plan.lowRes && !preview && plan.template === 'cinematic'
   return (
     <>
-      {/* Slides sit whole in the split frame over a light, blurred copy of the one on screen. */}
-      {plan.slides && (
-        <div className="reel-fill" aria-hidden="true">
-          {plan.shots.map(
-            (shot, i) =>
-              stills.shots[i] && (
-                <div key={i} className="reel-fill-shot" style={shot.style}>
-                  <img src={stills.shots[i]} alt="" draggable={false} />
-                </div>
-              ),
-          )}
-        </div>
-      )}
-      {/* Low-res stills are shown framed over a blurred fill instead of blown up. */}
-      {framed && stills.backdrop && (
-        <div className="reel-backfill" aria-hidden="true">
-          <img src={stills.backdrop} alt="" draggable={false} />
-        </div>
-      )}
+      {/* A blurred copy of the shot on screen: beside slides, which show whole, and under the band. */}
+      <div className="reel-fill" aria-hidden="true">
+        {plan.shots.map(
+          (shot, i) =>
+            stills.shots[i] && (
+              <div key={i} className="reel-fill-shot" style={shot.style}>
+                <img src={stills.shots[i]} alt="" draggable={false} />
+              </div>
+            ),
+        )}
+      </div>
       <div className="reel-stage" aria-hidden="true">
         {plan.shots.map((shot, i) => (
           <div
@@ -291,8 +282,8 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
           <img src={stills.backdrop} alt="" draggable={false} />
         </div>
       )}
-      <div className="reel-frame" aria-hidden="true" />
-      <div className="reel-shade" aria-hidden="true" />
+      {/* The light band under the picture: the brand, the type and the controls live there. */}
+      <div className="reel-band" aria-hidden="true" />
       <div className="reel-rule" aria-hidden="true" />
       {!preview && (
         <p className="reel-index" aria-hidden="true">
@@ -354,10 +345,6 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       </div>
 
       <div className="reel-ident">
-        {plan.template === 'split' && stills.backdrop && (
-          <img className="reel-ident-cover" src={stills.backdrop} alt="" draggable={false} />
-        )}
-        <span className="reel-ident-wash" aria-hidden="true" />
         <p className="reel-wordmark">
           <span className="reel-ident-block" aria-hidden="true" />
           <span className="sr-only">UPOU OER</span>

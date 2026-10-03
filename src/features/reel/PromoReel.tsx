@@ -354,6 +354,9 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       </div>
 
       <div className="reel-ident">
+        {plan.template === 'split' && stills.backdrop && (
+          <img className="reel-ident-cover" src={stills.backdrop} alt="" draggable={false} />
+        )}
         <span className="reel-ident-wash" aria-hidden="true" />
         <p className="reel-wordmark">
           <span className="reel-ident-block" aria-hidden="true" />

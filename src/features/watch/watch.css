@@ -226,11 +226,63 @@
 }
 
 /* Up next: the hovered or focused row's thumbnail takes a gold frame. */
-.watch-next img {
+/*
+  Up next scrolls on its own and never grows the page: about five and a half rows on phones (the
+  cut-off row hints at more), beside the player no taller than the player's column (the aside is
+  size-contained there, so the column sets the height). More… sits under the list, always in sight.
+*/
+.watch-upnext-list {
+  --row: calc(6.4375rem + 1px);
+  position: relative;
+  max-height: calc(var(--row) * 5.5);
+  margin-inline: -0.5rem;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-ink-3) 60%, transparent) transparent;
+}
+
+/* Inside the scroll area the focus ring is drawn inset, so the list's edges never clip it. */
+.watch-upnext-list .watch-next:focus-visible {
+  outline-offset: -2px;
+}
+
+.watch-next[aria-current='true'] {
+  background: var(--color-forest-soft);
+}
+
+@media (min-width: 40rem) {
+  .watch-upnext-list {
+    --row: calc(6.5625rem + 1px);
+  }
+}
+
+@media (min-width: 64rem) {
+  .watch-aside {
+    display: flex;
+    flex-direction: column;
+    contain: size;
+  }
+
+  .watch-upnext,
+  .watch-upnext-frame {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .watch-upnext-list {
+    min-height: calc(var(--row) * 2.5);
+    max-height: none;
+  }
+}
+
+.watch-next-thumb {
   transition: box-shadow 0.2s;
 }
 
-.watch-next:is(:hover, :focus-visible) img {
+.watch-next:is(:hover, :focus-visible) .watch-next-thumb {
   box-shadow: 0 0 0 2px var(--gold);
 }
 

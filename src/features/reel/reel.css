@@ -14,19 +14,19 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.6, 0, 0.8, 0.25);
   --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
-  /* Theme tokens, with the light palette as a fallback. */
-  --paper: var(--color-paper, #faf8f6);
-  --surface: var(--color-surface, #ffffff);
-  --surface-2: var(--color-surface-2, #f2eeeb);
-  --ink: var(--color-ink, #373637);
-  --ink-2: var(--color-ink-2, #5c5a5c);
-  --line: var(--color-line, #e6e1dd);
-  --maroon: var(--color-maroon, #8d0c34);
-  --maroon-2: var(--color-maroon-2, #7f001f);
-  --forest: var(--color-forest, #00563f);
-  --amber: var(--color-amber, #f5a71d);
-  --gold: var(--color-gold, #fcb51b);
-  --on-accent: var(--color-on-accent, #ffffff);
+  /* The light palette in both themes: the stage is never dark (ident, paper, end card). */
+  --paper: #faf8f6;
+  --surface: #ffffff;
+  --surface-2: #f2eeeb;
+  --ink: #373637;
+  --ink-2: #5c5a5c;
+  --line: #e6e1dd;
+  --maroon: #8d0c34;
+  --maroon-2: #7f001f;
+  --forest: #00563f;
+  --amber: #f5a71d;
+  --gold: #fcb51b;
+  --on-accent: #ffffff;
   --radius: var(--radius-card, 14px);
   --serif: var(--font-display, 'Instrument Serif', Georgia, 'Times New Roman', serif);
   --sans: var(--font-sans, 'Instrument Sans', system-ui, sans-serif);
@@ -570,20 +570,7 @@
 
 /* ---------- Slides and title cards: whole, in the split frame, over a light blurred copy ---------- */
 
-/* The fill behind slides is always light, so these reels keep the light palette in both themes. */
 .reel[data-slides] {
-  --paper: #faf8f6;
-  --surface: #ffffff;
-  --surface-2: #f2eeeb;
-  --ink: #373637;
-  --ink-2: #5c5a5c;
-  --line: #e6e1dd;
-  --maroon: #8d0c34;
-  --maroon-2: #7f001f;
-  --forest: #00563f;
-  --amber: #f5a71d;
-  --gold: #fcb51b;
-  --on-accent: #ffffff;
   --float-ms: calc(var(--tend) + 1200ms - var(--t1) + var(--lead));
 }
 
@@ -843,6 +830,28 @@
   text-transform: uppercase;
   color: var(--ink-2);
   animation: reel-rise-in 600ms var(--ease) 700ms both;
+}
+
+/* Split has no shot under its ident: the backdrop sits there under the wash, as while loading. */
+.reel[data-template='split'] .reel-ident {
+  background: none;
+}
+
+.reel[data-template='split'] .reel-ident::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--wash);
+}
+
+.reel-ident-cover {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Split: an ink block wipes across and leaves the wordmark behind. */

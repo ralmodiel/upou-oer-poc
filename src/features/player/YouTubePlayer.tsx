@@ -1,4 +1,5 @@
 import { useState, type SyntheticEvent } from 'react'
+import { TitleTile } from '../../components/Thumbnail'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
 import { reelImages } from '../reel/stills'
@@ -6,9 +7,10 @@ import { reelImages } from '../reel/stills'
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 
 /**
- * The player's first frame: the poster in its own colours (night alone when every image is
- * flagged). The stage keeps it under the reel as well, so the reel's closing move lands on it and
- * the swap has nothing to load.
+ * The player's first frame: the poster in its own colours, on paper. The stage keeps it under the
+ * reel as well, so the reel's closing move lands on it and the swap has nothing to load. With no
+ * safe image (every candidate flagged) or a missing one, the title tile sits on the paper instead:
+ * never a dark or blank stage.
  */
 export function PlayerPoster({ video }: { video: Video }) {
   const [failed, setFailed] = useState(false)
@@ -19,8 +21,8 @@ export function PlayerPoster({ video }: { video: Video }) {
   }
   if (!isYouTubeId(video.youtubeId)) return null
   return (
-    <div className="pointer-events-none absolute inset-0 bg-[#1b1a17]" aria-hidden="true">
-      {poster && !failed && (
+    <div className="pointer-events-none absolute inset-0 bg-[#faf8f6]" aria-hidden="true">
+      {poster && !failed ? (
         <img
           src={poster}
           alt=""
@@ -28,6 +30,10 @@ export function PlayerPoster({ video }: { video: Video }) {
           onError={() => setFailed(true)}
           className="size-full object-cover"
         />
+      ) : (
+        <div className="absolute inset-[20%] overflow-hidden rounded-card shadow-lift">
+          <TitleTile video={video} />
+        </div>
       )}
     </div>
   )
@@ -42,7 +48,7 @@ export default function YouTubePlayer({ video }: { video: Video }) {
 
   if (!isYouTubeId(video.youtubeId)) {
     return (
-      <p className="absolute inset-0 grid place-items-center bg-[#1b1a17] p-6 text-center text-[#faf8f6]">
+      <p className="absolute inset-0 grid place-items-center bg-[#faf8f6] p-6 text-center text-[#373637]">
         <span>
           This video can't be played here.{' '}
           <a

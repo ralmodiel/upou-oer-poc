@@ -358,6 +358,50 @@ describe('lists and heading links', () => {
   })
 })
 
+describe('scrolling lists', () => {
+  // A link above, a list of six rows that shows three (rows 4-6 lie below its box, clipped, where
+  // the More button and a side link are drawn), then More under the list.
+  function scrollPage() {
+    document.body.innerHTML = `
+      <main>
+        <a id="above" href="/a">Above</a>
+        <ol id="list" data-spatial="list">
+          ${[1, 2, 3, 4, 5, 6].map((n) => `<li><a id="r${n}" href="/w/${n}">Row ${n}</a></li>`).join('')}
+        </ol>
+        <button id="more">More…</button>
+        <a id="side" href="/s">Side</a>
+      </main>`
+    place('#above', [0, 0, 300, 40])
+    place('#list', [60, 0, 300, 300])
+    for (let n = 1; n <= 6; n++) place(`#r${n}`, [60 + (n - 1) * 100, 0, 300, 100])
+    place('#more', [370, 0, 300, 40])
+    place('#side', [460, 400, 100, 40])
+  }
+
+  it('walks every row with ↓, those out of view included, then reaches More', () => {
+    scrollPage()
+    focus('#r3')
+    expect(id(findTarget('down'))).toBe('r4')
+    focus('#r6')
+    expect(id(findTarget('down'))).toBe('more')
+    expect(id(findTarget('up'))).toBe('r5')
+  })
+
+  it('is entered at its last row from below and its first from above', () => {
+    scrollPage()
+    focus('#more')
+    expect(id(findTarget('up'))).toBe('r6')
+    focus('#above')
+    expect(id(findTarget('down'))).toBe('r1')
+  })
+
+  it('offers only rows in view from the side', () => {
+    scrollPage()
+    focus('#side')
+    expect(id(findTarget('left'))).not.toMatch(/^r[4-6]$/)
+  })
+})
+
 describe('keepsArrow', () => {
   it('lets fields keep left/right until the caret hits an edge; widgets keep every arrow', () => {
     document.body.innerHTML =

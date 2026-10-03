@@ -8,6 +8,9 @@
 // data-spatial="group" (a wrapped or scrolling row of chips, a short list) makes it one stop for
 // ↑ / ↓: it is entered at its current item (the roving tab stop, else the active or first one) and
 // left as a whole, while ← / → walk its items in order.
+// data-spatial="list" (a vertical list that scrolls on its own): ↑ / ↓ walk its items in order,
+// those scrolled out of its view included, and leave it at either end; entered up or down it
+// lands on its first or last item, and from the side only items in its view count.
 // data-spatial="heading" (a See all link beside a section heading): ↑ / ↓ from outside its section
 // pass over it to the section's content; ↑ from inside the section reaches it.
 // data-spatial="aside" (a secondary bar control: theme, Help) is reached along its bar, never by
@@ -41,6 +44,7 @@ const SELECTOR = 'a[href], button, input, select, textarea, [tabindex]'
 const INTERACTIVE = 'a[href], button, input, select, textarea'
 const HIDDEN = '[aria-hidden="true"], [inert], [hidden], [data-spatial="skip"]'
 const GROUP = '[data-spatial="group"]'
+const LIST = '[data-spatial="list"]'
 const HEADING = '[data-spatial="heading"]'
 const ASIDE = '[data-spatial="aside"]'
 const ENTRY = '[data-spatial="entry"]'
@@ -236,19 +240,29 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
     if (next) return next
   }
 
-  const pool = candidates(root).filter(
-    (el) => el !== start && !home?.contains(el) && !group?.contains(el),
-  )
   const vertical = dir === 'up' || dir === 'down'
+  // ↑ / ↓ inside a scrolling list: the previous or next item, even one out of the list's view.
+  const list = start && isCandidate(start) ? start.closest(LIST) : null
+  if (start && list && vertical) {
+    const items = candidates(list).filter((el) => visible(rectOf(el)))
+    const next = items[items.indexOf(start) + (dir === 'down' ? 1 : -1)]
+    if (next) return next
+  }
+
+  const pool = candidates(root).filter(
+    (el) => el !== start && !home?.contains(el) && !group?.contains(el) && !list?.contains(el),
+  )
   // A focused container (main, the player stage) is entered by ↑ / ↓ from its edge, and left
-  // sideways by ← / → as a whole.
+  // sideways by ← / → as a whole. A scrolling list is left up or down from its own edge.
   const fromBox = start
     ? isCandidate(start)
       ? group
         ? rectOf(group)
         : home
           ? rectOf(home)
-          : boxOf(start)
+          : list && vertical
+            ? rectOf(list)
+            : boxOf(start)
       : vertical
         ? entryPoint(rectOf(start), dir)
         : rectOf(start)
@@ -266,13 +280,23 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   const passed: Item[] = []
   const groups = new Set<Element>()
   for (const item of pool) {
-    // A chip group enters as one target: its whole box, landing on its entry chip.
+    // A chip group enters as one target: its whole box, landing on its entry chip. So does a
+    // scrolling list up or down, landing on its first or last item; from the side, only its items
+    // in view count.
     const chipGroup = item.closest(GROUP)
-    if (chipGroup && groups.has(chipGroup)) continue
-    if (chipGroup) groups.add(chipGroup)
-    const el = chipGroup ? (entryOf(chipGroup) ?? item) : item
-    const box = chipGroup ? rectOf(chipGroup) : boxOf(el)
+    const scroller = item.closest(LIST)
+    const unit = chipGroup ?? (vertical ? scroller : null)
+    if (unit && groups.has(unit)) continue
+    if (unit) groups.add(unit)
+    let el = item
+    if (chipGroup) el = entryOf(chipGroup) ?? item
+    else if (unit) {
+      const items = candidates(unit).filter((c) => visible(rectOf(c)))
+      el = (dir === 'down' ? items[0] : items.at(-1)) ?? item
+    }
+    const box = unit ? rectOf(unit) : boxOf(el)
     if (!visible(box)) continue
+    if (scroller && !unit && !overlaps(box, rectOf(scroller))) continue
     if (onScreenOnly && !overlaps(box, viewport)) continue
     const bar = barOf(el)
     if (vertical && bar !== startBar && el.matches(ASIDE)) continue

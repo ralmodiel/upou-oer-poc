@@ -76,7 +76,9 @@ function Watch({ video }: { video: Video }) {
       e.preventDefault()
       control.focus()
     } else if (e.key === 'ArrowRight') {
-      const next = document.querySelector<HTMLElement>('.watch-next')
+      const next =
+        document.querySelector<HTMLElement>('.watch-next[aria-current="true"]') ??
+        document.querySelector<HTMLElement>('.watch-next')
       if (!next || next.getBoundingClientRect().left < stage.getBoundingClientRect().right) return
       e.preventDefault()
       next.focus()
@@ -160,7 +162,7 @@ function Watch({ video }: { video: Video }) {
             </article>
           </div>
 
-          <aside className="pt-10 lg:col-span-4 lg:pt-16">
+          <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-16">
             <UpNext video={video} profile={profile} />
             {category && (
               <Link to={`/collections/${category.slug}`} className="watch-more mt-5">

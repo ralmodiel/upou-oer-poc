@@ -1,6 +1,12 @@
-import { getCategoryByName, getCategoryVideos, getLatest, similarTo } from '../../data/catalog'
+import {
+  getCategoryByName,
+  getCategoryVideos,
+  getLatest,
+  getVideo,
+  similarTo,
+} from '../../data/catalog'
 import type { Profile } from '../../lib/history'
-import { explainList, isNearDuplicate, recommendFor } from '../../lib/recommend'
+import { explainList, isNearDuplicate, isRecommenderReady, recommendFor } from '../../lib/recommend'
 import type { Video } from '../../types'
 
 // Kept here for older imports; the grouping now lives in the recommender.
@@ -62,4 +68,71 @@ export function upNextPlaceholder(video: Video, limit = 8): UpNextItem[] {
   }
   if (picks.length < limit) getLatest(limit * 2).forEach(take)
   return picks.map((v) => ({ video: v, reason: '' }))
+}
+
+/**
+ * Up next frozen as a playlist once one of its rows is chosen. It travels in history state, so
+ * Back, Forward and reload keep it, each entry with its own current row.
+ */
+export interface Playlist {
+  /** The video whose page first listed these. */
+  from: string
+  ids: string[]
+}
+
+/** The playlist in a location's state when it lists `id`, else null (anything malformed too). */
+export function playlistIn(state: unknown, id: string): Playlist | null {
+  if (!state || typeof state !== 'object') return null
+  const playlist: unknown = (state as { playlist?: unknown }).playlist
+  if (!playlist || typeof playlist !== 'object') return null
+  const { from, ids } = playlist as { from?: unknown; ids?: unknown }
+  if (typeof from !== 'string' || !Array.isArray(ids)) return null
+  const list = ids.filter((x): x is string => typeof x === 'string')
+  return list.includes(id) ? { from, ids: list } : null
+}
+
+/** `state` (any other keys kept) with its playlist set. */
+export const withPlaylist = (state: unknown, playlist: Playlist) => ({
+  ...(state && typeof state === 'object' ? state : {}),
+  playlist,
+})
+
+const reasonsAfter = (origin: Video, videos: Video[], profile: Profile) =>
+  isRecommenderReady() ? explainList(origin, videos, profile).map(onWatchPage) : []
+
+/**
+ * A playlist's rows, ids no longer in the catalog dropped. Reasons are relative to the video that
+ * first listed them, when the recommender is ready (else the collection eyebrows stand in).
+ */
+export function playlistRows(
+  ids: readonly string[],
+  origin: Video,
+  profile: Profile,
+): UpNextItem[] {
+  const videos = ids.map((id) => getVideo(id)).filter((v): v is Video => !!v)
+  const reasons = reasonsAfter(origin, videos, profile)
+  return videos.map((v, i) => ({ video: v, reason: reasons[i] ?? '' }))
+}
+
+/**
+ * Up to `count` more picks for `origin` after the rows listed: none listed already, never
+ * `current`, one row per talk. Their reasons continue the list's.
+ */
+export function moreUpNext(
+  origin: Video,
+  current: Video,
+  listed: readonly UpNextItem[],
+  profile: Profile,
+  count = 8,
+): UpNextItem[] {
+  const shown = listed.map((i) => i.video)
+  const picks: Video[] = []
+  const take = (v: Video) => {
+    if (picks.length === count || v.id === current.id || sameTitle(v, current)) return
+    if ([...shown, ...picks].some((p) => p.id === v.id || isNearDuplicate(p, v))) return
+    picks.push(v)
+  }
+  upNextFor(origin, profile, shown.length + count * 2 + 1).forEach(({ video: v }) => take(v))
+  const reasons = reasonsAfter(origin, [...shown, ...picks], profile).slice(shown.length)
+  return picks.map((v, i) => ({ video: v, reason: reasons[i] ?? '' }))
 }

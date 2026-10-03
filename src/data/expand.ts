@@ -1,5 +1,6 @@
 import { hashString } from '../lib/seed'
 import type { CatalogRecord, Video } from '../types'
+import { flaggedMaskOf } from './frameFlags'
 
 export const DEFAULT_CHANNEL = 'UP Open University'
 export const SOURCE_ORIGIN = 'https://oer.upou.edu.ph'
@@ -51,8 +52,17 @@ export function expandRecord(r: CatalogRecord): Video {
     r.b ?? image(r.y, `${size}default`),
     ...[1, 2, 3].map((n) => image(r.y, `${size}${n}`)),
   ]
-  const n = small.length
-  const pick = (((hashString(r.id) + loadSeed) % n) + n) % n
+  // Candidates that catch a face not smiling (frameFlags.ts) stay out of the rotation and the reel;
+  // the original thumbnail remains the fallback when every candidate is flagged.
+  const mask = flaggedMaskOf(r.y)
+  const unflagged = (indexes: number[]) => indexes.filter((i) => !(mask & (1 << i)))
+  const choices = unflagged([0, 1, 2, 3])
+  const pool = choices.length ? choices : [0]
+  const n = pool.length
+  const pick = pool[(((hashString(r.id) + loadSeed) % n) + n) % n]
+  // The reel plays three shots: repeat the remaining stills, or show the canonical image when none remain.
+  const stills = unflagged([1, 2, 3])
+  const shots = stills.length ? [0, 1, 2].map((k) => stills[k % stills.length]) : [0, 0, 0]
   return {
     id: r.id,
     youtubeId: r.y,
@@ -64,10 +74,11 @@ export function expandRecord(r: CatalogRecord): Video {
     publishedAt: r.p,
     sourceUrl: `${SOURCE_ORIGIN}/${r.id}/`,
     thumbnail: small[pick],
-    thumbnails: small,
+    // The original first (hero slots and lists use it), then the small versions of the reel shots.
+    thumbnails: [small[0], ...shots.map((i) => small[i])],
     // A source-site backdrop (og:image) is kept over the rotating 640px frames.
     backdrop: !hiRes && r.b ? r.b : large[pick],
-    frames: large.slice(1),
+    frames: shots.map((i) => large[i]),
     ...(r.f ? { featured: true } : {}),
   }
 }

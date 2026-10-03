@@ -11,7 +11,7 @@ export interface Video {
   sourceUrl: string
   /** 16:9, ~320px wide; the member of `thumbnails` shown during this page load. */
   thumbnail: string
-  /** All thumbnail candidates (320px): the original first, then the three still frames. */
+  /** 320px set: the original first, then the small versions of the three reel `frames`. */
   thumbnails?: string[]
   /** 16:9, >= 1280px wide when available; matches `thumbnail` for hi-res videos. */
   backdrop: string

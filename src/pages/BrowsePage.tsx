@@ -14,7 +14,15 @@ import { forYou, moreLikeThis, reasonsFor } from '../components/recs'
 import { ChevronRightIcon } from '../components/icons'
 import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
-import { getCategories, getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
+import {
+  getCategories,
+  getFeatured,
+  getLatest,
+  getRows,
+  getVideo,
+  hasCleanPoster,
+  videos,
+} from '../data/catalog'
 import { isEmptyProfile, useProfile, type Profile } from '../lib/history'
 import { pickSources } from '../lib/privacy'
 import { warmRecommenderAsync } from '../lib/recommend'
@@ -196,8 +204,9 @@ function shortTitle(title: string, max = 48): string {
 }
 
 export default function BrowsePage() {
-  const first = getFeatured()[0]
-  // The poster, as in the static shell (link previews never reach the page UI).
+  // The first featured video with a clean poster, as in the static shell (link previews never
+  // reach the page UI).
+  const first = getFeatured().find(hasCleanPoster) ?? getFeatured()[0]
   useSeo(homeSeo(videos.length, getCategories().length, first?.poster ?? first?.backdrop))
   const entries = useShownHistory()
   const [prefs] = usePrefs()

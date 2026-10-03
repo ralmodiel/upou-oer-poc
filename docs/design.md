@@ -251,9 +251,10 @@ Use more of the UP and UPOU colors in the page chrome, never as a tint over imag
   - Active nav/tab indicators in gold on maroon or maroon on paper; "New" badges in gold with
     charcoal text; secondary buttons in forest outline.
 - **Never:** colored scrims, duotones, multiply/overlay blends or tinted gradients over thumbnails,
-  backdrops, previews or the reel's footage. Image backdrops stay neutral (grayscale + paper/ink
-  scrim). Brand color may frame an image (a border, a corner tab, a band beside it) but must not sit
-  on top of it.
+  backdrops, previews or the reel's footage. Images keep their natural colour (round 5: the
+  collection header strip dropped its grayscale, dimming and paper scrim, since no text covers
+  it); only a light local gradient may sit behind text. Brand color may frame an image (a border,
+  a corner tab, a band beside it) but must not sit on top of it.
 - **Contrast:** paper text on maroon/forest bands, charcoal text on gold/amber; check AA in both
   themes (dark theme uses the lighter dark-mode brand tokens for text and the deep values for bands).
 
@@ -520,8 +521,10 @@ collection. Only the behaviour comes from streaming sites; the look stays this s
   into another row's hidden cards. Paging while focus is elsewhere moves the row's Tab stop to its
   first card in view.
 - **Edges and previews:** the track runs into the gutter (up to 4rem) with matching scroll padding,
-  so focus rings, lifts and previews are never cut off and cards line up with the heading. Previews
-  play inside the track and stop once their card leaves the view.
+  so focus rings, lifts and previews are never cut off and cards line up with the heading; a clip
+  keeps only 12px of gutter beside the view, so cards paged past leave no sliver or title fragment.
+  Previews play inside the track and stop once their card leaves the view. The hover play glyph
+  is a small round badge in the thumbnail's bottom-left corner, off the speaker's face.
 - **Performance:** a row renders its first page and the peeking card at once, the rest when used
   (hover, focus, touch) or idle, and measures itself on the frame after layout. Images stay lazy;
   using or scrolling a row loads the next page's images ahead. Phone sections are estimated at

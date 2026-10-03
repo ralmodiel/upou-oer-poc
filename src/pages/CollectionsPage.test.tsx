@@ -82,7 +82,7 @@ describe('CategoryPage', () => {
     expect(screen.getByText('Collection')).toBeInTheDocument()
     expect(screen.getByText('3 videos')).toBeInTheDocument()
     // The decorative strip of its newest stills beside the band.
-    expect(document.querySelectorAll('[aria-hidden="true"] .backdrop-mosaic img')).toHaveLength(3)
+    expect(document.querySelectorAll('[aria-hidden="true"] img')).toHaveLength(3)
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' })
     expect(within(crumbs).getByRole('link', { name: 'Collections' })).toHaveAttribute(
       'href',

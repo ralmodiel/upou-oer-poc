@@ -73,14 +73,6 @@ html:has(dialog[data-details][open]) {
   }
 }
 
-/* Collection header strip: softened and fully grey, so the stills stay quiet beside the band. */
-.backdrop-mosaic {
-  filter: blur(2px) grayscale(1);
-}
-[data-theme='dark'] .backdrop-mosaic {
-  filter: blur(2px) grayscale(1) brightness(0.8);
-}
-
 /* Home rhythm: every third section is a tinted band, forest-soft and maroon-soft in turn, with
    paper between (two paper sections meet at a hairline). Dark mode mixes the tints a little
    toward paper so a long page stays calm. */
@@ -146,6 +138,9 @@ html:has(dialog[data-details][open]) {
   position: relative;
   margin: -0.75rem calc(-1 * var(--row-bleed));
   padding: 0.75rem var(--row-bleed);
+  /* The gutters keep only what a card at the edge needs (its focus ring and lift): no slivers of
+     the cards paged past. */
+  clip-path: inset(0 calc(var(--row-bleed) - 0.75rem));
   scroll-padding-inline: var(--row-bleed);
   overflow-x: auto;
   overflow-y: hidden;

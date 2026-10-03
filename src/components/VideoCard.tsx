@@ -88,15 +88,14 @@ function VideoCard({
         className={`order-1 rounded-card ring-1 ring-black/5 transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-active/card:translate-y-0 motion-reduce:transition-none ${FOCUS}`}
       >
         {overlay}
-        {/* Visual cue only: the card link already plays. Hidden while a preview runs. */}
+        {/* Visual cue only: the card link already plays. In a corner, clear of the speaker's face;
+            hidden while a preview runs. */}
         {!previewing && (
           <span
             aria-hidden="true"
-            className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-200 group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100"
+            className="absolute bottom-2.5 left-2.5 grid size-10 place-items-center rounded-pill bg-surface/95 text-maroon opacity-0 shadow-lift transition-opacity duration-200 group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100"
           >
-            <span className="grid size-11 place-items-center rounded-pill bg-surface/95 text-maroon shadow-lift">
-              <PlayIcon className="size-5 translate-x-px" />
-            </span>
+            <PlayIcon className="size-5 translate-x-px" />
           </span>
         )}
       </Thumbnail>

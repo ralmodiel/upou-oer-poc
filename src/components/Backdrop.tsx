@@ -24,18 +24,16 @@ const hide = (e: SyntheticEvent<HTMLImageElement>) => {
 }
 
 /**
- * Decorative strip of a few videos' original stills, softened and fully grey (browse.css), with a
- * neutral scrim: 16:9 tiles the height of its positioned parent, as many as fit. It sits beside a
- * brand band, never under one.
+ * Decorative strip of a few videos' original stills in their own colours: 16:9 tiles the height of
+ * its positioned parent, as many as fit. It sits beside a brand band, never under one, so no type
+ * covers it and it needs no scrim.
  */
 export function MosaicBackdrop({
   videos,
-  scrim,
   count = 4,
   className = '',
 }: {
   videos: readonly Video[]
-  scrim: string
   count?: number
   className?: string
 }) {
@@ -46,7 +44,7 @@ export function MosaicBackdrop({
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
     >
-      <div className="backdrop-mosaic flex h-full gap-0.5">
+      <div className="flex h-full gap-0.5">
         {shown.map((video) => {
           const images = imagesOf(video, true)
           return (
@@ -66,7 +64,6 @@ export function MosaicBackdrop({
           )
         })}
       </div>
-      <div className={`absolute inset-0 ${scrim}`} />
     </div>
   )
 }

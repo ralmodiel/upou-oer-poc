@@ -100,12 +100,13 @@ export default function CategoryPage() {
       <div className="px-(--gutter) pt-6 pb-4 sm:pt-8">
         <Breadcrumbs items={[...crumbs, { label: category.name }]} />
       </div>
-      {/* The collection's colour band, with its newest stills beside it (never under it). */}
+      {/* The collection's colour band, with its newest stills beside it (never under it), in their
+          own colours. */}
       <PageBand
         tone={toneOf(slug)}
         eyebrow="Collection"
         title={category.name}
-        aside={<MosaicBackdrop videos={getCategoryVideos(slug).slice(0, 12)} scrim="bg-paper/30" />}
+        aside={<MosaicBackdrop videos={getCategoryVideos(slug).slice(0, 12)} />}
       >
         {all.length} {all.length === 1 ? 'video' : 'videos'}
         {category.name === GENERAL_CATEGORY ? ' without a subject category' : ''}

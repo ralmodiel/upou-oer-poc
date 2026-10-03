@@ -373,3 +373,49 @@
     opacity: 0;
   }
 }
+
+/*
+  Autoplay's "Next" card on the stage: light whatever the theme (the stage never turns into a dark
+  box), so the light palette is set here for everything inside it.
+*/
+.watch-autoplay {
+  --color-paper: #faf8f6;
+  --color-surface: #ffffff;
+  --color-surface-2: #f2eeeb;
+  --color-ink: #373637;
+  --color-ink-2: #5c5a5c;
+  --color-ink-3: #6b686a;
+  --color-line: #e6e1dd;
+  --color-maroon: #8d0c34;
+  --color-forest: #00563f;
+  --color-forest-soft: #e2efe9;
+  --color-action: #7b1113;
+  --color-action-2: #640d0f;
+  --color-on-action: #ffffff;
+  --color-focus: #8d0c34;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* The countdown as a bar that empties over five seconds; still with reduced motion. */
+.watch-autoplay-bar {
+  background: var(--color-line);
+  background-image: linear-gradient(var(--color-forest), var(--color-forest));
+  background-repeat: no-repeat;
+  animation: watch-countdown 5s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .watch-autoplay-bar {
+    animation: none;
+  }
+}
+
+@keyframes watch-countdown {
+  from {
+    background-size: 100% 100%;
+  }
+  to {
+    background-size: 0% 100%;
+  }
+}

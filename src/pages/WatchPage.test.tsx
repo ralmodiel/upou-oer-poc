@@ -235,6 +235,132 @@ describe('WatchPage', () => {
     expect(screen.getByRole('button', { name: 'More…' })).not.toHaveAttribute('aria-disabled')
   })
 
+  describe('autoplay', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      ...similar[0],
+      id: `pick-${i}`,
+      youtubeId: `pick${i}`.padEnd(11, 'x'),
+      title: `Similar video ${i}`,
+    }))
+    const PLAYER = 'https://www.youtube-nocookie.com'
+    const ended = JSON.stringify({ event: 'infoDelivery', info: { playerState: 0 } })
+
+    beforeEach(() => {
+      setCatalog([testVideo, ...many])
+      warmRecommender()
+      vi.useFakeTimers()
+    })
+
+    // Plays the reel through, loads the player and returns its iframe.
+    async function toPlayer(id: string) {
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
+      const frame = screen.getByTitle(/YouTube video\)$/) as HTMLIFrameElement
+      expect(frame.src).toContain('enablejsapi=1')
+      expect(frame.src).toContain(`/embed/${many.find((v) => v.id === id)?.youtubeId ?? ''}`)
+      fireEvent.load(frame)
+      return frame
+    }
+    const send = (frame: HTMLIFrameElement, data: unknown, origin = PLAYER) =>
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', { origin, data, source: frame.contentWindow }),
+        )
+      })
+    const listed = (ids: string[], at = 0) =>
+      renderAt([
+        { pathname: `/watch/${ids[at]}`, state: { playlist: { from: testVideo.id, ids } } },
+      ])
+    const playlistOf = (state: unknown) => (state as { playlist?: unknown } | null)?.playlist
+
+    it("counts down on the player's end message, then plays the playlist's next video", async () => {
+      const { router } = listed(['pick-0', 'pick-1', 'pick-2'])
+      const frame = await toPlayer('pick-0')
+      await send(frame, ended)
+      const card = screen.getByRole('group', { name: 'Similar video 1' })
+      expect(within(card).getByRole('button', { name: 'Cancel' })).toHaveFocus()
+      await act(() => vi.advanceTimersByTimeAsync(4900))
+      expect(router.state.location.pathname).toBe('/watch/pick-0')
+      await act(() => vi.advanceTimersByTimeAsync(200))
+      expect(router.state.location.pathname).toBe('/watch/pick-1')
+      expect(playlistOf(router.state.location.state)).toEqual({
+        from: testVideo.id,
+        ids: ['pick-0', 'pick-1', 'pick-2'],
+      })
+    })
+
+    it('stops on Cancel or Esc, and Play now goes at once', async () => {
+      const { router } = listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
+      await send(frame, JSON.stringify({ event: 'onStateChange', info: 0 }))
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      await act(() => vi.advanceTimersByTimeAsync(6000))
+      expect(router.state.location.pathname).toBe('/watch/pick-0')
+      expect(screen.getByRole('region', { name: 'Video player' })).toHaveFocus()
+
+      // Esc cancels instead of going Back (the app's Back ignores a prevented key).
+      await send(frame, ended)
+      expect(
+        fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' }),
+      ).toBe(false)
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(6000))
+      expect(router.state.location.pathname).toBe('/watch/pick-0')
+
+      await send(frame, ended)
+      await act(() => fireEvent.click(screen.getByRole('button', { name: 'Play now' })))
+      expect(router.state.location.pathname).toBe('/watch/pick-1')
+    })
+
+    it('stays put with the switch off, or for messages from anywhere but the player', async () => {
+      const { router } = listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
+      await send(frame, ended, 'https://example.com')
+      await send(frame, JSON.stringify({ event: 'infoDelivery', info: { playerState: 1 } }))
+      await send(frame, '{not json')
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+
+      const toggle = screen.getByRole('switch', { name: 'Autoplay' })
+      expect(toggle).toHaveAttribute('aria-checked', 'true')
+      fireEvent.click(toggle)
+      expect(toggle).toHaveAttribute('aria-checked', 'false')
+      expect(localStorage.getItem('upou:autoplay')).toBe('false')
+      await send(frame, ended)
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(6000))
+      expect(router.state.location.pathname).toBe('/watch/pick-0')
+    })
+
+    it('at the end of the list adds the next picks and goes on', async () => {
+      const { router } = listed(['pick-0', 'pick-1'], 1)
+      const frame = await toPlayer('pick-1')
+      await send(frame, ended)
+      const rows = within(screen.getByRole('list', { name: 'Up next' })).getAllByRole('link')
+      expect(rows).toHaveLength(10)
+      const next = rows[2].getAttribute('href')
+      await act(() => vi.advanceTimersByTimeAsync(5100))
+      expect(router.state.location.pathname).toBe(next)
+      const { ids } = playlistOf(router.state.location.state) as { ids: string[] }
+      expect(ids.slice(0, 2)).toEqual(['pick-0', 'pick-1'])
+      expect(ids).toHaveLength(10)
+    })
+
+    it('without a playlist goes to the first row, keeping the list as shown', async () => {
+      const { router } = renderAt([`/watch/${testVideo.id}`])
+      const shown = within(screen.getByRole('list', { name: 'Up next' }))
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href')?.replace('/watch/', ''))
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
+      const frame = screen.getByTitle(/YouTube video\)$/) as HTMLIFrameElement
+      fireEvent.load(frame)
+      await send(frame, ended)
+      await act(() => vi.advanceTimersByTimeAsync(5100))
+      expect(router.state.location.pathname).toBe(`/watch/${shown[0]}`)
+      expect(playlistOf(router.state.location.state)).toEqual({ from: testVideo.id, ids: shown })
+    })
+  })
+
   describe('as a playlist', () => {
     const many = Array.from({ length: 30 }, (_, i) => ({
       ...similar[0],

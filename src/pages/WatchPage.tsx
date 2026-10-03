@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { preconnect } from 'react-dom'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { ChevronRightIcon } from '../components/icons'
 import Breadcrumbs, { type Crumb } from '../components/ui/Breadcrumbs'
 import Button from '../components/ui/Button'
@@ -13,7 +13,10 @@ import { reelImages } from '../features/reel/stills'
 import EscHint from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
 import { useInputModality } from '../features/watch/modality'
+import AutoplayNext from '../features/watch/AutoplayNext'
 import UpNext from '../features/watch/UpNext'
+import { useAutoplay, useUpNext } from '../features/watch/useUpNext'
+import { withPlaylist, type Playlist } from '../features/watch/recommendations'
 import WatchBackdrop from '../features/watch/WatchBackdrop'
 import WatchMeta from '../features/watch/WatchMeta'
 import WatchTags from '../features/watch/WatchTags'
@@ -45,6 +48,12 @@ function Watch({ video }: { video: Video }) {
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
   const profile = useProfile()
+  const upNext = useUpNext(video, profile)
+  const [autoplay] = useAutoplay()
+  // The video autoplay goes to when this one ends, with the list it belongs to.
+  const [queued, setQueued] = useState<{ next: Video; playlist: Playlist } | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
   const category = getCategoryByName(video.category)
   // The stage is focused by script, so its focus ring waits for keyboard use (see modality.ts).
   const keyboard = useInputModality() === 'keyboard'
@@ -95,6 +104,35 @@ function Watch({ video }: { video: Video }) {
     if (!hasReel) record(video.id)
   }, [hasReel, record, video.id])
 
+  // Autoplay: the row after this one in the list (the first row when this page is not one of
+  // them); at the end of the list the next picks are added first, as More… would.
+  const onEnded = () => {
+    if (!autoplay) return
+    const { items } = upNext
+    const at = items.findIndex((i) => i.video.id === video.id)
+    let list = items
+    let next = items[at + 1]?.video
+    if (!next) {
+      const added = upNext.append()
+      list = [...items, ...added]
+      next = added[0]?.video
+    }
+    if (!next) return
+    setQueued({
+      next,
+      playlist: { from: upNext.asPlaylist().from, ids: list.map((i) => i.video.id) },
+    })
+  }
+  const playNext = () => {
+    if (!queued) return
+    const state = withPlaylist(location.state, queued.playlist)
+    void navigate(`/watch/${queued.next.id}`, { state })
+  }
+  const cancelNext = () => {
+    setQueued(null)
+    stageRef.current?.focus({ preventScroll: true })
+  }
+
   // Once the user clicks into the video, the iframe swallows key events; take focus back as
   // soon as the pointer leaves the stage so Esc works again.
   const reclaimFocus = () => {
@@ -136,7 +174,10 @@ function Watch({ video }: { video: Video }) {
               {phase === 'reel' ? (
                 <PromoReel video={video} onComplete={startPlayer} />
               ) : (
-                <YouTubePlayer video={video} />
+                <YouTubePlayer video={video} onEnded={onEnded} />
+              )}
+              {queued && autoplay && (
+                <AutoplayNext next={queued.next} onPlay={playNext} onCancel={cancelNext} />
               )}
             </div>
 
@@ -163,7 +204,7 @@ function Watch({ video }: { video: Video }) {
           </div>
 
           <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-16">
-            <UpNext video={video} profile={profile} />
+            <UpNext video={video} list={upNext} />
             {category && (
               <Link to={`/collections/${category.slug}`} className="watch-more mt-5">
                 <span>

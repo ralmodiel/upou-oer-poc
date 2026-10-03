@@ -1,10 +1,32 @@
-import { useState, type SyntheticEvent } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type SyntheticEvent } from 'react'
 import { TitleTile } from '../../components/Thumbnail'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
 import { reelImages } from '../reel/stills'
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
+const PLAYER_ORIGIN = 'https://www.youtube-nocookie.com'
+// The embed's widget messages (enablejsapi=1) tell when the video ends, with no YouTube script.
+const LISTENING = JSON.stringify({ event: 'listening', id: 1, channel: 'widget' })
+const LISTEN_EVERY_MS = 250
+const LISTEN_TRIES = 120
+
+/** Whether a widget message from the player says the video has ended (state 0). */
+function isEndedMessage(data: unknown): boolean {
+  let message: unknown = data
+  if (typeof data === 'string') {
+    try {
+      message = JSON.parse(data)
+    } catch {
+      return false
+    }
+  }
+  if (!message || typeof message !== 'object') return false
+  const { event, info } = message as { event?: unknown; info?: unknown }
+  if (event === 'onStateChange') return info === 0
+  if (event !== 'infoDelivery' || !info || typeof info !== 'object') return false
+  return (info as { playerState?: unknown }).playerState === 0
+}
 
 /**
  * The player's first frame: the poster in its own colours, on paper. The stage keeps it under the
@@ -43,8 +65,41 @@ export function PlayerPoster({ video }: { video: Video }) {
  * Privacy-enhanced YouTube embed that fills the 16:9 stage, fading in over the poster. It never
  * takes focus by itself: the watch page keeps focus on the stage so Esc = Back keeps working.
  */
-export default function YouTubePlayer({ video }: { video: Video }) {
+export default function YouTubePlayer({
+  video,
+  onEnded,
+}: {
+  video: Video
+  /** Called when the video plays to its end. */
+  onEnded?: () => void
+}) {
   const [loaded, setLoaded] = useState(false)
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const ended = useEffectEvent(() => onEnded?.())
+
+  // Says "listening" until the player first answers, then watches its messages for the end.
+  useEffect(() => {
+    const player = frameRef.current?.contentWindow
+    if (!loaded || !player) return
+    let heard = false
+    let tries = 0
+    const listen = () => {
+      if (heard || ++tries > LISTEN_TRIES) clearInterval(timer)
+      else player.postMessage(LISTENING, PLAYER_ORIGIN)
+    }
+    const timer = setInterval(listen, LISTEN_EVERY_MS)
+    listen()
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== PLAYER_ORIGIN || e.source !== player) return
+      heard = true
+      if (isEndedMessage(e.data)) ended()
+    }
+    window.addEventListener('message', onMessage)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('message', onMessage)
+    }
+  }, [loaded])
 
   if (!isYouTubeId(video.youtubeId)) {
     return (
@@ -73,7 +128,8 @@ export default function YouTubePlayer({ video }: { video: Video }) {
         />
       )}
       <iframe
-        src={embedUrl(video.youtubeId)}
+        ref={frameRef}
+        src={`${embedUrl(video.youtubeId)}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
         title={`${video.title} (YouTube video)`}
         allow={ALLOW}
         allowFullScreen

@@ -175,6 +175,8 @@ function HelpMenu() {
 }
 
 const FROM_SEARCH_BOX = { fromSearchBox: true }
+// A submitted search (Enter): the search page moves focus to its results heading.
+const SUBMITTED = { fromSearchBox: true, submitted: true }
 
 function SearchBox() {
   const navigate = useNavigate()
@@ -212,12 +214,12 @@ function SearchBox() {
   // search page have their own); from md up it is always shown.
   const expanded = open || (value !== '' && !onSearchPage)
 
-  const go = (term: string) => {
+  const go = (term: string, submitted = false) => {
     setPending(null)
     if (!term && !onSearchPage) return
     navigate(term ? `/search?q=${encodeURIComponent(term)}` : '/search', {
       replace: onSearchPage,
-      state: FROM_SEARCH_BOX,
+      state: submitted ? SUBMITTED : FROM_SEARCH_BOX,
     })
   }
 
@@ -264,7 +266,7 @@ function SearchBox() {
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    go(value.trim())
+    go(value.trim(), true)
     input.current?.blur()
   }
 

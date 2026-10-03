@@ -19,6 +19,8 @@ export interface SectionHeadingProps {
   children?: ReactNode
   rule?: boolean
   className?: string
+  /** -1 makes the title a focus target (search results after a submit); no ring, it is no control. */
+  tabIndex?: number
 }
 
 const TITLE: Record<'h1' | 'h2' | 'h3', string> = {
@@ -40,6 +42,7 @@ export default function SectionHeading({
   children,
   rule = true,
   className = '',
+  tabIndex,
 }: SectionHeadingProps) {
   const showCountInline = count !== undefined && !seeAllTo
   const seeAll = seeAllLabel ?? (count !== undefined ? `See all (${count})` : 'See all')
@@ -50,7 +53,11 @@ export default function SectionHeading({
           <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
         )}
         {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
-        <Tag id={id} className={TITLE[Tag]}>
+        <Tag
+          id={id}
+          tabIndex={tabIndex}
+          className={tabIndex === undefined ? TITLE[Tag] : `${TITLE[Tag]} outline-none`}
+        >
           {title}
           {showCountInline && (
             <span className="ml-2.5 font-sans text-base font-normal text-ink-3 tabular-nums">

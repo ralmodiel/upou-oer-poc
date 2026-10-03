@@ -103,7 +103,7 @@ describe('card previews', () => {
     expect(document.activeElement).toBe(cardLink(0))
   })
 
-  it('is dismissed by Esc (which is then not Back) and by stopPreview()', () => {
+  it('is dismissed by Esc (which still means Back) and by stopPreview()', () => {
     renderGrid()
     act(() => cardLink(2).focus())
     expect(previews()).toHaveLength(1)
@@ -111,7 +111,7 @@ describe('card previews', () => {
     act(() => {
       document.dispatchEvent(esc)
     })
-    expect(esc.defaultPrevented).toBe(true)
+    expect(esc.defaultPrevented).toBe(false)
     expect(previews()).toHaveLength(0)
 
     act(() => cardLink(1).blur())

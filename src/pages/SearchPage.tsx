@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useNavigationType, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint, TEXT_LINK } from '../components/browse-ui'
 import { DetailsContext, pageTarget } from '../components/details'
@@ -24,6 +24,9 @@ const FACETS_SHOWN = 7
 const COMMIT_MS = 1200
 // How far each query was expanded, so Back from the player shows the same page length.
 const expanded = new Map<string, number>()
+// The page title takes focus after a submitted search (this page's field on phones, the header's).
+const RESULTS_HEADING = 'search-results'
+const SUBMITTED = { submitted: true }
 
 const hasResults = (query: string) => searchVideos(query, { limit: 1 }).length > 0
 
@@ -65,6 +68,13 @@ export default function SearchPage() {
     const field = document.getElementById('search-page-q')
     if (field?.offsetParent) field.focus()
   }, [raw, popped])
+  // A submitted search (Enter in either field) moves focus to the results heading, so the next
+  // arrow or Tab starts at the results and screen readers hear the new title.
+  const location = useLocation()
+  const submitted = (location.state as { submitted?: boolean } | null)?.submitted === true
+  useEffect(() => {
+    if (submitted && raw && !popped) document.getElementById(RESULTS_HEADING)?.focus()
+  }, [location.key, submitted, raw, popped])
   const slug = params.get('category') ?? ''
   const category = slug ? getCategory(slug) : undefined
 
@@ -165,7 +175,7 @@ export default function SearchPage() {
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const value = String(new FormData(e.currentTarget).get('q') ?? '').trim()
-    navigate(value ? `/search?q=${encodeURIComponent(value)}` : '/search')
+    navigate(value ? `/search?q=${encodeURIComponent(value)}` : '/search', { state: SUBMITTED })
   }
 
   const count = results.length
@@ -175,6 +185,8 @@ export default function SearchPage() {
     <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
       <SectionHeading
         as="h1"
+        id={RESULTS_HEADING}
+        tabIndex={-1}
         eyebrow="Search"
         className="break-words"
         title={

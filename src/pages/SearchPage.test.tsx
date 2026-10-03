@@ -57,6 +57,18 @@ describe('SearchPage filter chips', () => {
 })
 
 describe('SearchPage', () => {
+  it('moves focus to the results heading after a submitted search, not on Back', async () => {
+    const router = renderAt('/search')
+    await userEvent.type(screen.getByLabelText('Search videos'), 'climate{Enter}')
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Results for “climate”' })
+    await waitFor(() => expect(heading).toHaveFocus())
+    heading.blur()
+    await router.navigate(-1)
+    await router.navigate(1)
+    await screen.findByRole('heading', { level: 1, name: 'Results for “climate”' })
+    expect(document.body).toHaveFocus()
+  })
+
   it('shows matching titles for a query, keeping it in detail links', () => {
     renderAt('/search?q=climate')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Results for “climate”')

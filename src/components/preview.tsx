@@ -21,11 +21,9 @@ const END_HOLD_MS = 1000
 // Exactly one preview plays at a time: the card most recently hovered or focused.
 let current: { id: string; stop: () => void } | null = null
 
+// Esc stops the preview and still means Back: the app shell's handler runs next.
 const onKeyDown = (e: KeyboardEvent) => {
-  if (e.key !== 'Escape' || !current || e.defaultPrevented) return
-  // Esc dismisses the preview before the app shell treats it as Back.
-  e.preventDefault()
-  current.stop()
+  if (e.key === 'Escape') current?.stop()
 }
 
 function claim(id: string, stop: () => void) {

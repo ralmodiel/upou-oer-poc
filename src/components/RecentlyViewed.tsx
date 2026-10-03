@@ -5,7 +5,7 @@ import { useCarousel } from './carousel-state'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { useCardPreview } from './preview'
-import { ManageLink } from './browse-ui'
+import { ITEM_FOCUS, ManageLink } from './browse-ui'
 import { useReturnRow } from './hooks'
 import SectionHeading from './ui/SectionHeading'
 
@@ -43,7 +43,11 @@ function Item({ video }: { video: Video }) {
   const { hostProps, overlay } = useCardPreview(video)
   return (
     <article {...hostProps} className="group/item relative">
-      <Thumbnail video={video} sizes="224px" className="rounded-lg ring-1 ring-black/5">
+      <Thumbnail
+        video={video}
+        sizes="224px"
+        className={`rounded-lg ring-1 ring-black/5 ${ITEM_FOCUS}`}
+      >
         {overlay}
       </Thumbnail>
       <p className="eyebrow mt-2 truncate">{video.category}</p>
@@ -55,7 +59,7 @@ function Item({ video }: { video: Video }) {
           video={video}
           aria-label={`Play ${video.title}`}
           data-card-link=""
-          className="after:absolute after:inset-0"
+          className="outline-none after:absolute after:inset-0"
         >
           {video.title}
         </PlayLink>

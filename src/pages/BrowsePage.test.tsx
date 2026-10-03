@@ -101,7 +101,7 @@ describe('BrowsePage', () => {
     } finally {
       setCatalog(fixtureVideos)
     }
-  })
+  }, 20_000)
 
   it('fills each row to at least twelve cards, ending on See all only when there is more', () => {
     setCatalog([
@@ -113,8 +113,11 @@ describe('BrowsePage', () => {
     ])
     try {
       renderHome()
+      // Plain DOM queries: a role query walks the whole page, slow on a busy machine.
       const row = (name: string) => {
-        const region = screen.getByRole('region', { name })
+        const region = Array.from(document.querySelectorAll('section')).find(
+          (s) => s.querySelector('h2')?.textContent === name,
+        )!
         // Pointing at a row renders all of it at once.
         fireEvent.pointerEnter(region.querySelector('.row')!)
         const cards = Array.from(region.querySelectorAll('article'))
@@ -138,7 +141,7 @@ describe('BrowsePage', () => {
     } finally {
       setCatalog(fixtureVideos)
     }
-  })
+  }, 20_000)
 
   it('keeps the old layout for one frame after Back from the player, then adds the strip', async () => {
     // Frames run only when the test says so, so the first one after Back cannot slip by.

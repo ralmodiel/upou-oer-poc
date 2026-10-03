@@ -7,7 +7,7 @@ import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
-import { FactsLine, LONG_TITLE } from './browse-ui'
+import { FactsLine, ITEM_FOCUS, LONG_TITLE } from './browse-ui'
 import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, PlayIcon } from './icons'
 import { imagesOf } from './media'
 import { useCardPreview } from './preview'
@@ -87,16 +87,19 @@ function Viewer({ videos, alsoNew, start }: Props) {
                   <span aria-live="polite" className="text-sm text-ink-3 tabular-nums">
                     {index + 1} of {count}
                   </span>
+                  {/* ↓ from these lands on Play (the image between is no stop). */}
                   <IconButton
                     label="Previous featured video"
                     icon={<ChevronLeftIcon />}
                     variant="secondary"
+                    data-spatial="over-entry"
                     onClick={() => go(-1)}
                   />
                   <IconButton
                     label="Next featured video"
                     icon={<ChevronRightIcon />}
                     variant="secondary"
+                    data-spatial="over-entry"
                     onClick={() => go(1)}
                   />
                 </div>
@@ -213,7 +216,7 @@ function AlsoNewItem({ video }: { video: Video }) {
         video={video}
         sizes="(min-width: 40rem) 160px, 128px"
         canonical
-        className="w-32 shrink-0 rounded-lg ring-1 ring-black/5 sm:w-40"
+        className={`w-32 shrink-0 rounded-lg ring-1 ring-black/5 sm:w-40 ${ITEM_FOCUS}`}
       >
         {overlay}
       </Thumbnail>
@@ -227,7 +230,7 @@ function AlsoNewItem({ video }: { video: Video }) {
             video={video}
             aria-label={`Play ${video.title}`}
             data-card-link=""
-            className="after:absolute after:inset-0"
+            className="outline-none after:absolute after:inset-0"
           >
             {video.title}
           </PlayLink>

@@ -233,13 +233,13 @@ export default function SearchPage() {
               : `${count} ${count === 1 ? 'video' : 'videos'}${where}`}
           </p>
           {all.length > 0 && (
-            <nav aria-label="Filter by collection" className="mt-3">
+            <nav aria-label="Filter by collection" className="mt-2">
               <ul
                 ref={row}
                 role="list"
                 data-spatial="group"
                 {...listProps}
-                className="-mx-(--gutter) flex gap-2 overflow-x-auto scroll-px-(--gutter) px-(--gutter) pb-1 scrollbar-none md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+                className="-mx-(--gutter) flex gap-2 overflow-x-auto scroll-px-(--gutter) px-(--gutter) py-1 scrollbar-none md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
               >
                 <li>
                   <Chip

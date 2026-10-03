@@ -18,7 +18,8 @@
 // pass over it to the section's content; ↑ from inside the section reaches it.
 // data-spatial="aside" (a secondary bar control: theme, Help) is reached along its bar, never by
 // ↑ / ↓ from the page. data-spatial="entry" (the hero's Play): ↓ from the header lands there while
-// it is near the top of the screen.
+// it is near the top of the screen. data-spatial="over-entry" (the hero's own controls above it,
+// previous / next): ↓ lands on the entry, as the image between them is no stop.
 // While a <dialog> is open only its contents count. A card's stretched link ([data-card-link])
 // stands for its whole <article>, so a grid moves card by card; inside a card its own controls
 // (Save, Details) come first. Pinned bars (sticky header, tab bar) are targets only when nothing
@@ -52,6 +53,7 @@ const TRACK = '[data-spatial="track"]'
 const HEADING = '[data-spatial="heading"]'
 const ASIDE = '[data-spatial="aside"]'
 const ENTRY = '[data-spatial="entry"]'
+const OVER_ENTRY = '[data-spatial="over-entry"]'
 // Widgets whose arrow keys mean something natively.
 const OWNS_ARROWS =
   'select, input[type="range"], input[type="number"], input[type="radio"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"], [role="slider"], [role="listbox"], [role="menu"], [role="menubar"], [role="radiogroup"], [role="tablist"], [role="tree"], [role="grid"], [role="combobox"], audio, video'
@@ -171,6 +173,24 @@ const rectOf = (el: Element) => toBox(el.getBoundingClientRect())
 // Visually hidden (sr-only) elements are a pixel large.
 const visible = (b: Box) => b.right - b.left >= 2 && b.bottom - b.top >= 2
 
+// What shows of an element inside `stop`: its box cut by the clipping boxes between (a card title's
+// link runs on past its line clamp).
+function shownBox(el: Element, stop: Element): Box {
+  let box = rectOf(el)
+  for (let p = el.parentElement; p && p !== stop; p = p.parentElement) {
+    const { overflow, overflowX, overflowY } = getComputedStyle(p)
+    if ([overflow, overflowX, overflowY].every((v) => !v || v === 'visible')) continue
+    const clip = rectOf(p)
+    box = {
+      top: Math.max(box.top, clip.top),
+      right: Math.min(box.right, clip.right),
+      bottom: Math.min(box.bottom, clip.bottom),
+      left: Math.max(box.left, clip.left),
+    }
+  }
+  return box
+}
+
 // The part of a sideways row its cards snap into: its box less its scroll padding.
 function trackView(track: Element): Box {
   const box = rectOf(track)
@@ -239,10 +259,15 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   if (start && home) {
     const inside = candidates(home)
       .filter((el) => el !== start)
-      .map((el) => ({ el, box: rectOf(el) }))
+      .map((el) => ({ el, box: shownBox(el, home) }))
       .filter((m) => visible(m.box))
-    const own = nearest(rectOf(start), inside, dir, (m) => m.box)
+    const own = nearest(shownBox(start, home), inside, dir, (m) => m.box)
     if (own) return own.el
+  }
+  // ↓ from the hero's previous / next: its Play.
+  if (dir === 'down' && start?.matches(OVER_ENTRY)) {
+    const entry = root.querySelector<HTMLElement>(ENTRY)
+    if (entry && isCandidate(entry) && visible(boxOf(entry))) return entry
   }
   // ← / → inside a chip group: the previous or next chip, row after row.
   const group = start && isCandidate(start) ? start.closest(GROUP) : null
@@ -369,16 +394,41 @@ export function focusAndReveal(target: HTMLElement, instant = false): boolean {
   // A card is revealed whole (in a row that scrolls sideways too), not just its title link.
   const card = target.hasAttribute('data-card-link')
   const shape = card ? (target.closest('article') ?? target) : target
-  if (typeof shape.scrollIntoView === 'function') {
-    const smooth = !instant && !matchMedia('(prefers-reduced-motion: reduce)').matches
-    revealEnds = smooth ? performance.now() + REVEAL_MS : 0
-    shape.scrollIntoView({
-      block: card ? 'center' : 'nearest',
-      inline: 'nearest',
-      behavior: smooth ? 'smooth' : 'auto',
-    })
+  const smooth = !instant && !matchMedia('(prefers-reduced-motion: reduce)').matches
+  const behavior = smooth ? 'smooth' : 'auto'
+  revealEnds = smooth ? performance.now() + REVEAL_MS : 0
+  // In a sideways row the row itself is scrolled to a card position that shows the whole card
+  // ("nearest" may stop short of one and snap back, half out of view), and brought into view up or
+  // down as a whole.
+  const track = card ? shape.closest<HTMLElement>(TRACK) : null
+  const left = track ? trackTarget(track, shape) : null
+  if (track && left !== null && typeof track.scrollTo === 'function') {
+    track.scrollTo({ left, behavior })
+    track.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior })
+  } else if (typeof shape.scrollIntoView === 'function') {
+    shape.scrollIntoView({ block: card ? 'center' : 'nearest', inline: 'nearest', behavior })
   }
   return true
+}
+
+/**
+ * The scroll position of a sideways row that shows `card` whole, or null when it does already: a
+ * card cut on the left starts the view; one cut on the right brings the first card position (an
+ * item's start) far enough along to show it.
+ */
+function trackTarget(track: HTMLElement, card: Element): number | null {
+  const view = trackView(track)
+  const box = rectOf(card)
+  if (box.left >= view.left - 1 && box.right <= view.right + 1) return null
+  const x = track.scrollLeft
+  if (box.left < view.left) return Math.max(0, x + box.left - view.left)
+  const need = box.right - view.right
+  const max = track.scrollWidth - track.clientWidth
+  for (const item of Array.from(track.firstElementChild?.children ?? [])) {
+    const offset = rectOf(item).left - view.left
+    if (offset >= need - 1) return Math.min(max, x + offset)
+  }
+  return max
 }
 
 /** Moves focus in `dir` and scrolls the target into view; false when nothing lies that way. */

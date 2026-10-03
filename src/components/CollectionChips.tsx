@@ -27,7 +27,7 @@ function CollectionChips() {
         role="list"
         data-spatial="group"
         {...listProps}
-        className="-mx-(--gutter) mt-5 flex gap-2 overflow-x-auto scroll-px-(--gutter) px-(--gutter) pb-1 scrollbar-none md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+        className="-mx-(--gutter) mt-4 flex gap-2 overflow-x-auto scroll-px-(--gutter) px-(--gutter) py-1 scrollbar-none md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
       >
         {categories.map((c, i) => (
           <li key={c.slug}>

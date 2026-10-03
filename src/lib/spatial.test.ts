@@ -465,21 +465,101 @@ describe('sideways rows', () => {
     expect(id(findSection(-1))).toBe('a1-link')
   })
 
+  // Row A's items (its cards' slots) and scroll range; spies for the reveal.
+  function trackA() {
+    const track = document.getElementById('ta')!
+    document.querySelectorAll<HTMLElement>('#ta li').forEach((li, i) => {
+      li.getBoundingClientRect = () =>
+        ({
+          top: 100,
+          left: 20 + i * 320,
+          width: 300,
+          height: 200,
+          right: 320 + i * 320,
+          bottom: 300,
+        }) as DOMRect
+    })
+    Object.defineProperties(track, {
+      scrollWidth: { configurable: true, value: 1960 },
+      clientWidth: { configurable: true, value: 1000 },
+    })
+    const scrollIntoView = vi.fn()
+    const scrollTo = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    track.scrollTo = scrollTo as typeof track.scrollTo
+    return { track, scrollIntoView, scrollTo }
+  }
+
   it('reveals a whole card as the track follows focus, not just its title link', () => {
     rowsPage()
-    const scrollIntoView = vi.fn()
-    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    const { track, scrollIntoView, scrollTo } = trackA()
     try {
-      focus('#a3-link')
+      // In view already: the card itself comes into view up or down.
+      focus('#a2-link')
       expect(moveFocus('right')).toBe(true)
-      expect(document.activeElement?.id).toBe('a4-link')
-      expect(scrollIntoView.mock.contexts.at(-1)).toBe(document.getElementById('a4'))
+      expect(scrollIntoView.mock.contexts.at(-1)).toBe(document.getElementById('a3'))
       expect(scrollIntoView).toHaveBeenLastCalledWith(
         expect.objectContaining({ block: 'center', inline: 'nearest' }),
       )
+      expect(scrollTo).not.toHaveBeenCalled()
+      // Cut on the right: the row moves on to the next card position, and comes into view whole.
+      expect(moveFocus('right')).toBe(true)
+      expect(document.activeElement?.id).toBe('a4-link')
+      expect(scrollTo).toHaveBeenLastCalledWith(expect.objectContaining({ left: 320 }))
+      expect(scrollIntoView.mock.contexts.at(-1)).toBe(track)
     } finally {
       delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
     }
+  })
+
+  it('shows a card cut by less than half whole, where "nearest" would snap back', () => {
+    rowsPage()
+    // A narrower view (Recently viewed's smaller cards): a3 shows all but its last 80px.
+    place('#ta', [80, 0, 900, 240])
+    const { scrollTo } = trackA()
+    try {
+      focus('#a2-link')
+      expect(moveFocus('right')).toBe(true)
+      expect(document.activeElement?.id).toBe('a3-link')
+      expect(scrollTo).toHaveBeenLastCalledWith(expect.objectContaining({ left: 320 }))
+    } finally {
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+    }
+  })
+})
+
+describe('cards and the hero', () => {
+  it("reaches a card's Save from a title whose link runs on past its line clamp", () => {
+    document.body.innerHTML = `
+      <main><article id="c">
+        <h3 id="c-title" style="overflow: hidden"><a id="c-link" href="/w/1" data-card-link>A long title</a></h3>
+        <button id="c-save">Save</button>
+      </article></main>`
+    place('#c', [100, 0, 300, 220])
+    place('#c-title', [230, 0, 300, 44])
+    // Four lines laid out, two shown: the link's box reaches past the Save button's top.
+    place('#c-link', [230, 0, 300, 88])
+    place('#c-save', [290, 0, 60, 30])
+    focus('#c-link')
+    expect(id(findTarget('down'))).toBe('c-save')
+    focus('#c-save')
+    expect(id(findTarget('up'))).toBe('c-link')
+  })
+
+  it("takes ↓ from the hero's previous / next to its Play, over nearer content below", () => {
+    document.body.innerHTML = `
+      <main>
+        <section><button id="next" data-spatial="over-entry">Next</button>
+          <a id="play" href="/w/1" data-spatial="entry">Play</a></section>
+        <section><a id="chip" href="/c/1">Chip</a></section>
+      </main>`
+    place('#next', [0, 800, 44, 44])
+    place('#play', [600, 0, 100, 44])
+    place('#chip', [700, 780, 100, 40])
+    focus('#next')
+    expect(id(findTarget('down'))).toBe('play')
+    focus('#play')
+    expect(id(findTarget('down'))).toBe('chip')
   })
 })
 

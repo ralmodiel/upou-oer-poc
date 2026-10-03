@@ -323,6 +323,14 @@ The arrow keys move focus to the nearest control in that direction; a few marker
 - `skip`: never a target (the skip link, Tab only).
 - `track` (round 5): a row of cards that scrolls sideways. ← / → walk all its cards, those out of
   view included; from outside it only the cards in its view (between its scroll paddings) count.
+  A card only partly in view is revealed by scrolling the track to the position that shows it
+  whole (not `nearest`, which mandatory snapping would undo).
+- `over-entry` (round 5): controls that sit above the hero (the featured Previous / Next); ↓ from
+  them lands on the hero's Play instead of skipping the block.
+- `list` (round 5): a scrolling list (Up next); ↑ / ↓ walk its items, clipped ones included.
+
+Inside a card, moves use the card's shown boxes (clipped by line clamps), so ↓ from a long title
+reaches its Save / Details.
 
 Open dialogs scope the walk to their contents, and a sticky dialog header counts as a bar. In
 settings panels the switches and their buttons share one column, so ↑ / ↓ visit them in order.

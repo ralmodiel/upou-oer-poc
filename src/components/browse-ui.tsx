@@ -9,6 +9,13 @@ import Skeleton from './ui/Skeleton'
 
 export const TEXT_LINK = 'font-semibold text-maroon underline-offset-4 hover:underline'
 
+/**
+ * A list item's focus outline (Also new, Recently viewed): on its image while its link has keyboard
+ * focus, as on cards; the title's own outline would be cut by its line clamp.
+ */
+export const ITEM_FOCUS =
+  'group-has-[[data-card-link]:focus-visible]/item:outline-3 group-has-[[data-card-link]:focus-visible]/item:outline-offset-2 group-has-[[data-card-link]:focus-visible]/item:outline-focus'
+
 /** Titles longer than this get a smaller display size in the hero and the quick look. */
 export const LONG_TITLE = 120
 

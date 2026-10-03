@@ -111,12 +111,22 @@ export interface NameSource {
   tags: readonly string[]
   title?: string
 }
-type Names = Iterable<string> | (() => Iterable<NameSource>)
+
+/** What learning finds in a catalog, as plain lists (see learnedNamesOf). */
+export interface LearnedNames {
+  firstNames: string[]
+  nameTokens: string[]
+  surnameTags: string[]
+}
+
+type Source = Iterable<string> | (() => Iterable<NameSource>)
+type Names = Source | LearnedNames
 
 // Names learned from the catalog: full names from titled tags and speaker credits, so "Myra Oruga"
 // is a person too; first names, so "Agnes Rola" is. Learned on first use (most pages never ask);
-// answers are remembered until the catalog changes.
-let nameSource: Names | undefined
+// answers are remembered until the catalog changes. The shipped catalog's names come learned from
+// the build (vite.config.ts), so the browser does none of this work for it.
+let nameSource: Source | undefined
 const firstNames = new Set<string>()
 const nameTokens = new Set<string>()
 // One-word tags that are a surname their own video credits ("claudio" beside "Dr Sylvia
@@ -125,11 +135,29 @@ const surnameTags = new Set<string>()
 const personMemo = new Map<string, boolean>()
 const genericMemo = new Map<string, boolean>()
 
-/** Sets the catalog (or a function returning its videos) that names are learned from. */
+const isLearned = (source: Names): source is LearnedNames =>
+  typeof source === 'object' && 'nameTokens' in source
+
+const refill = (set: Set<string>, words: readonly string[]) => {
+  set.clear()
+  for (const word of words) set.add(word)
+}
+
+/**
+ * Sets the catalog (or a function returning its videos) that names are learned from, or names
+ * already learned from it.
+ */
 export function registerNameTokens(source: Names) {
-  nameSource = source
   personMemo.clear()
   genericMemo.clear()
+  if (!isLearned(source)) {
+    nameSource = source
+    return
+  }
+  nameSource = undefined
+  refill(firstNames, source.firstNames)
+  refill(nameTokens, source.nameTokens)
+  refill(surnameTags, source.surnameTags)
 }
 
 const letters = (word: string) => word.toLowerCase().replace(/[^\p{L}'’-]/gu, '')
@@ -217,6 +245,13 @@ function learnNames(): void {
       if (parts && surnames.has(letters(parts[parts.length - 1]))) learnParts(parts)
     }
   }
+}
+
+/** Learns the names in videos (tags and titles) now; registerNameTokens takes the result. */
+export function learnedNamesOf(videos: Iterable<NameSource>): LearnedNames {
+  registerNameTokens(() => videos)
+  learnNames()
+  return { firstNames: [...firstNames], nameTokens: [...nameTokens], surnameTags: [...surnameTags] }
 }
 
 /** A first or last name seen in the catalog's person tags ("oruga"), whatever its case. */
@@ -378,6 +413,35 @@ export function tidyTag(tag: string): string {
       return word
     })
     .join(' ')
+}
+
+// An acronym as written: two to eight letters, at least two of them capitals ("ASEM", "DepEd").
+const ACRONYM_LIKE = /^(?=(?:\P{Lu}*\p{Lu}){2})\p{L}{2,8}$/u
+
+/**
+ * Whether `short` is an acronym of `phrase`, whatever the case: each word in turn gives the next
+ * letters from its start, and small words may give none ("ASEM" = Asia-Europe Meeting, "DepEd" =
+ * Department of Education).
+ */
+export function isAcronymOf(short: string, phrase: string): boolean {
+  if (!ACRONYM_LIKE.test(short)) return false
+  const letters = short.toLowerCase()
+  const words = phrase
+    .toLowerCase()
+    .split(/[\s/–—-]+/)
+    .map((w) => w.replace(/[^\p{L}]/gu, ''))
+    .filter(Boolean)
+  if (words.length < 2) return false
+  const match = (i: number, j: number): boolean => {
+    if (j === words.length) return i === letters.length
+    const word = words[j]
+    if (SMALL.has(word) && match(i, j + 1)) return true
+    for (let k = 1; k <= word.length && letters[i + k - 1] === word[k - 1]; k++) {
+      if (match(i + k, j + 1)) return true
+    }
+    return false
+  }
+  return match(0, 0)
 }
 
 /** A video's tags as chips: housekeeping dropped, duplicates merged, tidied, capped. */

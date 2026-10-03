@@ -284,6 +284,21 @@ describe('explain', () => {
     expect(explain(h, g)).toBe('Related video')
   })
 
+  it('names a topic once, never beside its own acronym', () => {
+    const talk = (id: string, title: string, tags: string[]) =>
+      make(id, { title, category: 'Policy', tags })
+    const pair = (tags: string[]) => {
+      const x = talk('asem-x', 'Trade Talks in Brussels', tags)
+      const y = talk('asem-y', 'Summit Notes from Hanoi', tags)
+      setCatalog([...list, x, y])
+      return explain(x, y)
+    }
+    expect(pair(['ASEM', 'Asia-Europe Meeting'])).toBe('Shares a topic: Asia-Europe Meeting')
+    expect(pair(['Asia-Europe Meeting', 'ASEM'])).toBe('Shares a topic: Asia-Europe Meeting')
+    expect(pair(['ASEM', 'Trade'])).toBe('Shares topics: ASEM, Trade')
+    setCatalog(list)
+  })
+
   it('falls back to the profile and stays short', () => {
     const long = make('long', {
       title: 'A Very Long Title About Bread That Keeps Going On And On Forever',

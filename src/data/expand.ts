@@ -1,13 +1,13 @@
 import { hashString } from '../lib/seed'
 import type { CatalogRecord, Video } from '../types'
 import { frameFlagsOf } from './frameFlags'
-import { videoImages } from './images'
+import { videoImages, type VideoImages } from './images'
+import { isObject, isValidRecord } from './records'
+
+export { isValidRecord }
 
 export const DEFAULT_CHANNEL = 'UP Open University'
 export const SOURCE_ORIGIN = 'https://oer.upou.edu.ph'
-
-const ID_RE = /^[a-z0-9-]+$/
-const YOUTUBE_ID_RE = /^[\w-]{11}$/
 
 // Drawn once per page load, so every refresh shows a different member of each thumbnail set.
 let loadSeed = Math.floor(Math.random() * 1e9)
@@ -20,28 +20,40 @@ export const setLoadSeed = (seed: number) => {
 /** All thumbnail candidates of a video; the canonical one (see images.ts) is first. */
 export const thumbnailSetOf = (video: Video): string[] => video.thumbnails ?? [video.thumbnail]
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null
-
 const isVideo = (value: unknown): value is Video => isObject(value) && 'youtubeId' in value
 
-const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== ''
+// The image fields are worked out on first read: a page shows a few hundred videos at most, so
+// startup skips that work for the rest of the catalog. Flags and seed are taken at expansion.
+interface Pending {
+  record: CatalogRecord
+  flags: number
+  turn: number
+  images?: VideoImages
+}
+const pending = new WeakMap<object, Pending>()
 
-/** The fields the UI relies on; the crawler guarantees the rest. */
-export const isValidRecord = (value: unknown): value is CatalogRecord =>
-  isObject(value) &&
-  typeof value.id === 'string' &&
-  ID_RE.test(value.id) &&
-  typeof value.y === 'string' &&
-  YOUTUBE_ID_RE.test(value.y) &&
-  text(value.t) &&
-  text(value.c) &&
-  typeof value.p === 'string' &&
-  !Number.isNaN(Date.parse(value.p))
+const imagesOf = (video: object): VideoImages => {
+  const p = pending.get(video)!
+  return (p.images ??= videoImages(p.record, p.flags, p.turn))
+}
+
+const IMAGE_FIELDS = ['thumbnail', 'thumbnails', 'backdrop', 'poster', 'frames', 'slides'] as const
+// Enumerable getters, so spreads, JSON and test equality still see the values.
+const LAZY_IMAGES: PropertyDescriptorMap = Object.fromEntries(
+  IMAGE_FIELDS.map((key) => [
+    key,
+    {
+      enumerable: true,
+      get(this: object) {
+        return imagesOf(this)[key]
+      },
+    },
+  ]),
+)
 
 /** Derives the full Video (image and source URLs, defaults) from a slim catalog record. */
 export function expandRecord(r: CatalogRecord): Video {
-  return {
+  const video = {
     id: r.id,
     youtubeId: r.y,
     title: r.t,
@@ -51,10 +63,11 @@ export function expandRecord(r: CatalogRecord): Video {
     channel: r.ch ?? DEFAULT_CHANNEL,
     publishedAt: r.p,
     sourceUrl: `${SOURCE_ORIGIN}/${r.id}/`,
-    // Frame flags (frameFlags.ts) keep unfit frames out and rank the rest; the seed rotates them.
-    ...videoImages(r, frameFlagsOf(r.y), hashString(r.id) + loadSeed),
     ...(r.f ? { featured: true } : {}),
   }
+  // Frame flags (frameFlags.ts) keep unfit frames out and rank the rest; the seed rotates them.
+  pending.set(video, { record: r, flags: frameFlagsOf(r.y), turn: hashString(r.id) + loadSeed })
+  return Object.defineProperties(video, LAZY_IMAGES) as Video
 }
 
 /**

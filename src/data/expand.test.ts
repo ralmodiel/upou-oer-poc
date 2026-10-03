@@ -57,6 +57,19 @@ describe('expandRecord', () => {
       expandRecord({ ...base, d: 'About.', g: ['Data'], f: 1, ch: 'UPOU FMDS' }),
     ).toMatchObject({ description: 'About.', tags: ['Data'], featured: true, channel: 'UPOU FMDS' })
   })
+
+  it('works out the image fields on first read, as at expansion time', () => {
+    setLoadSeed(1)
+    const lazy = expandRecord(base)
+    // A spread reads every field at once.
+    const read = { ...expandRecord(base) }
+    setLoadSeed(2)
+    expect(expandRecord(base).thumbnail).not.toBe(read.thumbnail)
+    expect(lazy).toEqual(read)
+    expect(JSON.parse(JSON.stringify(lazy))).toEqual(JSON.parse(JSON.stringify(read)))
+    expect(Object.keys(lazy)).toEqual(expect.arrayContaining(['thumbnail', 'poster', 'frames']))
+    setLoadSeed(-hashString(base.id))
+  })
 })
 
 describe('expandCatalog', () => {

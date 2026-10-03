@@ -1,6 +1,7 @@
+import catalogNames from 'virtual:catalog-names'
 import records from './catalog.json'
 import { formatDate } from '../lib/format'
-import { isOrgTag, registerNameTokens, topicTags } from '../lib/tags'
+import { isOrgTag, registerNameTokens, topicTags, type LearnedNames } from '../lib/tags'
 import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 import { frameFlagsOf } from './frameFlags'
@@ -301,12 +302,13 @@ export function searchVideos(query: string, { category, limit = 60 }: SearchOpti
 }
 
 /** Installs a catalog and forgets everything derived from it. Tests: use setCatalog in testing.ts. */
-export function replaceCatalog(list: readonly Video[]): void {
+export function replaceCatalog(list: readonly Video[], names?: LearnedNames): void {
   videos = list
-  // Read only when a page first asks about names (watch page, quick look, recommendations).
-  registerNameTokens(() => list)
+  // The names its tags teach, learned by the build; for other lists, read only when a page first
+  // asks about names (watch page, quick look, recommendations).
+  registerNameTokens(names ?? (() => list))
   byId = new Map(list.map((v) => [v.id, v]))
   memo = new Map()
 }
 
-replaceCatalog(expandCatalog(records))
+replaceCatalog(expandCatalog(records), catalogNames)

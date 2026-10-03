@@ -123,9 +123,13 @@ npm run dev        # http://localhost:5280
 slug, YouTube id, title, category and publish date, plus description, tags, featured flag, channel
 and image flags only when they carry information. It is about 835 KB of JSON (190 KB gzipped),
 built into its own cacheable chunk. `src/data/expand.ts` derives the full `Video` (source,
-thumbnail, backdrop and still-frame URLs) when the app starts (a few milliseconds), and
-`src/data/catalog.ts` serves it synchronously: categories (`getCategories`, `getCategoryVideos`),
-home sections (`getRows`), featured and latest picks, search and similar titles, all memoized.
+thumbnail, backdrop and still-frame URLs) when the app starts; the image fields are worked out on
+first read, so startup skips them for the videos a page never shows. `src/data/catalog.ts` serves
+it synchronously: categories (`getCategories`, `getCategoryVideos`), home sections (`getRows`),
+featured and latest picks, search and similar titles, all memoized. The people's names its tags
+and titles teach (`src/lib/tags.ts`, which keeps them out of topic chips) are learned once by the
+build and ship with the catalog chunk (`virtual:catalog-names` in `vite.config.ts`), so no page
+learns them in the browser.
 
 Images come from YouTube in sets: the original thumbnail plus the three still frames YouTube
 generates, at 320 px for cards and at 1280 px (`maxres`) for backdrops and reels. Each page load
@@ -207,8 +211,9 @@ tracking.
 - **Reasons.** `explainList(video, items, profile)` gives each card a short eyebrow such as "Same
   series", "Shares topics: Climate Change", "Also about PowerPoint" or "Because you watched
   “Food Safety”" (what follows a series name). Reasons never name a person or a generic word,
-  never repeat the row's heading, and none shows on three rows in a row or more than three times
-  in eight rows (the next true reason, or a rewording, takes over).
+  never repeat the row's heading or name a topic beside its own acronym ("Asia-Europe Meeting",
+  not "…, ASEM"), and none shows on three rows in a row or more than three times in eight rows
+  (the next true reason, or a rewording, takes over).
 - **Transcripts (optional).** Without transcripts the engine uses the metadata above. To add them,
   put caption files in `tmp/transcripts/` (yt-dlp names such as `<youtubeId>.en.vtt` work) and run
   `node scripts/text/ingest-transcripts.mjs && node scripts/text/build-recs.mjs`. The first writes

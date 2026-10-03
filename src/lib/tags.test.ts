@@ -1,12 +1,20 @@
+import catalogNames from 'virtual:catalog-names'
 import { describe, expect, it } from 'vitest'
+import records from '../data/catalog.json'
+import { isValidRecord } from '../data/records'
 import {
+  isAcronymOf,
   isGenericTag,
   isOrgTag,
+  isPersonTag,
+  learnedNamesOf,
   POPULAR_SERIES,
   POPULAR_TOPICS,
+  registerNameTokens,
   tagKey,
   tidyTag,
   topicTags,
+  type LearnedNames,
 } from './tags'
 
 describe('tags', () => {
@@ -58,5 +66,41 @@ describe('tidyTag', () => {
     expect(
       topicTags(['COVID19', 'Covid-19', 'FMDS', 'Faculty of Management and Development Studies']),
     ).toEqual(['COVID-19', 'FMDS'])
+  })
+})
+
+describe('isAcronymOf', () => {
+  it('matches the starts of the words in order, skipping small words, whatever the case', () => {
+    expect(isAcronymOf('ASEM', 'Asia-Europe Meeting')).toBe(true)
+    expect(isAcronymOf('DepEd', 'Department of Education')).toBe(true)
+    expect(isAcronymOf('CHED', 'Commission on Higher Education')).toBe(true)
+    expect(isAcronymOf('ODeL', 'open and distance eLearning')).toBe(true)
+    expect(isAcronymOf('MOOC', 'Massive Open Online Course')).toBe(true)
+  })
+
+  it('needs a written acronym and every main word', () => {
+    expect(isAcronymOf('Data', 'Data Analytics')).toBe(false)
+    expect(isAcronymOf('AM', 'Asia-Europe Meeting')).toBe(false)
+    expect(isAcronymOf('ASEM', 'Asia')).toBe(false)
+    expect(isAcronymOf('ICT', 'Climate Change')).toBe(false)
+  })
+})
+
+describe('names learned by the build', () => {
+  it('are what the browser would learn from the catalog, and answer the same', () => {
+    const docs = (records as unknown[])
+      .filter(isValidRecord)
+      .map((r) => ({ tags: r.g ?? [], title: r.t }))
+    const sorted = (n: LearnedNames) =>
+      [n.firstNames, n.nameTokens, n.surnameTags].map((l) => [...l].sort())
+    expect(sorted(catalogNames)).toEqual(sorted(learnedNamesOf(docs)))
+    expect(catalogNames.nameTokens.length).toBeGreaterThan(100)
+
+    const tags = [...new Set(docs.flatMap((d) => d.tags))]
+    registerNameTokens(() => docs)
+    const learned = tags.map(isPersonTag)
+    registerNameTokens(catalogNames)
+    expect(tags.map(isPersonTag)).toEqual(learned)
+    registerNameTokens([])
   })
 })

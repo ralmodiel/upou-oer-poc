@@ -6,6 +6,7 @@ import { neighborsOf } from '../data/recs'
 import type { Video } from '../types'
 import type { Profile } from './history'
 import {
+  isAcronymOf,
   isGenericTag,
   isNameToken,
   isOrgTag,
@@ -1117,7 +1118,11 @@ function sharedTopics(
     }
     const name = displayTag(tag)
     // A tag too long to show whole names an event or a title, not a topic.
-    if (A_TOPIC.length + name.length <= MAX_REASON && isTopic(tag, people)) out.names.push(name)
+    if (A_TOPIC.length + name.length > MAX_REASON || !isTopic(tag, people)) continue
+    // A topic and its acronym ("Asia-Europe Meeting", "ASEM") are one topic: keep the words.
+    const same = out.names.findIndex((n) => isAcronymOf(n, name) || isAcronymOf(name, n))
+    if (same < 0) out.names.push(name)
+    else if (isAcronymOf(out.names[same], name)) out.names[same] = name
   }
   return out
 }

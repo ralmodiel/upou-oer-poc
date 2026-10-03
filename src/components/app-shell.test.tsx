@@ -154,27 +154,28 @@ describe('HowItWorks', () => {
 })
 
 describe('useReturnFocus', () => {
-  it('puts focus back on the card that opened the player after Back', async () => {
-    function Shell() {
-      useReturnFocus()
-      return <Outlet />
-    }
-    const router = createMemoryRouter([
+  function Shell() {
+    useReturnFocus()
+    return <Outlet />
+  }
+  const routerFor = (home: ReactNode) =>
+    createMemoryRouter([
       {
         element: <Shell />,
         children: [
-          {
-            path: '/',
-            element: (
-              <Link to="/watch/climate-basics" data-card-link="">
-                Play Climate Change Basics
-              </Link>
-            ),
-          },
+          { path: '/', element: <main>{home}</main> },
           { path: '/watch/:id', element: <p>Player</p> },
+          { path: '/about', element: <p>About</p> },
         ],
       },
     ])
+
+  it('puts focus back on the card that opened the player after Back', async () => {
+    const router = routerFor(
+      <Link to="/watch/climate-basics" data-card-link="">
+        Play Climate Change Basics
+      </Link>,
+    )
     render(<RouterProvider router={router} />)
     await userEvent.click(screen.getByRole('link', { name: 'Play Climate Change Basics' }))
     expect(screen.getByText('Player')).toBeInTheDocument()
@@ -182,5 +183,46 @@ describe('useReturnFocus', () => {
     await waitFor(() =>
       expect(screen.getByRole('link', { name: 'Play Climate Change Basics' })).toHaveFocus(),
     )
+  })
+
+  it('returns to the same row and place, never to a copy of the video elsewhere', async () => {
+    // Watching "a" moves it to Recently viewed, and its collection row moves on to "c".
+    let watched = false
+    function Home() {
+      const row = watched ? ['b', 'c'] : ['b', 'a', 'c']
+      return (
+        <>
+          <ul data-row="recent">
+            {watched && (
+              <li>
+                <Link to="/watch/a" data-card-link="">
+                  Play a again
+                </Link>
+              </li>
+            )}
+          </ul>
+          <ul data-row="cat-research">
+            {row.map((id) => (
+              <li key={id}>
+                <Link to={`/watch/${id}`} data-card-link="">
+                  Play {id}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+    const router = routerFor(<Home />)
+    render(<RouterProvider router={router} />)
+    await userEvent.click(screen.getByRole('link', { name: 'Play a' }))
+    watched = true
+    await act(() => router.navigate(-1))
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Play c' })).toHaveFocus())
+    // Left without a click, key or submit (the browser's Back button): no spot to come back to.
+    await act(() => router.navigate('/about'))
+    await act(() => router.navigate(-1))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(document.body).toHaveFocus()
   })
 })

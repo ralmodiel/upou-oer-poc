@@ -364,6 +364,8 @@ let revealEnds = 0
 export function focusAndReveal(target: HTMLElement, instant = false): boolean {
   target.focus({ preventScroll: true })
   if (document.activeElement !== target) return false
+  // A control in a pinned bar (the sticky header, the tab bar) is on screen already.
+  if (barFinder(openDialog())(target)) return true
   // A card is revealed whole (in a row that scrolls sideways too), not just its title link.
   const card = target.hasAttribute('data-card-link')
   const shape = card ? (target.closest('article') ?? target) : target

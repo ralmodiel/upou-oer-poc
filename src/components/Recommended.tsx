@@ -4,10 +4,13 @@ import Carousel, { CarouselDots } from './Carousel'
 import { FIRST_ITEMS, useCarousel } from './carousel-state'
 import VideoGrid from './VideoGrid'
 import { RowSkeleton } from './browse-ui'
+import { useReturnRow } from './hooks'
 import { CardReasons } from './recs'
 import SectionHeading from './ui/SectionHeading'
 
 interface Props {
+  /** The row's id for Back (data-row): "recommended", "because". */
+  row: string
   title: string
   description?: ReactNode
   videos: readonly Video[]
@@ -20,9 +23,9 @@ interface Props {
 }
 
 /** A personalised home row ("Recommended for you", "Because you watched …"), one Carousel. */
-function Recommended({ title, description, videos, reasons, pending, cards }: Props) {
+function Recommended({ row, title, description, videos, reasons, pending, cards }: Props) {
   const headingId = useId()
-  const carousel = useCarousel(pending ? 0 : videos.length)
+  const carousel = useCarousel(pending ? 0 : videos.length, useReturnRow() === row)
   if (!pending && !videos.length) return null
   return (
     <section
@@ -42,6 +45,7 @@ function Recommended({ title, description, videos, reasons, pending, cards }: Pr
               <VideoGrid
                 videos={carousel.full ? videos : videos.slice(0, FIRST_ITEMS)}
                 layout="row"
+                row={row}
                 first={carousel.first}
                 showCategory
               />

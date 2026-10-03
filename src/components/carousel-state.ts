@@ -1,6 +1,7 @@
 // State of a home row that scrolls sideways (Carousel): `useCarousel(count)` measures the track
 // (again when `count`, the number of items, changes), pages it, says when the whole row may render
-// (`full`) and loads the next page's images ahead of time.
+// (`full`; at once with `startFull`, the row Back returns to) and loads the next page's images ahead
+// of time.
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { onIdle } from './browse-hooks'
 import { prefersReducedMotion } from './hooks'
@@ -59,14 +60,14 @@ const same = (a: RowState, b: RowState) =>
   a.pages === b.pages &&
   a.first === b.first
 
-export function useCarousel(count: number) {
+export function useCarousel(count: number, startFull = false) {
   const ref = useRef<HTMLDivElement>(null)
   const [state, setState] = useState(INITIAL)
   // Where the last button press is taking the track, so a quick second press pages on from there.
   const aim = useRef({ to: 0, at: -Infinity })
   // The rest of the row renders once it is used (hovered, focused, touched) or the browser is idle,
   // so a page of rows near the viewport does not render all their cards in one go.
-  const [full, setFull] = useState(false)
+  const [full, setFull] = useState(startFull)
   const used = useRef(false)
 
   useEffect(() => {

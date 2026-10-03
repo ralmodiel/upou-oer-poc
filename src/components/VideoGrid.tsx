@@ -44,13 +44,22 @@ interface Props {
   seeAll?: SeeAll
   /** The first card in view of a row paged on while focus was elsewhere: it becomes the Tab stop. */
   first?: number
+  /** A home row's id (data-row), so Back finds its cards again by place (useReturnFocus). */
+  row?: string
 }
 
 // Roving tabindex: only one card per grid is in the Tab order (its link, then its Save and
 // Details buttons), so Tab leaves the grid. The arrow keys move between cards through spatial
 // navigation (lib/spatial.ts, which treats each card as one target); Home and End jump to the
 // first and last item.
-export default function VideoGrid({ videos, layout = 'page', showCategory, seeAll, first }: Props) {
+export default function VideoGrid({
+  videos,
+  layout = 'page',
+  showCategory,
+  seeAll,
+  first,
+  row,
+}: Props) {
   const { list, item: itemClass, sizes, heading } = LAYOUTS[layout]
   const eyebrow = showCategory ?? layout !== 'row'
   const [current, setCurrent] = useState(0)
@@ -81,7 +90,7 @@ export default function VideoGrid({ videos, layout = 'page', showCategory, seeAl
   }
 
   return (
-    <ul role="list" className={list} onKeyDown={onKeyDown} onFocus={onFocus}>
+    <ul role="list" data-row={row} className={list} onKeyDown={onKeyDown} onFocus={onFocus}>
       {videos.map((video, i) => (
         <li key={video.id} className={itemClass}>
           <VideoCard

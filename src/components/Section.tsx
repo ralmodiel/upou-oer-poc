@@ -4,6 +4,7 @@ import Carousel, { CarouselDots } from './Carousel'
 import { FIRST_ITEMS, useCarousel } from './carousel-state'
 import VideoGrid from './VideoGrid'
 import { useNear } from './browse-hooks'
+import { useReturnRow } from './hooks'
 import { RowSkeleton } from './browse-ui'
 import { toneOf } from './tones'
 import SectionHeading from './ui/SectionHeading'
@@ -29,7 +30,8 @@ function Section({ row, eager = true }: Props) {
   // A See all tile ends the row only when the collection holds more than the row shows.
   const more = row.count > row.videos.length
   const items = row.videos.length + (more ? 1 : 0)
-  const carousel = useCarousel(near ? items : 0)
+  // The row Back returns to renders whole at once, so its card is there to take focus.
+  const carousel = useCarousel(near ? items : 0, useReturnRow() === row.id)
   // The first page at once, the rest of the row (and its See all tile) when the row is used or idle.
   const rest = !carousel.full && items > FIRST_ITEMS
   return (
@@ -53,6 +55,7 @@ function Section({ row, eager = true }: Props) {
             <VideoGrid
               videos={rest ? row.videos.slice(0, FIRST_ITEMS) : row.videos}
               layout="row"
+              row={row.id}
               first={carousel.first}
               seeAll={
                 rest || !more

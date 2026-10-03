@@ -147,6 +147,7 @@ describe('Personal rows', () => {
     const picks = lectures.slice(0, 12)
     renderAt(
       <Recommended
+        row="recommended"
         title="Recommended for you"
         videos={picks}
         reasons={new Map([[picks[0].id, 'Because you searched “lecture”']])}
@@ -162,7 +163,9 @@ describe('Personal rows', () => {
   })
 
   it('keep a skeleton row while the picks compute', () => {
-    renderAt(<Recommended title="Recommended for you" videos={[]} pending cards={12} />)
+    renderAt(
+      <Recommended row="recommended" title="Recommended for you" videos={[]} pending cards={12} />,
+    )
     const region = screen.getByRole('region', { name: 'Recommended for you' })
     expect(region).toHaveAttribute('aria-busy', 'true')
     expect(within(region).queryAllByRole('article')).toHaveLength(0)

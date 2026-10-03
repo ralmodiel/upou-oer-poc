@@ -239,8 +239,9 @@ function SearchBox() {
     }
     const field = input.current
     if (field?.offsetParent) {
-      // Already visible (md and up): focus now, before any keystroke can land.
-      field.focus()
+      // Already visible (md and up): focus now, before any keystroke can land. The sticky header is
+      // on screen, so the page stays where it is.
+      field.focus({ preventScroll: true })
       field.select()
       return
     }
@@ -251,7 +252,7 @@ function SearchBox() {
   useAppEvent(FOCUS_SEARCH_EVENT, requestFocus)
   useEffect(() => {
     if (!focusTick) return
-    input.current?.focus()
+    input.current?.focus({ preventScroll: true })
     input.current?.select()
   }, [focusTick])
 
@@ -270,7 +271,7 @@ function SearchBox() {
   const clear = () => {
     setValue('')
     go('')
-    input.current?.focus()
+    input.current?.focus({ preventScroll: true })
   }
 
   return (

@@ -446,6 +446,13 @@ a slide with an image; a title-tile slide stays one press away.
 - **Order:** home rows and collection chips follow each collection's newest video, newest first
   (the static home shell too), so the rows are the most recently updated collections. The
   Collections page keeps largest first.
+- **Back:** from the player, Back (and Esc / Backspace) steps over the videos watched in a row to
+  the page the first one was opened from (`src/lib/trail.ts`). That page then returns to the exact
+  card that was opened (`useReturnFocus`: its row, item and control, not a lookup by video id, so
+  never the Recently viewed copy), with the row's sideways scroll and the card's place on screen
+  kept even when new rows (Recently viewed, Because you watched) land above it. Search → Esc does
+  the same. While focus is in the header, html drops its scroll padding, so the search field and
+  remote ↑ into the header never scroll the page.
 
 ### Reels
 

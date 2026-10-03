@@ -276,6 +276,7 @@ export default function BrowsePage() {
       <div className="home-bands">
         {prefs.recommendations && (
           <Recommended
+            row="recommended"
             title="Recommended for you"
             description={
               <>
@@ -293,6 +294,7 @@ export default function BrowsePage() {
         <CollectionChips />
         {showBecause && recs.because && becauseList.length > 0 && (
           <Recommended
+            row="because"
             title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
             description={
               <>

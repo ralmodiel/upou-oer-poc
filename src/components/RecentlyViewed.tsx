@@ -6,12 +6,13 @@ import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { useCardPreview } from './preview'
 import { ManageLink } from './browse-ui'
+import { useReturnRow } from './hooks'
 import SectionHeading from './ui/SectionHeading'
 
 /** Compact row (Carousel) of videos opened lately; hidden until there are any. */
 function RecentlyViewed({ videos }: { videos: readonly Video[] }) {
   const headingId = useId()
-  const carousel = useCarousel(videos.length)
+  const carousel = useCarousel(videos.length, useReturnRow() === 'recent')
   if (!videos.length) return null
   return (
     <section aria-labelledby={headingId} className="px-(--gutter) py-8 sm:py-10">
@@ -25,7 +26,7 @@ function RecentlyViewed({ videos }: { videos: readonly Video[] }) {
       </SectionHeading>
       <div className="mt-5">
         <Carousel carousel={carousel} label="Recently viewed" className="row-compact">
-          <ul role="list" className="flex w-max gap-4">
+          <ul role="list" data-row="recent" className="flex w-max gap-4">
             {videos.map((video) => (
               <li key={video.id} className="w-(--row-card) flex-none snap-start">
                 <Item video={video} />

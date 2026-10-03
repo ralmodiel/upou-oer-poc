@@ -180,6 +180,11 @@
     scroll-padding-top: calc(var(--header-h) + 1rem);
     scroll-padding-bottom: calc(var(--tabbar-h) + 1rem);
   }
+  /* Not while focus is in the sticky header, whose controls are always on screen: Chrome would
+     scroll the page to bring them past that padding (a screen on focus, more with each key). */
+  html:has(header :focus) {
+    scroll-padding-top: 0;
+  }
   body {
     @apply min-h-dvh bg-paper text-ink antialiased;
   }

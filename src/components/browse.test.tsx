@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode, type ReactNode } from 'react'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { getRows } from '../data/catalog'
 import { setFrameFlags } from '../data/frameFlags'
@@ -211,9 +211,13 @@ describe('Featured', () => {
 
 describe('RecentlyViewed and CollectionChips', () => {
   it('renders nothing without history and a strip with it', () => {
-    const { rerender } = render(<RecentlyViewed videos={[]} />)
+    const { unmount } = render(
+      <MemoryRouter>
+        <RecentlyViewed videos={[]} />
+      </MemoryRouter>,
+    )
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
-    rerender(<></>)
+    unmount()
     renderAt('/', <RecentlyViewed videos={research.slice(0, 2)} />)
     const strip = screen.getByRole('region', { name: 'Recently viewed' })
     expect(within(strip).getAllByRole('listitem')).toHaveLength(2)

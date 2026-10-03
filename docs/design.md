@@ -102,15 +102,15 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
      with its text _beside/below_ the image (eyebrow category · serif title · summary · Play and
      Quick look buttons), and a right column "Also new" list of 4 items (small thumb, title,
      category). Manual prev/next controls only, no auto-rotation.
-  2. **Recently viewed** strip (only when history exists): compact horizontal list with
-     scroll snapping, no hover scaling.
+  2. **Recently viewed** row (only when history exists): compact cards in a row that scrolls
+     sideways (see "Round 5: row carousels"), no hover scaling.
   3. **Collections** chip row: every category with its count, the one with the newest video first,
      linking to `/collections/:slug`; "All collections" link.
   4. **Sections:** the collections with the newest videos only, newest first (see "Round 4: a
-     shorter home"), each a heading +
-     "See all (n)" link and one row of cards (two rows of two on phones), then an "All 30
-     collections" button. Grids, not horizontal rows, are the main browsing pattern. Below-the-fold
-     sections render lazily (`content-visibility: auto` plus a sensible `contain-intrinsic-size`).
+     shorter home"), each a heading + "See all (n)" link and a row of cards that scrolls sideways
+     (round 5), then an "All 30 collections" button. Collection, search and My List pages keep
+     grids. Below-the-fold sections render lazily (`content-visibility: auto` plus a sensible
+     `contain-intrinsic-size`).
 - **Card:** thumbnail (16:9, rounded, lazy, `srcSet` 320w/1280w with accurate `sizes`), then
   eyebrow (category, forest, small caps), title (sans semibold, 2-line clamp), meta (date ·
   "New" marker for the 10 newest). **Clicking the card plays** (`/watch/:id`). Secondary
@@ -318,6 +318,8 @@ The arrow keys move focus to the nearest control in that direction; a few marker
 - `wide`: a centred control (Load more, "All 30 collections") stands for its parent's full-width
   row, so ↓ from any column of a grid reaches it before the footer.
 - `skip`: never a target (the skip link, Tab only).
+- `track` (round 5): a row of cards that scrolls sideways. ← / → walk all its cards, those out of
+  view included; from outside it only the cards in its view (between its scroll paddings) count.
 
 Open dialogs scope the walk to their contents, and a sticky dialog header counts as a bar. In
 settings panels the switches and their buttons share one column, so ↑ / ↓ visit them in order.
@@ -392,3 +394,39 @@ a slide with an image; a title-tile slide stays one press away.
 - **Clear rows:** "3 videos in your history" with Clear history, "1 search saved" with Clear
   searches, in the switches' column. At zero the button stays focusable and is marked
   unavailable, so focus never drops.
+
+## Round 5: row carousels (user request)
+
+"Add left and right buttons to the list of videos in the landing page", to sample more of a
+collection. Only the behaviour comes from streaming sites; the look stays this site's own.
+
+- **Rows** (`Carousel`, `carousel-state.ts`, `.row` in `browse.css`): every home row is one line of
+  cards that scrolls sideways and snaps to cards, at the old grid sizes: two cards to a page on
+  phones, three at md, four from lg. A collection row holds up to 16 of its newest videos (titles
+  shown above left out), then a "See all n videos" tile under the collection's colour bar.
+  "Recommended for you" is now one row of 12 picks; "Because you watched" (12) and Recently viewed
+  (its smaller cards) are rows too, behind the same privacy switches. Phones show all 12
+  collection rows: one line each is about as long as seven rows of two by two.
+- **Buttons:** round 44px buttons on the surface colour with the lift shadow, a hairline border and
+  an ink chevron, centred on the card images in the gutter. Each press moves on by every card in
+  view (smooth unless reduced motion). Previous hides at the start and Next at the end; a focused
+  button that hides hands focus to the first card of the new page. Pointer devices show them while
+  the row is hovered or holds focus, with decorative page dots beside the heading. No dark paddles,
+  scrims or tints over images.
+- **Touch:** no buttons. Native swipe with snapping; cards are 2rem narrower so the next one peeks.
+- **Remote and keyboard:** the buttons are `skip` and the track is `track`. ← / → walk the cards to
+  the See all tile while the track keeps the whole focused card in view (a card's reveal scrolls
+  its article, not its title link). ↑ / ↓ land on the nearest card in view, and ← / → never jump
+  into another row's hidden cards. Paging while focus is elsewhere moves the row's Tab stop to its
+  first card in view.
+- **Edges and previews:** the track runs into the gutter (up to 4rem) with matching scroll padding,
+  so focus rings, lifts and previews are never cut off and cards line up with the heading. Previews
+  play inside the track and stop once their card leaves the view.
+- **Performance:** a row renders its first page and the peeking card at once, the rest when used
+  (hover, focus, touch) or idle, and measures itself on the frame after layout. Images stay lazy;
+  using or scrolling a row loads the next page's images ahead. Phone sections are estimated at
+  23.5rem. Measured before → after at 1440×900: 8.2 → 8.3 screens, 28 → 28 ↓ presses (with
+  history 10.3 → 9.9, 35 → 32); at 360×780 8.5 → 9.1 screens, 24 → 24 presses for 12 rows instead
+  of 7 (with history 11.0 → 10.8, 38 → 31). Images after a full scroll at 1440 @2x 1.99 → 2.21 MB
+  (each row's peeking card); TBT at 4× CPU at parity (median 425 → 399 ms); CLS 0. The DOM after a
+  full scroll grows from about 1,700 to 4,500 elements.

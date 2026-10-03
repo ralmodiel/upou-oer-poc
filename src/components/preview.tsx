@@ -77,6 +77,7 @@ export function useCardPreview(video: Video) {
   const [phase, setPhase] = useState<Phase>('idle')
   const hoverTimer = useRef(0)
   const endTimer = useRef(0)
+  const host = useRef<HTMLElement | null>(null)
   // After a finished reel the thumbnail stays until the pointer or focus leaves the card.
   const done = useRef(false)
   const { id } = video
@@ -115,11 +116,29 @@ export function useCardPreview(video: Video) {
   }, [id])
 
   const previewing = phase === 'playing' || phase === 'ending'
+
+  // Once in view, a preview stops when its card leaves it (a row paged on, the page scrolled).
+  useEffect(() => {
+    const el = host.current
+    if (!previewing || !el) return
+    let seen = false
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio >= 0.5) seen = true
+        else if (seen) stop()
+      },
+      { threshold: 0.5 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [previewing, stop])
+
   const hostProps = {
     onPointerEnter: (e: PointerEvent<HTMLElement>) => {
       if (e.pointerType === 'touch' || !canHover()) return
       // A dialog opens (or scrolls) under a still pointer: its cards preview on keyboard focus only.
       if (e.currentTarget.closest('dialog[open]')) return
+      host.current = e.currentTarget
       prefetchReel()
       clearTimeout(hoverTimer.current)
       hoverTimer.current = window.setTimeout(start, HOVER_DELAY_MS)
@@ -127,7 +146,8 @@ export function useCardPreview(video: Video) {
     onPointerLeave: stop,
     // Focus previews follow keyboard focus only: a click on a card's button, or the focus "Load
     // more" gives the first new card after a click, plays nothing (pointers get hover previews).
-    onFocus: () => {
+    onFocus: (e: FocusEvent<HTMLElement>) => {
+      host.current = e.currentTarget
       prefetchReel()
       if (lastInput() !== 'pointer') start()
     },

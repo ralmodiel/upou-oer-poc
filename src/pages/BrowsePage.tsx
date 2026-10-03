@@ -8,7 +8,7 @@ import PageBand from '../components/PageBand'
 import RecentlyViewed from '../components/RecentlyViewed'
 import Recommended from '../components/Recommended'
 import Section from '../components/Section'
-import { onIdle, useFrozen, useMediaQuery } from '../components/browse-hooks'
+import { onIdle, useFrozen } from '../components/browse-hooks'
 import { GridHint, ManageLink } from '../components/browse-ui'
 import { forYou, moreLikeThis, reasonsFor } from '../components/recs'
 import { ChevronRightIcon } from '../components/icons'
@@ -158,14 +158,14 @@ function useHomeRecommendations(
   return recs?.key === key ? recs : { ...NO_RECS, key, pending: true }
 }
 
-// The largest collections only, then a link to all of them: twelve with one row of cards each
-// (three at md, four from lg), seven with two rows of two on phones. "Recommended for you" keeps
-// two rows (eight from lg, six at md); "Because you watched" gets one, like the collections.
+// The collections with the newest videos, newest first, then a link to all of them: twelve rows
+// that scroll sideways (Carousel; two cards to a page on phones, three at md, four from lg), each
+// up to sixteen of the collection's newest videos and a "See all" tile. "Recommended for you" and
+// "Because you watched" are rows of twelve picks.
 const SECTIONS = 12
-const PHONE_SECTIONS = 7
+const ROW_CARDS = 16
+const PICKS = 12
 const NO_VIDEOS: Video[] = []
-const PHONE_CARDS = 4
-const CARDS = 8
 const MIN_ROW = 3
 
 const without = (list: Video[], ids: ReadonlySet<string>) => {
@@ -203,24 +203,20 @@ export default function BrowsePage() {
       .filter((v) => !shown.has(v.id))
       .slice(0, 4)
   }, [featured])
-  const wide = useMediaQuery('(min-width: 48rem)')
-  const large = useMediaQuery('(min-width: 64rem)')
-  const cards = wide ? (large ? CARDS : 6) : PHONE_CARDS
-  const rowCards = !wide ? PHONE_CARDS : large ? 4 : 3
   // A title already above (featured, also new, recently viewed) is left out of its category
   // row, which takes the next newest instead.
-  const rows = getRows(CARDS * 2)
+  const rows = getRows(ROW_CARDS * 2)
   const above = useMemo(
     () => new Set([...featured, ...alsoNew, ...recent].map((v) => v.id)),
     [featured, alsoNew, recent],
   )
   const shownRows = useMemo(() => {
-    return rows.slice(0, wide ? SECTIONS : PHONE_SECTIONS).map((row) => {
+    return rows.slice(0, SECTIONS).map((row) => {
       const rest = row.videos.filter((v) => !above.has(v.id))
       // A small collection shown almost entirely above keeps its own list rather than going bare.
-      return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, rowCards) }
+      return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, ROW_CARDS) }
     })
-  }, [above, rows, wide, rowCards])
+  }, [above, rows])
   const shown = useMemo(
     () =>
       new Set(
@@ -231,7 +227,7 @@ export default function BrowsePage() {
     [featured, alsoNew, recent, shownRows],
   )
   const restoring = useRestoring()
-  const recs = useHomeRecommendations(cards, shown, restoring, prefs.recommendations || showBecause)
+  const recs = useHomeRecommendations(PICKS, shown, restoring, prefs.recommendations || showBecause)
   // Recs computed before the latest watch (Back from the player) may hold a title now shown above:
   // never repeat one across the top rows (unless that would leave a row bare: a tiny catalog).
   const forYouList = useMemo(() => without(recs.forYou, above), [recs.forYou, above])
@@ -239,9 +235,9 @@ export default function BrowsePage() {
     () =>
       without(recs.because?.list ?? [], new Set([...above, ...forYouList.map((v) => v.id)])).slice(
         0,
-        rowCards,
+        PICKS,
       ),
-    [recs.because, above, forYouList, rowCards],
+    [recs.because, above, forYouList],
   )
 
   if (!videos.length) {
@@ -274,7 +270,7 @@ export default function BrowsePage() {
             videos={forYouList}
             reasons={recs.reasons}
             pending={recs.pending}
-            cards={cards}
+            cards={PICKS}
           />
         )}
         <RecentlyViewed videos={recent} />
@@ -290,7 +286,7 @@ export default function BrowsePage() {
             }
             videos={becauseList}
             reasons={recs.because.reasons}
-            cards={rowCards}
+            cards={PICKS}
           />
         )}
         {shownRows.map((row) => (

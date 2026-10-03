@@ -5,10 +5,10 @@ html:has(dialog[data-details][open]) {
 }
 
 /* Home sections below the fold are laid out only when scrolled near. The size estimate
-   follows the grid: two rows of two cards on phones, one row of three or four from md. */
+   follows the row: one line of cards, two to a page on phones, three or four from md. */
 .lazy-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 35rem;
+  contain-intrinsic-size: auto 23.5rem;
 }
 @media (width >= 48rem) {
   .lazy-section {
@@ -100,6 +100,74 @@ html:has(dialog[data-details][open]) {
 }
 .home-bands > section:nth-of-type(3n + 3) {
   border-top: 1px solid var(--color-line);
+}
+
+/* Home rows (Carousel): one line of cards that scrolls sideways and snaps to cards, two to a page
+   on phones, three at md, four from lg; on touch screens a little narrower, so the next one peeks.
+   The track runs into the gutter (up to 4rem) so focus rings, hover lifts and the next card are
+   not cut off, and its scroll padding keeps the cards in line with the heading. The buttons sit
+   in that gutter, centred on the card images. */
+.row {
+  --row-cols: 2;
+  --row-gap: 1rem;
+  --row-peek: 0rem;
+  --row-bleed: min(var(--gutter), 4rem);
+  --row-card: calc(
+    (100cqi - (var(--row-cols) - 1) * var(--row-gap) - var(--row-peek)) / var(--row-cols)
+  );
+  position: relative;
+  container-type: inline-size;
+}
+@media (width >= 48rem) {
+  .row {
+    --row-cols: 3;
+  }
+}
+@media (width >= 64rem) {
+  .row {
+    --row-cols: 4;
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  .row {
+    --row-peek: 2rem;
+  }
+}
+/* Recently viewed keeps its smaller cards. */
+.row.row-compact {
+  --row-card: 12rem;
+}
+@media (width >= 40rem) {
+  .row.row-compact {
+    --row-card: 14rem;
+  }
+}
+.row-track {
+  position: relative;
+  margin: -0.75rem calc(-1 * var(--row-bleed));
+  padding: 0.75rem var(--row-bleed);
+  scroll-padding-inline: var(--row-bleed);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.row-track::-webkit-scrollbar {
+  display: none;
+}
+/* Skeleton rows never scroll (nor become a Tab stop as an empty scroller). */
+.row-track.row-still {
+  overflow: hidden;
+}
+.row-button {
+  top: calc(var(--row-card) * 9 / 32);
+}
+.row-prev {
+  left: max(0.25rem - var(--gutter), var(--row-bleed) / -2 - 1.375rem);
+}
+.row-next {
+  right: max(0.25rem - var(--gutter), var(--row-bleed) / -2 - 1.375rem);
 }
 
 /* Preview reel over a card's thumbnail (the reel sizes itself to this box). Transparent, so the

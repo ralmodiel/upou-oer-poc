@@ -402,6 +402,87 @@ describe('scrolling lists', () => {
   })
 })
 
+describe('sideways rows', () => {
+  // A link above, then two rows of cards in tracks whose view (between 20px scroll paddings) shows
+  // three cards. Row A is at its start: a4, a5 and its See all tile lie right of its view, a4 just
+  // peeking into the padding. Row B is paged on by two cards: b1 and b2 lie left of its view.
+  function rowsPage() {
+    const cards = (row: string) =>
+      [1, 2, 3, 4, 5]
+        .map(
+          (n) =>
+            `<li><article id="${row}${n}"><a id="${row}${n}-link" href="/w/${row}${n}" data-card-link>${row}${n}</a></article></li>`,
+        )
+        .join('')
+    const track =
+      'data-spatial="track" style="scroll-padding-left: 20px; scroll-padding-right: 20px"'
+    document.body.innerHTML = `
+      <main>
+        <a id="top" href="/t">Top</a>
+        <section><div id="ta" ${track}><ul>${cards('a')}<li><a id="a-all" href="/c/a">See all</a></li></ul></div></section>
+        <section><div id="tb" ${track}><ul>${cards('b')}</ul></div></section>
+      </main>`
+    place('#top', [0, 1640, 200, 40])
+    place('#ta', [80, 0, 1000, 240])
+    place('#tb', [400, 0, 1000, 240])
+    for (let n = 1; n <= 5; n++) {
+      place(`#a${n}`, [100, 20 + (n - 1) * 320, 300, 200])
+      place(`#a${n}-link`, [250, 20 + (n - 1) * 320, 200, 20])
+      place(`#b${n}`, [420, 20 + (n - 3) * 320, 300, 200])
+      place(`#b${n}-link`, [570, 20 + (n - 3) * 320, 200, 20])
+    }
+    place('#a-all', [100, 20 + 5 * 320, 300, 170])
+  }
+
+  it('walks its cards with ← / →, those out of view included, to the See all tile', () => {
+    rowsPage()
+    focus('#a3-link')
+    expect(id(findTarget('right'))).toBe('a4-link')
+    focus('#a5-link')
+    expect(id(findTarget('right'))).toBe('a-all')
+    expect(id(findTarget('left'))).toBe('a4-link')
+  })
+
+  it('offers moves from outside it only the cards in its view', () => {
+    rowsPage()
+    // Straight down from the top-right link: a3, the last card in view, not the tile below the link.
+    focus('#top')
+    expect(id(findTarget('down'))).toBe('a3-link')
+    // Nothing in view lies left of a1 or right of a3: no jump to b2 or b5, out of B's view.
+    focus('#a1-link')
+    expect(findTarget('left')).toBeNull()
+    focus('#a3-link')
+    expect(id(findTarget('down'))).toBe('b5-link')
+    focus('#b5-link')
+    expect(id(findTarget('up'))).toBe('a3-link')
+  })
+
+  it('takes PageDown / PageUp to the first card in view of a paged row', () => {
+    rowsPage()
+    focus('#a1-link')
+    expect(id(findSection(1))).toBe('b3-link')
+    focus('#b4-link')
+    expect(id(findSection(-1))).toBe('a1-link')
+  })
+
+  it('reveals a whole card as the track follows focus, not just its title link', () => {
+    rowsPage()
+    const scrollIntoView = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    try {
+      focus('#a3-link')
+      expect(moveFocus('right')).toBe(true)
+      expect(document.activeElement?.id).toBe('a4-link')
+      expect(scrollIntoView.mock.contexts.at(-1)).toBe(document.getElementById('a4'))
+      expect(scrollIntoView).toHaveBeenLastCalledWith(
+        expect.objectContaining({ block: 'center', inline: 'nearest' }),
+      )
+    } finally {
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+    }
+  })
+})
+
 describe('keepsArrow', () => {
   it('lets fields keep left/right until the caret hits an edge; widgets keep every arrow', () => {
     document.body.innerHTML =

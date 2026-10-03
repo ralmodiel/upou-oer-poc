@@ -1,36 +1,39 @@
 import { memo, useId } from 'react'
 import type { Video } from '../types'
+import Carousel, { CarouselDots } from './Carousel'
+import { useCarousel } from './carousel-state'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { useCardPreview } from './preview'
 import { ManageLink } from './browse-ui'
 import SectionHeading from './ui/SectionHeading'
 
-/** Compact, snap-scrolling strip of videos opened lately; hidden until there are any. */
+/** Compact row (Carousel) of videos opened lately; hidden until there are any. */
 function RecentlyViewed({ videos }: { videos: readonly Video[] }) {
   const headingId = useId()
+  const carousel = useCarousel(videos.length)
   if (!videos.length) return null
   return (
-    <section aria-labelledby={headingId} className="py-8 sm:py-10">
-      <div className="px-(--gutter)">
-        <SectionHeading
-          id={headingId}
-          title="Recently viewed"
-          description="Videos you opened lately, newest first. Only this browser keeps the list."
-        >
-          <ManageLink>Manage history</ManageLink>
-        </SectionHeading>
-      </div>
-      <ul
-        role="list"
-        className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-(--gutter) px-(--gutter) pb-2 scrollbar-none"
+    <section aria-labelledby={headingId} className="px-(--gutter) py-8 sm:py-10">
+      <SectionHeading
+        id={headingId}
+        title="Recently viewed"
+        description="Videos you opened lately, newest first. Only this browser keeps the list."
       >
-        {videos.map((video) => (
-          <li key={video.id} className="w-48 flex-none snap-start sm:w-56">
-            <Item video={video} />
-          </li>
-        ))}
-      </ul>
+        <CarouselDots carousel={carousel} />
+        <ManageLink>Manage history</ManageLink>
+      </SectionHeading>
+      <div className="mt-5">
+        <Carousel carousel={carousel} label="Recently viewed" className="row-compact">
+          <ul role="list" className="flex w-max gap-4">
+            {videos.map((video) => (
+              <li key={video.id} className="w-(--row-card) flex-none snap-start">
+                <Item video={video} />
+              </li>
+            ))}
+          </ul>
+        </Carousel>
+      </div>
     </section>
   )
 }

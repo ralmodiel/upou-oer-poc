@@ -11,6 +11,9 @@
 // data-spatial="list" (a vertical list that scrolls on its own): ↑ / ↓ walk its items in order,
 // those scrolled out of its view included, and leave it at either end; entered up or down it
 // lands on its first or last item, and from the side only items in its view count.
+// data-spatial="track" (a row of cards that scrolls sideways): ← / → walk its cards, those scrolled
+// out of its view included; from outside it only the cards in its view (between its scroll
+// paddings) count.
 // data-spatial="heading" (a See all link beside a section heading): ↑ / ↓ from outside its section
 // pass over it to the section's content; ↑ from inside the section reaches it.
 // data-spatial="aside" (a secondary bar control: theme, Help) is reached along its bar, never by
@@ -45,6 +48,7 @@ const INTERACTIVE = 'a[href], button, input, select, textarea'
 const HIDDEN = '[aria-hidden="true"], [inert], [hidden], [data-spatial="skip"]'
 const GROUP = '[data-spatial="group"]'
 const LIST = '[data-spatial="list"]'
+const TRACK = '[data-spatial="track"]'
 const HEADING = '[data-spatial="heading"]'
 const ASIDE = '[data-spatial="aside"]'
 const ENTRY = '[data-spatial="entry"]'
@@ -167,6 +171,14 @@ const rectOf = (el: Element) => toBox(el.getBoundingClientRect())
 // Visually hidden (sr-only) elements are a pixel large.
 const visible = (b: Box) => b.right - b.left >= 2 && b.bottom - b.top >= 2
 
+// The part of a sideways row its cards snap into: its box less its scroll padding.
+function trackView(track: Element): Box {
+  const box = rectOf(track)
+  const style = getComputedStyle(track)
+  const left = box.left + (parseFloat(style.scrollPaddingLeft) || 0)
+  return { ...box, left, right: box.right - (parseFloat(style.scrollPaddingRight) || 0) }
+}
+
 /** Where focus enters a chip group: its tab stop, else its active chip, else the first. */
 function entryOf(group: Element): HTMLElement | null {
   const items = candidates(group)
@@ -279,6 +291,9 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   const last: Item[] = []
   const passed: Item[] = []
   const groups = new Set<Element>()
+  const views = new Map<Element, Box>()
+  const viewOf = (track: Element) =>
+    views.get(track) ?? views.set(track, trackView(track)).get(track)!
   for (const item of pool) {
     // A chip group enters as one target: its whole box, landing on its entry chip. So does a
     // scrolling list up or down, landing on its first or last item; from the side, only its items
@@ -297,6 +312,8 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
     const box = unit ? rectOf(unit) : boxOf(el)
     if (!visible(box)) continue
     if (scroller && !unit && !overlaps(box, rectOf(scroller))) continue
+    const track = el.closest(TRACK)
+    if (track && !track.contains(start) && !overlaps(box, viewOf(track))) continue
     if (onScreenOnly && !overlaps(box, viewport)) continue
     const bar = barOf(el)
     if (vertical && bar !== startBar && el.matches(ASIDE)) continue
@@ -347,11 +364,14 @@ let revealEnds = 0
 export function focusAndReveal(target: HTMLElement, instant = false): boolean {
   target.focus({ preventScroll: true })
   if (document.activeElement !== target) return false
-  if (typeof target.scrollIntoView === 'function') {
+  // A card is revealed whole (in a row that scrolls sideways too), not just its title link.
+  const card = target.hasAttribute('data-card-link')
+  const shape = card ? (target.closest('article') ?? target) : target
+  if (typeof shape.scrollIntoView === 'function') {
     const smooth = !instant && !matchMedia('(prefers-reduced-motion: reduce)').matches
     revealEnds = smooth ? performance.now() + REVEAL_MS : 0
-    target.scrollIntoView({
-      block: target.hasAttribute('data-card-link') ? 'center' : 'nearest',
+    shape.scrollIntoView({
+      block: card ? 'center' : 'nearest',
       inline: 'nearest',
       behavior: smooth ? 'smooth' : 'auto',
     })
@@ -388,7 +408,13 @@ export function findSection(step: 1 | -1, from: Element | null = document.active
   }
   const section = sections[index]
   if (!section) return null
-  return section.querySelector<HTMLElement>('[data-card-link]') ?? firstIn(section)
+  // In a sideways row, its first card in view: a paged row stays where it is.
+  const cards = Array.from(section.querySelectorAll<HTMLElement>('[data-card-link]'))
+  const inView = cards.find((el) => {
+    const track = el.closest(TRACK)
+    return !track || overlaps(boxOf(el), trackView(track))
+  })
+  return inView ?? cards[0] ?? firstIn(section)
 }
 
 /**

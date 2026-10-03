@@ -97,7 +97,7 @@ export default function SearchPage() {
     return `?${next}`
   }
 
-  useDocumentTitle(q ? `“${q}” · Search · UPOU Networks` : 'Search · UPOU Networks')
+  useDocumentTitle(q ? `“${q}” · Search · UPOU OER` : 'Search · UPOU OER')
 
   // Filter chips: one Tab stop, entered at the active filter.
   const activeFacet = category ? facets.findIndex((f) => f.name === category.name) + 1 : 0

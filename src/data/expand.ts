@@ -43,10 +43,13 @@ export const isValidRecord = (value: unknown): value is CatalogRecord =>
 export function expandRecord(r: CatalogRecord): Video {
   const hiRes = r.m !== 0
   // The set is the YouTube thumbnail plus its three still frames; small and large share an index.
+  // Without 1280px stills, the 640px "sd" ones (4:3 letterboxed; object-fit: cover crops the bars)
+  // still beat the 320px thumbnails when enlarged.
   const small = ['mqdefault', 'mq1', 'mq2', 'mq3'].map((n) => image(r.y, n))
+  const size = hiRes ? 'maxres' : 'sd'
   const large = [
-    r.b ?? image(r.y, hiRes ? 'maxresdefault' : 'mqdefault'),
-    ...[1, 2, 3].map((n) => image(r.y, `${hiRes ? 'maxres' : 'mq'}${n}`)),
+    r.b ?? image(r.y, `${size}default`),
+    ...[1, 2, 3].map((n) => image(r.y, `${size}${n}`)),
   ]
   const n = small.length
   const pick = (((hashString(r.id) + loadSeed) % n) + n) % n
@@ -62,8 +65,8 @@ export function expandRecord(r: CatalogRecord): Video {
     sourceUrl: `${SOURCE_ORIGIN}/${r.id}/`,
     thumbnail: small[pick],
     thumbnails: small,
-    // Low-res videos keep their one good backdrop (og:image) instead of a 320px frame.
-    backdrop: hiRes ? large[pick] : large[0],
+    // A source-site backdrop (og:image) is kept over the rotating 640px frames.
+    backdrop: !hiRes && r.b ? r.b : large[pick],
     frames: large.slice(1),
     ...(r.f ? { featured: true } : {}),
   }

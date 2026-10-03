@@ -66,7 +66,7 @@ export default function Footer() {
           <ul className="mt-3 space-y-2.5">
             <li>
               <External href="https://oer.upou.edu.ph/videos/">
-                UPOU Networks (oer.upou.edu.ph)
+                oer.upou.edu.ph (UP Open University)
               </External>
             </li>
             <li>
@@ -114,9 +114,11 @@ export default function Footer() {
       </div>
       <div className="flex flex-col gap-2 border-t border-line px-(--gutter) py-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-display text-lg leading-none text-ink">
-          UPOU <span className="text-maroon">Networks</span>
+          UPOU <span className="text-maroon">OER</span>
         </p>
-        <p>Open educational videos from UP Open University · a proof of concept, not a product.</p>
+        <p>
+          Open Educational Resources from UP Open University · a proof of concept, not a product.
+        </p>
       </div>
     </footer>
   )

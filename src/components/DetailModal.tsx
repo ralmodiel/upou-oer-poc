@@ -67,7 +67,7 @@ function DetailDialog({ video }: { video: Video }) {
     dialog.current?.scrollTo({ top: 0 })
   }, [video.id])
 
-  useDocumentTitle(`${video.title} · UPOU Networks`)
+  useDocumentTitle(`${video.title} · UPOU OER`)
 
   // Close natively first (focus returns to the trigger), so we never navigate with it open.
   const leave = () => {
@@ -194,7 +194,7 @@ function DetailDialog({ video }: { video: Video }) {
 
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-5 md:col-start-1 md:row-start-3 md:self-start">
             <ExternalLink href={watchUrl(video.youtubeId)}>Watch on YouTube</ExternalLink>
-            {sourceUrl && <ExternalLink href={sourceUrl}>View on UPOU Networks</ExternalLink>}
+            {sourceUrl && <ExternalLink href={sourceUrl}>View on oer.upou.edu.ph</ExternalLink>}
           </div>
         </div>
 

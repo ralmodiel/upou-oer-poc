@@ -55,11 +55,11 @@ export default function Header() {
         <div className="flex min-w-0 shrink-0 items-center gap-2">
           <Link
             to="/"
-            aria-label="UPOU Networks, home"
+            aria-label="UPOU OER, home"
             className="flex items-baseline gap-1 rounded-sm py-2.5 font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
           >
             <span className="text-ink">UPOU</span>
-            <span className="text-maroon">Networks</span>
+            <span className="text-maroon">OER</span>
           </Link>
           <span
             role="note"
@@ -67,9 +67,9 @@ export default function Header() {
             aria-label="Proof of concept"
             className="rounded-pill border border-line bg-surface px-1.5 py-1 text-[0.625rem] leading-none font-semibold tracking-wider text-ink-2 uppercase"
           >
-            PoC
+            Proof of concept
           </span>
-          <span className="hidden text-sm text-ink-3 xl:inline">· Open educational videos</span>
+          <span className="hidden text-sm text-ink-3 xl:inline">· Open Educational Resources</span>
         </div>
         <nav aria-label="Main" className="ml-3 hidden items-center gap-0.5 md:flex lg:ml-6">
           <NavLink to="/" end className={NAV_LINK}>

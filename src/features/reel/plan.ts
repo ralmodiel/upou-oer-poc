@@ -128,7 +128,7 @@ export function topicsOf(video: Video, max = 6): string[] {
 
 /** Seeded one-liner from category and channel for videos without a description. */
 function metadataHook(video: Video, rand: () => number): string {
-  const channel = video.channel.trim() || 'UPOU Networks'
+  const channel = video.channel.trim() || 'UPOU OER'
   const category = video.category.trim()
   if (!category) return `Free, open learning from ${channel}.`
   const options = [

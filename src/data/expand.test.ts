@@ -35,8 +35,8 @@ describe('expandRecord', () => {
 
   it('falls back to mq images, with an optional backdrop override', () => {
     const mq = expandRecord({ ...base, m: 0 })
-    expect(mq.backdrop).toBe(image('mqdefault'))
-    expect(mq.frames).toEqual([image('mq1'), image('mq2'), image('mq3')])
+    expect(mq.backdrop).toBe(image('sddefault'))
+    expect(mq.frames).toEqual([image('sd1'), image('sd2'), image('sd3')])
     const og = 'https://oer.upou.edu.ph/wp-content/uploads/still.jpg'
     expect(expandRecord({ ...base, m: 0, b: og }).backdrop).toBe(og)
     // the backdrop override is independent of the frame quality

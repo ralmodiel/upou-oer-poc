@@ -24,7 +24,7 @@ describe('PromoReel', () => {
 
     await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
     expect(screen.getByText(testVideo.title)).toBeInTheDocument()
-    expect(screen.getByText('UPOU Networks')).toBeInTheDocument()
+    expect(screen.getByText('UPOU OER')).toBeInTheDocument()
     expect(
       screen.getByText('Learn how raw numbers become insight.', { exact: false }),
     ).toBeInTheDocument()

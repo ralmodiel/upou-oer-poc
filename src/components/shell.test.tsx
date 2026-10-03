@@ -35,7 +35,9 @@ const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resol
 describe('Proof-of-concept notice', () => {
   it('is shown in the header and the footer', () => {
     renderLayout()
-    expect(screen.getByRole('note', { name: 'Proof of concept' })).toHaveTextContent('PoC')
+    expect(screen.getByRole('note', { name: 'Proof of concept' })).toHaveTextContent(
+      'Proof of concept',
+    )
     expect(screen.getByRole('contentinfo')).toHaveTextContent(/proof of concept/i)
   })
 })

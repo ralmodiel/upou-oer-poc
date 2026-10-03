@@ -3,7 +3,7 @@ import LinkButton from '../components/ui/LinkButton'
 import SectionHeading from '../components/ui/SectionHeading'
 
 export default function NotFoundPage() {
-  useDocumentTitle('Page not found · UPOU Networks')
+  useDocumentTitle('Page not found · UPOU OER')
   return (
     <div className="px-(--gutter) pt-10 pb-16 sm:pt-14">
       <SectionHeading

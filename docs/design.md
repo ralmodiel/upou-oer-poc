@@ -1,4 +1,4 @@
-# UPOU Networks — design direction (v2)
+# UPOU OER — design direction (v2)
 
 A distinctive identity for an open-university video library: **editorial, warm, academic,
 modern**. It must not read as a streaming-service clone. Specifically avoid: black + red
@@ -10,10 +10,10 @@ The 10-second generated promo reel stays. It is the product's signature feature.
 ## Identity
 
 - **Wordmark:** text only, never the logo artwork (this project is not affiliated with UPOU).
-  "UPOU" in charcoal and "Networks" in maroon, echoing the logo's two-tone lettering, set in
-  the display serif, with the descriptor "Open educational videos". A small "PoC" pill sits
+  "UPOU" in charcoal and "OER" in maroon, echoing the logo's two-tone lettering, set in
+  the display serif, with the descriptor "Open Educational Resources". A small "Proof of concept" pill sits
   next to it on every page (title "Proof of concept").
-- **Colors come from the UPOU logos** (measured from the UPOU Networks mark and the UP seal):
+- **Colors come from the UPOU logos** (measured from the UPOU OER mark and the UP seal):
   Networks maroon `#8d0c34` (gradient edge `#7f001f`), charcoal `#373637`, amber card
   `#f5a71d`, green card `#036a4d`; seal forest `#00563f`, maroon `#8d1436`, gold `#fcb51b`.
   Tokens (CSS variables in `src/index.css`, exposed to Tailwind through `@theme`):
@@ -74,7 +74,7 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
 (header and footer visible), not a full-screen stage.
 
 - **Header:** paper background with a bottom `--color-line`; translucent + blur once scrolled.
-  Left: wordmark + PoC pill. Center/right (desktop): nav Browse · Collections · My List (count
+  Left: wordmark + "Proof of concept" pill. Center/right (desktop): nav Browse · Collections · My List (count
   badge), an always-visible search field (≥ md), theme toggle. Mobile (< md): wordmark, search
   icon that expands to a full-width field, menu with the nav + theme toggle. Fits 360px.
 - **Home (`/`):**
@@ -108,15 +108,15 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
 - **Watch (`/watch/:id`):** two-column at `lg` (main 8/12, aside 4/12). Main: the **player
   stage** (16:9, rounded, surface background) where the promo reel plays and then the YouTube
   embed takes over; below it the serif title, meta row (category link · date · "Watch on
-  YouTube" · "View on UPOU Networks" · Share/copy link · My List), summary/description, tag
+  YouTube" · "View on oer.upou.edu.ph" · Share/copy link · My List), summary/description, tag
   chips. Aside: "Up next" list (`similarTo`, 8 items, thumbnail + title + category) and a
   "Back to {category}" link. On mobile the stage is edge-to-edge and the aside follows the text.
 - **Promo reel restyle:** keep the 10 s timeline, the three templates, seeded variety, Skip and
   sound controls. Replace the crimson/black ident with the new identity (paper or ink ident
   with the serif wordmark, maroon/forest/gold accents from the token set); legible type over
   stills; the reel fills the 16:9 stage, not the viewport.
-- **Footer:** three columns on desktop: About (the PoC disclaimer, verbatim from
-  `NOTICE.md`'s first paragraph), Source (UPOU Networks, YouTube channel, CC BY 4.0 note),
+- **Footer:** three columns on desktop: About (the proof-of-concept disclaimer, verbatim from
+  `NOTICE.md`'s first paragraph), Source (UPOU OER, YouTube channel, CC BY 4.0 note),
   Project (MIT license, third-party licenses link, "View source" if a repo URL is configured).
 - **States:** skeletons use `--color-surface-2`; friendly empty and error states with one clear
   action; a styled 404 for unknown routes (instead of redirecting home).

@@ -20,7 +20,7 @@ import './reel.css'
 export const REEL_MS = 10_000
 
 // Wordmark letters, indexed across both words so the kinetic ident can drop them in one by one.
-const WORDMARK = ['UPOU', 'Networks'].map((word, wi, words) => {
+const WORDMARK = ['UPOU', 'OER'].map((word, wi, words) => {
   const offset = words.slice(0, wi).join('').length
   return [...word].map((char, i) => ({ char, style: { '--i': offset + i } as CSSProperties }))
 })
@@ -267,7 +267,7 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
         <span className="reel-ident-wash" />
         <p className="reel-wordmark">
           <span className="reel-ident-block" />
-          <span className="sr-only">UPOU Networks</span>
+          <span className="sr-only">UPOU OER</span>
           <span className="reel-wm" aria-hidden="true">
             {WORDMARK.map((word, wi) => (
               <span key={wi} className={wi ? 'reel-wm-b' : 'reel-wm-a'}>
@@ -281,7 +281,7 @@ const Timeline = memo(function Timeline({ plan, stills }: { plan: ReelPlan; stil
           </span>
         </p>
         <span className="reel-streak" />
-        <p className="reel-ident-sub">Open educational videos</p>
+        <p className="reel-ident-sub">Open Educational Resources</p>
       </div>
 
       <div className="reel-end">

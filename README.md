@@ -1,7 +1,7 @@
-# UPOU Networks
+# UPOU OER — Open Educational Resources
 
 A proof-of-concept, streaming-style web app for browsing and watching open educational videos from
-[UPOU Networks](https://oer.upou.edu.ph/videos/) (UP Open University). Every video opens with a
+[oer.upou.edu.ph](https://oer.upou.edu.ph/videos/) (UP Open University). Every video opens with a
 **10-second promo reel generated from that video's data**, then plays the embedded YouTube video.
 
 - React single-page app with no backend and no database. The video catalog is a static JSON file
@@ -86,7 +86,7 @@ npm run dev        # http://localhost:5280
 
 ## Catalog data
 
-`src/data/catalog.json` is a static snapshot of the UPOU Networks library (2,124 videos, taken on
+`src/data/catalog.json` is a static snapshot of the UPOU OER library (2,124 videos, taken on
 2026-10-03): a minified array of slim records (`CatalogRecord` in `src/types.ts`) holding the post
 slug, YouTube id, title, category and publish date, plus description, tags, featured flag, channel
 and image flags only when they carry information. It is about 835 KB of JSON (190 KB gzipped),
@@ -158,7 +158,7 @@ unknown paths.
 
 - **Code:** [MIT](LICENSE).
 - **Videos and metadata:** © UP Open University, published on
-  [UPOU Networks](https://oer.upou.edu.ph/videos/) under CC BY 4.0 unless stated otherwise, and
+  [oer.upou.edu.ph](https://oer.upou.edu.ph/videos/) under CC BY 4.0 unless stated otherwise, and
   streamed via YouTube.
 - **Bundled libraries:** MIT; see `public/THIRD_PARTY_LICENSES.txt`.
 
@@ -168,5 +168,5 @@ statements.
 ## Credits
 
 Videos and descriptions © UP Open University, from
-[UPOU Networks](https://oer.upou.edu.ph/videos/), streamed via YouTube. This project is an
+[oer.upou.edu.ph](https://oer.upou.edu.ph/videos/), streamed via YouTube. This project is an
 independent proof of concept and is not affiliated with UPOU or any streaming service.

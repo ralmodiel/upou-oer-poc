@@ -36,7 +36,7 @@ function Watch({ video }: { video: Video }) {
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
   for (const origin of ORIGINS) preconnect(origin)
-  useDocumentTitle(`${video.title} · UPOU Networks`)
+  useDocumentTitle(`${video.title} · UPOU OER`)
 
   // Focus the stage (never the YouTube iframe) when the reel starts and again when the player
   // appears, so the app shell's Esc = Back handler keeps receiving key events.
@@ -125,10 +125,10 @@ function Watch({ video }: { video: Video }) {
 }
 
 function WatchNotFound() {
-  useDocumentTitle('Video not found · UPOU Networks')
+  useDocumentTitle('Video not found · UPOU OER')
   return (
     <section className="mx-auto max-w-md px-(--gutter) py-16 text-center sm:py-24">
-      <p className="eyebrow">UPOU Networks</p>
+      <p className="eyebrow">UPOU OER</p>
       <h1 className="mt-3 font-display text-title text-ink">Video not found</h1>
       <p className="mt-3 text-ink-2">
         This video may have moved or is no longer in the catalog. Try one of these instead.

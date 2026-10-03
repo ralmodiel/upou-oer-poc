@@ -10,7 +10,7 @@ import { getVideo } from '../data/catalog'
 import { useMyList } from '../lib/storage'
 
 export default function MyListPage() {
-  useDocumentTitle('My List · UPOU Networks')
+  useDocumentTitle('My List · UPOU OER')
   const { ids } = useMyList()
   const saved = useMemo(() => ids.map((id) => getVideo(id)).filter((v) => v !== undefined), [ids])
 

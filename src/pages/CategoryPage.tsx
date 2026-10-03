@@ -32,7 +32,7 @@ export default function CategoryPage() {
   const grid = useRef<HTMLDivElement>(null)
   const focusAt = useRef(-1)
 
-  useDocumentTitle(`${category?.name ?? 'Collection not found'} · Collections · UPOU Networks`)
+  useDocumentTitle(`${category?.name ?? 'Collection not found'} · Collections · UPOU OER`)
 
   // After "Load more", focus the first new card so keyboard and screen-reader users land on it.
   useEffect(() => {

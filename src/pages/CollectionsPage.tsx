@@ -4,7 +4,7 @@ import SectionHeading from '../components/ui/SectionHeading'
 import { getCategories, videos } from '../data/catalog'
 
 export default function CollectionsPage() {
-  useDocumentTitle('Collections · UPOU Networks')
+  useDocumentTitle('Collections · UPOU OER')
   const categories = getCategories()
   return (
     <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">

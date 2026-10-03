@@ -10,7 +10,7 @@ be taken down shortly after publication.
 
 The interface uses conventions common to many video and streaming apps: a hero billboard,
 horizontal rows of thumbnails, hover previews, and a details overlay. All code, styling, the
-"UPOU Networks" presentation, and the generated promo reels were written for this project. The
+"UPOU OER" presentation, and the generated promo reels were written for this project. The
 project is not affiliated with, endorsed by, or intended to imitate or infringe the design,
 trademarks, or trade dress of any commercial streaming service. If you believe anything here
 infringes your rights, contact the repository owner and it will be removed.
@@ -23,7 +23,7 @@ covers the code only, not the content described below.
 ## Video content and metadata
 
 The videos, titles, descriptions, tags, and thumbnails shown in this app come from
-[UPOU Networks](https://oer.upou.edu.ph/videos/). UPOU Networks is published by the Center for
+[oer.upou.edu.ph](https://oer.upou.edu.ph/videos/), the open educational resources site of the Center for
 Open and Digital Teaching and Learning of the University of the Philippines Open University
 (UPOU). It states that all of its content is licensed under the
 [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/),

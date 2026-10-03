@@ -22,7 +22,7 @@ export interface Video {
 
 /** Slim record stored in src/data/catalog.json; expandRecord() derives the Video from it. */
 export interface CatalogRecord {
-  /** UPOU Networks post slug, unique. */
+  /** UPOU OER post slug, unique. */
   id: string
   /** YouTube id. */
   y: string

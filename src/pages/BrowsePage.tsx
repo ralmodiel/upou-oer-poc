@@ -55,7 +55,7 @@ function useSectionCount(total: number) {
 }
 
 export default function BrowsePage() {
-  useDocumentTitle('UPOU Networks · Open educational videos')
+  useDocumentTitle('UPOU OER · Open Educational Resources from UP Open University')
   const entries = useShownHistory()
   const recent = useMemo(
     () => entries.map((e) => getVideo(e.id)).filter((v) => v !== undefined),
@@ -77,7 +77,7 @@ export default function BrowsePage() {
       <div className="px-(--gutter) py-16">
         <h1 className="sr-only">Browse</h1>
         <EmptyState title="No videos yet">
-          <p>The UPOU Networks catalog is being prepared. Please check back soon.</p>
+          <p>The UPOU OER catalog is being prepared. Please check back soon.</p>
         </EmptyState>
       </div>
     )
@@ -85,7 +85,7 @@ export default function BrowsePage() {
 
   return (
     <>
-      <h1 className="sr-only">Browse UPOU Networks videos</h1>
+      <h1 className="sr-only">Browse UPOU OER videos</h1>
       <GridHint />
       <HowItWorks />
       <Featured videos={featured} alsoNew={alsoNew} />

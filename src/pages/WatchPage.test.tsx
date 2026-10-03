@@ -42,7 +42,7 @@ describe('WatchPage', () => {
       within(stage).getByRole('group', { name: `Promo reel: ${testVideo.title}` }),
     ).toBeVisible()
     expect(screen.queryByTitle(`${testVideo.title} (YouTube video)`)).not.toBeInTheDocument()
-    expect(document.title).toBe(`${testVideo.title} · UPOU Networks`)
+    expect(document.title).toBe(`${testVideo.title} · UPOU OER`)
 
     await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
     await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
@@ -85,7 +85,7 @@ describe('WatchPage', () => {
       'href',
       'https://www.youtube.com/watch?v=abcDEF12345',
     )
-    expect(screen.getByRole('link', { name: /View on UPOU Networks/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /View on oer.upou.edu.ph/ })).toHaveAttribute(
       'href',
       testVideo.sourceUrl,
     )
@@ -135,7 +135,7 @@ describe('WatchPage', () => {
   it('shows a friendly not-found screen for unknown ids', () => {
     renderAt(['/watch/does-not-exist'])
     expect(screen.getByRole('heading', { name: 'Video not found' })).toBeInTheDocument()
-    expect(document.title).toBe('Video not found · UPOU Networks')
+    expect(document.title).toBe('Video not found · UPOU OER')
     expect(screen.getByRole('link', { name: 'Browse videos' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'All collections' })).toHaveAttribute(
       'href',

@@ -19,7 +19,7 @@ function renderAt(path: string, element: ReactNode) {
 }
 
 describe('Header and tab bar', () => {
-  it('show the wordmark, PoC pill, the current section and the My List count', () => {
+  it('show the wordmark, Proof of concept pill, the current section and the My List count', () => {
     // One saved id is gone from the catalog and must not be counted.
     localStorage.setItem('upou:my-list', JSON.stringify(['climate-basics', 'missing-id']))
     renderAt(
@@ -29,8 +29,10 @@ describe('Header and tab bar', () => {
         <TabBar />
       </>,
     )
-    expect(screen.getByRole('link', { name: 'UPOU Networks, home' })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('note', { name: 'Proof of concept' })).toHaveTextContent('PoC')
+    expect(screen.getByRole('link', { name: 'UPOU OER, home' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('note', { name: 'Proof of concept' })).toHaveTextContent(
+      'Proof of concept',
+    )
 
     const nav = screen.getByRole('navigation', { name: 'Main' })
     const links = within(nav).getAllByRole('link')

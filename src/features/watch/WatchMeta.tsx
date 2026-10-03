@@ -57,7 +57,7 @@ export default function WatchMeta({ video, category }: { video: Video; category?
           external
           iconEnd={<ExternalIcon className="text-ink-3" />}
         >
-          View on UPOU Networks
+          View on oer.upou.edu.ph
           <NewTab />
         </LinkButton>
         <ShareButton title={video.title} />

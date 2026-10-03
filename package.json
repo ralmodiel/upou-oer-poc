@@ -1,8 +1,8 @@
 {
-  "name": "upou-networks",
+  "name": "upou-oer",
   "private": true,
   "version": "0.1.0",
-  "description": "Proof-of-concept streaming-style browser for UPOU Networks open educational videos",
+  "description": "Proof-of-concept streaming-style browser for UPOU OER open educational videos",
   "license": "MIT",
   "type": "module",
   "engines": {

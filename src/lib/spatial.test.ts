@@ -1,5 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { candidates, distance, findSection, findTarget, keepsArrow, moveFocus } from './spatial'
+import { renderHook } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  candidates,
+  distance,
+  findSection,
+  findTarget,
+  keepsArrow,
+  moveFocus,
+  useSpatialNavigation,
+} from './spatial'
 
 // [top, left, width, height] in viewport pixels.
 type Rect = [number, number, number, number]
@@ -403,5 +412,38 @@ describe('moveFocus', () => {
     expect(document.activeElement?.id).toBe('a1-link')
     expect(moveFocus('left')).toBe(false)
     expect(document.activeElement?.id).toBe('a1-link')
+  })
+})
+
+describe('useSpatialNavigation', () => {
+  it("keeps the browser's arrow scroll from cutting a smooth reveal short", () => {
+    page()
+    // jsdom has no scrollIntoView.
+    const scrollIntoView = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    let now = 1000
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+    const { unmount } = renderHook(() => useSpatialNavigation())
+    const pressDown = () => {
+      const e = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+      document.activeElement?.dispatchEvent(e)
+      return e.defaultPrevented
+    }
+    try {
+      focus('#b1-link')
+      expect(pressDown()).toBe(true)
+      expect(document.activeElement?.id).toBe('foot')
+      expect(scrollIntoView).toHaveBeenLastCalledWith(
+        expect.objectContaining({ behavior: 'smooth' }),
+      )
+      // Nothing lies below the footer link, but its reveal is still running.
+      expect(pressDown()).toBe(true)
+      now += 1000
+      expect(pressDown()).toBe(false)
+    } finally {
+      unmount()
+      delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
+      vi.restoreAllMocks()
+    }
   })
 })

@@ -311,6 +311,11 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   )
 }
 
+// When the last smooth reveal ends. Until then an arrow with nothing that way skips the browser's
+// own scroll, which would cancel the reveal halfway and leave the focused control out of view.
+const REVEAL_MS = 800
+let revealEnds = 0
+
 /**
  * Focuses `target` and scrolls it into view (cards to the centre); false when focus refused.
  * `instant` skips the smooth scroll (a held key repeats faster than it would finish).
@@ -320,6 +325,7 @@ export function focusAndReveal(target: HTMLElement, instant = false): boolean {
   if (document.activeElement !== target) return false
   if (typeof target.scrollIntoView === 'function') {
     const smooth = !instant && !matchMedia('(prefers-reduced-motion: reduce)').matches
+    revealEnds = smooth ? performance.now() + REVEAL_MS : 0
     target.scrollIntoView({
       block: target.hasAttribute('data-card-link') ? 'center' : 'nearest',
       inline: 'nearest',
@@ -373,7 +379,7 @@ export function useSpatialNavigation() {
       const dir = DIRECTION_OF_KEY[e.key]
       if (dir) {
         if (keepsArrow(e.target, dir)) return
-        if (moveFocus(dir, e.repeat)) e.preventDefault()
+        if (moveFocus(dir, e.repeat) || performance.now() < revealEnds) e.preventDefault()
       } else if (e.key === 'PageDown' || e.key === 'PageUp') {
         if (isEditable(e.target) || openDialog()?.hasAttribute('data-sheet')) return
         const target = findSection(e.key === 'PageDown' ? 1 : -1)

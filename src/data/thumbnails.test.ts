@@ -52,7 +52,7 @@ describe('thumbnail set', () => {
       const v = expandRecord({ ...rec, m: 0, s: 0, q: 0, b: og })
       expect(name(v.thumbnail)).toBe('mqdefault.jpg')
       expect(v.thumbnails!.map(name)).toEqual(['mqdefault.jpg'])
-      expect([v.backdrop, v.poster, v.original]).toEqual([og, og, og])
+      expect([v.backdrop, v.poster]).toEqual([og, og])
       expect(v.frames).toEqual([])
     }
   })

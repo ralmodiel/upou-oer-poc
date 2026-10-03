@@ -53,6 +53,16 @@ describe('Header and tab bar', () => {
     expect(screen.getByRole('searchbox', { name: 'Search videos' })).toBeInTheDocument()
   })
 
+  it('fill the search field on /search/ too (a direct load of the static shell lands there)', async () => {
+    const router = renderAt('/search/?q=climate', <Header />)
+    const field = screen.getByRole('searchbox', { name: 'Search videos' })
+    expect(field).toHaveValue('climate')
+    // On the search page typing replaces the entry instead of adding one per key.
+    await userEvent.type(field, 's')
+    await waitFor(() => expect(router.state.location.search).toBe('?q=climates'))
+    expect(router.state.historyAction).toBe('REPLACE')
+  })
+
   it('keep the theme to one header control, with every choice in the Help menu', () => {
     renderAt('/', <Header />)
     expect(screen.queryByRole('group', { name: 'Theme' })).not.toBeInTheDocument()

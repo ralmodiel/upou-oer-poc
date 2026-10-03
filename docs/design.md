@@ -117,8 +117,9 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
   actions above the stretched link: bookmark (My List, `aria-pressed`) and info (Quick look),
   both visible on touch devices and on hover/focus-within on pointer devices. Hover: 2px lift +
   shadow + a small play glyph on the thumbnail. Keyboard: card link, then the two buttons.
-- **Collections (`/collections`):** from md, a grid of category cards (a mosaic of the newest
-  stills, name, count, 2–3 sample titles); on phones a compact list (see round 4).
+- **Collections (`/collections`):** largest first (the home orders collections by their newest
+  video instead); from md, a grid of category cards (a mosaic of the newest stills, name, count,
+  2–3 sample titles); on phones a compact list (see round 4).
   **Category (`/collections/:slug`):** title, count, sort control
   (Newest / Oldest / A–Z), full grid with "Load more" in pages of 24.
 - **Search:** results grid with a category filter chip row and a result count; empty state with
@@ -131,7 +132,7 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
   stage** (16:9, rounded, surface background) where the promo reel plays and then the YouTube
   embed takes over; below it the serif title, meta row (category link · date · "Watch on
   YouTube" · "View on oer.upou.edu.ph" · Share/copy link · My List), summary/description, tag
-  chips. Aside: "Up next" list (`similarTo`, 8 items, thumbnail + title + category) and a
+  chips. Aside: "Up next", a playlist with More… and an Autoplay switch (see round 5), and a
   "Back to {category}" link. On mobile the stage is edge-to-edge and the aside follows the text.
 - **Promo reel restyle:** keep the 10 s timeline, the three templates, seeded variety, Skip and
   sound controls. Replace the crimson/black ident with the new identity (paper or ink ident
@@ -160,7 +161,8 @@ trap focus; all interactions keyboard-operable; touch targets ≥ 40px; no horiz
   player stage container (`tabIndex={-1}`) instead, so Esc keeps working after the reel. When
   the user has clicked into the video (focus is inside the iframe) and the pointer leaves the
   stage, return focus to the stage container so Esc works again. Keep a visible Back button as
-  well.
+  well. Keyboards and remotes play and pause through the stage's own Play / Pause key (round 5),
+  so focus never has to enter the iframe.
 - Tab order follows the visual order; `/` focuses the search field; the My List toggle and
   Quick look are reachable from every card.
 
@@ -220,9 +222,10 @@ colour rule stands (UPOU maroon, forest, paper and ink; never a black-and-red st
   `useSeo()` and baked into a static shell per route at build time (title, description,
   canonical with a trailing slash, Open Graph, Twitter, JSON-LD, a plain-HTML summary that React
   replaces), plus `sitemap.xml` and `robots.txt`. Search, My List and not-found pages are
-  `noindex`. Shells and the running app describe a page identically: og:image is the video's own
-  image (`original`; the home page uses the featured video's `poster`), and JSON-LD `thumbnailUrl`
-  lists only stills the frame filter allows.
+  `noindex`. Shells and the running app describe a page identically: og:image is the video's
+  `poster` (round 5; it was the YouTube thumbnail even when flagged), a collection previews its
+  newest video with a clean image, and JSON-LD `thumbnailUrl` lists only stills the frame filter
+  allows.
 - **Image sets**: cards and backdrops rotate among the YouTube thumbnail and its three stills per
   page load (seeded by the id); `m: 0` and `s: 0` in the catalog mark videos without 1280 px or
   640 px stills, which fall back to the next size down.
@@ -285,12 +288,15 @@ the existing tokens:
 - **Repeated stills:** three cuts play only between three different stills; with fewer (repeats,
   or near-twins from a static lecture camera) the reel plays one long slow move on the first still.
 - **No usable image:** when every image is flagged or missing (`q: 0` videos have no YouTube stills
-  at all, only the thumbnail), the reel plays kinetic type on the night frame and ends on the night
-  card, with no poster or backdrop behind the player.
-- **Low-res stills** are framed rather than blown up, on a deep forest stage in both themes.
+  at all, only the thumbnail), the watch page skips the reel and the player starts at once over
+  the video's least bad image on a light stage (round 5; it used to be kinetic type on a night
+  frame).
+- **Low-res stills** are framed rather than blown up, over a blurred fill of the video's backdrop
+  (round 5; it used to be a deep forest stage).
 - **Title-card thumbnails:** reels whose only image is the designed original thumbnail use the
   split template, so the reel title sits beside the card instead of over its baked-in text; the
-  card is never cropped: it settles from 92% to full size over a blurred grey copy of itself.
+  card is never cropped: it plays whole in the split frame over a light blurred copy of itself
+  (round 5).
 - **Previews:** the card's own image dissolves to footage within ~0.5 s (1.1 s preview lead) and
   the footage stays in colour, with the text on a band along the bottom; text travel is capped at
   large stages; kinetic titles enter a line at a time without overlapping words.
@@ -361,6 +367,9 @@ settings panels the switches and their buttons share one column, so ↑ / ↓ vi
 
 ### Videos without a usable image
 
+Superseded in round 5: such videos now show their least bad image (see "Round 5: watch page, home
+notices, reels"). The round 4 rule was:
+
 When the frame filter flags every image candidate of a video (`imagesOf()` returns null; 239
 videos in frame data v2), cards and hero slots show a **title tile**: the title on the
 collection's band at every size, two lines when narrow, in the display serif under a short gold
@@ -394,6 +403,79 @@ a slide with an image; a title-tile slide stays one press away.
 - **Clear rows:** "3 videos in your history" with Clear history, "1 search saved" with Clear
   searches, in the switches' column. At zero the button stays focusable and is marked
   unavailable, so focus never drops.
+
+## Round 5: watch page, home notices, reels
+
+### Up next and autoplay (`UpNext`, `useUpNext`, `AutoplayNext`)
+
+- **Playlist:** a click (or Enter) on an Up next row keeps the list: the next page shows the same
+  videos in the same order, with that row marked "Now playing" in place. The list travels with the
+  history entry, so Back, Forward and reload keep each list.
+- **More…** under the list adds the next eight picks without reordering and focuses the first new
+  row. The list scrolls inside its own area: about 5.5 rows on phones, the player column's height
+  from lg. More… works out the next picks only when needed: on a click, when autoplay reaches the
+  end of the list, or on idle after hover or focus.
+- **Remote:** `data-spatial="list"` walks every row, clipped ones included, before More…; ↓ from
+  the stage goes to the Now playing row.
+- **Autoplay:** when a video ends, a light "Next" card counts down 5 s with Play now and Cancel
+  (Cancel takes focus; Esc cancels instead of going Back), then plays the next row and keeps the
+  playlist; at the end of the list it adds the next picks first. The "Autoplay" switch in the Up
+  next header is on by default and kept in this browser (`upou:autoplay`; only a stored `false` is
+  off). Off, the video just ends.
+- **Play / Pause key:** a keyboard-only button on the stage, shown while focused and reached with
+  Enter or ↓ from the stage. It drives the video through the embed's commands, so focus never
+  enters the iframe and Esc, Backspace and the arrows keep working. It follows the player: Play
+  while paused, Pause while playing or buffering.
+- **Player messages:** the end and the play state come from the embed's widget messages
+  (`enablejsapi=1`), so there is no YouTube script and the CSP is unchanged. Only messages from
+  `https://www.youtube-nocookie.com` and from this player's own frame count, and they are parsed
+  defensively; commands go to that origin only, on a press of the Play / Pause key.
+- **Layout:** from lg the watch page holds the viewport height, so Up next filling in never pulls
+  the footer into view (CLS 0 at 1024, 1440 and 1920).
+
+### Home
+
+- **History off:** when watch history is off, or kept out of suggestions, the home says so where
+  Recently viewed sits ("Watch history is off, so Recently viewed and Because you watched are
+  hidden"), with one press to "Turn on watch history" (or "Turn on suggestions") and a link to the
+  privacy settings. After turning it on, it confirms until the first video lands. It is a div, not
+  a section, so the band rhythm stays put.
+- **Featured previews:** the featured viewer plays the shown video's preview on keyboard focus
+  anywhere in it and on each previous / next pick, not only under a hovering pointer. As on cards,
+  videos without usable stills stay still and reduced motion turns previews off.
+- **Order:** home rows and collection chips follow each collection's newest video, newest first
+  (the static home shell too), so the rows are the most recently updated collections. The
+  Collections page keeps largest first.
+
+### Reels
+
+- **Slides and title cards** play whole in the split frame, over a light blurred copy of the slide
+  on screen; the frame floats a little instead of zooming, and no type covers their own text.
+- **One still:** a seeded slow push-in about a point in the upper middle that drifts to one side.
+  It opens on the full frame, so the card image or loading cover it follows hands over without a
+  jump.
+- **Natural colour:** stills keep their own colours, with no grayscale, dimming, vignette or grain
+  over imagery and only light, local gradients behind type. The end card and the player poster
+  are undimmed.
+- **Light palette in both themes:** reels pin the light tokens (ident, paper, end card) whatever
+  the theme. Dark-mode reels measured a mean luma of 25–52, which breaks the no-dark-frames rule.
+- **No clean still:** the reel is skipped and the player starts at once over the video's least
+  bad image on a light stage, never a dark box.
+
+### Videos with no clean image
+
+When the frame filter flags every image of a video, cards, Up next rows, mosaics, the phone
+collections list and the player stage show its least bad image (the data's `poster`, never dark,
+blank or colour-cast) instead of a plain colour title tile; the tile is only a last resort when
+an image fails to load. Reels and previews still never use a flagged frame, and covers keep to
+clean images. Link previews follow the same rule: `og:image` is the video's `poster`, a
+collection's preview its newest video with a clean image.
+
+### Direct loads
+
+`/search/` and `/my-list/` have static shells too (`noindex`, outside the sitemap), so loading them
+directly is a 200 instead of Pages' 404 fallback. Pages answers `/search?q=…` with a 301 to
+`/search/?q=…`, query kept; the router and the header's search field accept both forms.
 
 ## Round 5: row carousels (user request)
 

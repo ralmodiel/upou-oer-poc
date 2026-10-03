@@ -1,7 +1,8 @@
 // Writes a crawlable copy of the built index.html for every indexable route (title, meta tags,
 // JSON-LD and a plain-HTML fallback inside #root that React replaces on mount), plus sitemap.xml
 // and robots.txt. Head tags come from the presets the app uses at runtime (src/lib/seo.ts), so
-// crawlers and the app describe each page the same way.
+// crawlers and the app describe each page the same way. Search and My List get noindex shells
+// too, outside the sitemap, so that loading them directly is a 200 rather than Pages' 404.html.
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -15,13 +16,15 @@ import {
   configureSite,
   headTags,
   homeSeo,
+  myListSeo,
+  searchSeo,
   siteUrl,
   socialImageOf,
   videoSeo,
 } from '../../src/lib/seo.ts'
 import { registerNameTokens } from '../../src/lib/tags.ts'
 import { watchUrl } from '../../src/lib/youtube.ts'
-import { isGeneral, loadCatalog, newestFirst } from './catalog.mjs'
+import { hasCleanPoster, isGeneral, loadCatalog, newestFirst } from './catalog.mjs'
 
 const CATALOG = fileURLToPath(new URL('../../src/data/catalog.json', import.meta.url))
 
@@ -135,6 +138,15 @@ const videoFallback = (v, c) =>
     '</ul>',
   )
 
+// Search and My List render from this browser's state, so their fallbacks only say what they are.
+const appFallback = (options, title) =>
+  page(
+    SITE_NAME,
+    title,
+    `<p class="mt-3 max-w-prose text-ink-2">${esc(options.description)}</p>`,
+    `<p class="mt-6">${link(canonicalUrl('/'), 'Browse all videos')}</p>`,
+  )
+
 const urlset = (urls) =>
   [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -214,14 +226,13 @@ export async function generate({
   const files = []
   const urls = []
 
-  // The app's hero (the newest featured video, else the newest) with its canonical image: the
-  // site's preview, so never a flagged still (a video page previews the video's own image).
-  const hero = newest.find((v) => v.featured) ?? newest[0]
-  const home = homeSeo(
-    videos.length,
-    categories.length,
-    hero && (hero.poster ?? socialImageOf(hero)),
-  )
+  // The site's preview: the newest featured video whose canonical image passes the frame filter
+  // (else the newest such video), so it never shows a face the filter rejects.
+  const hero =
+    newest.find((v) => v.featured && hasCleanPoster(v)) ??
+    newest.find((v) => hasCleanPoster(v)) ??
+    newest[0]
+  const home = homeSeo(videos.length, categories.length, hero && socialImageOf(hero))
   files.push([
     join(dist, 'index.html'),
     shell(template, home, homeFallback(home, latestFirst(categories), newest.slice(0, LATEST))),
@@ -234,6 +245,15 @@ export async function generate({
     shell(template, collections, collectionsFallback(collections, categories)),
   ])
   urls.push({ loc: canonicalUrl('/collections'), lastmod: newest[0]?.publishedAt })
+
+  // A shell for each app-only page: Pages answers /search?q=… with a 301 to /search/?q=…
+  // (query kept) and then a 200, instead of a 404 status from 404.html.
+  const search = searchSeo()
+  const myList = myListSeo()
+  files.push(
+    [join(dist, 'search', 'index.html'), shell(template, search, appFallback(search, 'Search'))],
+    [join(dist, 'my-list', 'index.html'), shell(template, myList, appFallback(myList, 'My List'))],
+  )
 
   for (const c of categories) {
     files.push([

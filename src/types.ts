@@ -17,8 +17,6 @@ export interface Video {
   backdrop: string
   /** Canonical large image (hero slots, player poster, reel end card): the original unless flagged. */
   poster?: string
-  /** The video's own large image (og:image or YouTube default), flagged or not: link previews. */
-  original?: string
   /** Three 16:9 still frames from the video for the promo reel; none when YouTube has none. */
   frames: string[]
   /** Per `frames` entry: a slide (text on a flat background, no face); absent when none is. */

@@ -2,7 +2,7 @@
 // src/data/catalog.ts, which Node cannot import (JSON import, extensionless paths); images come
 // from the same src/data/images.ts. tools/seo/generate.test.mjs checks that the two agree.
 import FLAGS from '../../src/data/frame-flags.json' with { type: 'json' }
-import { flagsOf, videoImages } from '../../src/data/images.ts'
+import { flagsOf, isCleanImage, videoImages } from '../../src/data/images.ts'
 
 const SOURCE_ORIGIN = 'https://oer.upou.edu.ph'
 const DEFAULT_CHANNEL = 'UP Open University'
@@ -54,6 +54,10 @@ export const newestFirst = (a, b) => stamp(b) - stamp(a)
 
 export const isGeneral = (name) => Number(name === GENERAL_CATEGORY)
 
+/** Whether the video's canonical image passes the frame filter (it fails only when all do). */
+export const hasCleanPoster = (v, flags = FLAGS) =>
+  !!v.poster && isCleanImage(flags[v.youtubeId], v.poster)
+
 /**
  * Videos in catalog order and categories largest first (General, posts without a subject, last),
  * each with its videos newest first.
@@ -88,6 +92,7 @@ export function loadCatalog(records, flags = FLAGS) {
         name: group.name,
         count: list.length,
         cover: list[0],
+        preview: list.find((v) => hasCleanPoster(v, flags)),
         videos: list,
       }
     })

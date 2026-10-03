@@ -7,7 +7,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from 'react'
-import { Link, NavLink, useLocation, useNavigate, useNavigationType } from 'react-router'
+import { Link, NavLink, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router'
 import { getVideo } from '../data/catalog'
 import { useHelp } from '../lib/howitworks'
 import { openPrivacy } from '../lib/privacy'
@@ -183,7 +183,8 @@ function SearchBox() {
   const inputId = useId()
   const input = useRef<HTMLInputElement>(null)
 
-  const onSearchPage = location.pathname === '/search'
+  // Matches "/search/" too: a direct load of the static shell lands there.
+  const onSearchPage = useMatch('/search') !== null
   const query = onSearchPage ? (new URLSearchParams(location.search).get('q') ?? '') : ''
   const [value, setValue] = useState(query)
   const [open, setOpen] = useState(false)

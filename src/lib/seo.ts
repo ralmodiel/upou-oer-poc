@@ -11,8 +11,11 @@ import { watchUrl } from './youtube.ts'
 const canonicalImage = (url: string) =>
   url.replace(/\/(maxres|sd|mq)[123]\.jpg(\?|$)/, '/$1default.jpg$2')
 
-/** The link-preview image (og:image): the video's own image, as YouTube and the source show it. */
-export const socialImageOf = (v: Video): string => v.original ?? canonicalImage(v.backdrop)
+/**
+ * The link-preview image (og:image): the video's canonical image (the best unflagged candidate,
+ * else the least bad), so a face the frame filter rejects shows only when every image is rejected.
+ */
+export const socialImageOf = (v: Video): string => v.poster ?? canonicalImage(v.backdrop)
 
 export const SITE_NAME = 'UPOU OER'
 export const PUBLISHER = 'University of the Philippines Open University'
@@ -172,7 +175,8 @@ export const websiteJsonLd = (): JsonLd =>
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${siteUrl()}/search?q={search_term_string}`,
+        // The search shell is a directory, so the slash saves a redirect.
+        urlTemplate: `${siteUrl()}/search/?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },
@@ -299,7 +303,7 @@ export function collectionsSeo(categories: readonly Category[]): SeoOptions {
       DESCRIPTION_MAX,
     ),
     canonicalPath: '/collections',
-    image: categories[0] && socialImageOf(categories[0].cover),
+    image: categories[0] && socialImageOf(categories[0].preview ?? categories[0].cover),
     jsonLd: breadcrumbJsonLd([{ label: 'Browse', to: '/' }, { label: 'Collections' }]),
   }
 }
@@ -309,7 +313,7 @@ export function collectionSeo(category: Category, list: readonly Video[]): SeoOp
     title: pageTitle(`${category.name} · Collections`),
     description: describeCollection(category),
     canonicalPath: `/collections/${category.slug}`,
-    image: socialImageOf(category.cover),
+    image: socialImageOf(category.preview ?? category.cover),
     jsonLd: [
       collectionJsonLd(category, list),
       breadcrumbJsonLd([
@@ -333,6 +337,25 @@ export function videoSeo(video: Video, category?: Pick<Category, 'name' | 'slug'
     type: 'video.other',
     embed: embedUrlOf(video.youtubeId),
     jsonLd: [videoJsonLd(video), breadcrumbJsonLd(crumbs)],
+  }
+}
+
+// Pages kept out of search results: no canonical, no sitemap entry. Their shells exist only so a
+// direct load is a 200 rather than Pages' 404.html.
+
+export function searchSeo(q = ''): SeoOptions {
+  return {
+    title: pageTitle(q ? `“${q}” · Search` : 'Search'),
+    description: 'Search every UPOU OER video by title, topic or tag.',
+    noindex: true,
+  }
+}
+
+export function myListSeo(): SeoOptions {
+  return {
+    title: pageTitle('My List'),
+    description: 'Videos you saved for later, kept in this browser.',
+    noindex: true,
   }
 }
 

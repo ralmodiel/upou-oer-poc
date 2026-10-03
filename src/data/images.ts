@@ -14,6 +14,14 @@ export const flagsOf = (value: unknown): number =>
 /** Bits 0-3: the flagged candidates. */
 export const maskOf = (value: unknown): number => flagsOf(value) & 0b1111
 
+/** Candidate index of an image URL: YouTube's stills are 1-3, its thumbnail or a source image 0. */
+export const candidateOf = (src: string): number =>
+  Number(/\/(?:maxres|sd|hq|mq)([1-3])\.jpg(\?|$)/.exec(src)?.[1] ?? 0)
+
+/** Whether the frame filter passes this image of a video with these flags. */
+export const isCleanImage = (value: unknown, src: string): boolean =>
+  !(maskOf(value) & (1 << candidateOf(src)))
+
 /** Bits 4-5: the least bad candidate, when all four are flagged (else 0). */
 export const fallbackOf = (value: unknown): number =>
   maskOf(value) === 0b1111 ? (flagsOf(value) >> 4) & 0b11 : 0
@@ -43,7 +51,7 @@ export function rankingOf(value: unknown): number[] | undefined {
 
 export type VideoImages = Pick<
   Video,
-  'thumbnail' | 'thumbnails' | 'backdrop' | 'poster' | 'original' | 'frames' | 'slides'
+  'thumbnail' | 'thumbnails' | 'backdrop' | 'poster' | 'frames' | 'slides'
 >
 
 const at = <T>(list: readonly T[], turn: number) =>
@@ -106,7 +114,6 @@ export function videoImages(
     // A source-site image (og:image) beats the 640px stills for big slots when it leads.
     backdrop: !hiRes && r.b && lead === 0 ? r.b : large[pick],
     poster: large[lead],
-    original: large[0],
     frames: shots.map((i) => large[i]),
     ...(slides.includes(true) && { slides }),
   }

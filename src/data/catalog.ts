@@ -3,6 +3,12 @@ import { formatDate } from '../lib/format'
 import { isOrgTag, registerNameTokens, topicTags } from '../lib/tags'
 import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
+import { frameFlagsOf } from './frameFlags'
+import { isCleanImage } from './images'
+
+/** Whether the video's canonical image passes the frame filter (it fails only when all do). */
+export const hasCleanPoster = (v: Video) =>
+  !!v.poster && isCleanImage(frameFlagsOf(v.youtubeId), v.poster)
 
 /** A home section for one category; `videos` is capped, `count` is the category total. */
 export interface CategoryRow {
@@ -19,6 +25,8 @@ export interface Category {
   count: number
   /** The newest video in the category. */
   cover: Video
+  /** The newest video with an image the frame filter passes, for link previews. */
+  preview?: Video
 }
 
 export type CategorySort = 'newest' | 'oldest' | 'title'
@@ -129,6 +137,7 @@ export function getCategories(order: 'size' | 'latest' = 'size'): Category[] {
         name,
         count: list.length,
         cover: getCategoryVideos(slug)[0],
+        preview: getCategoryVideos(slug).find(hasCleanPoster),
       })),
   )
 }

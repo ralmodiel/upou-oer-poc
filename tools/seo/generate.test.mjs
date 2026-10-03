@@ -83,13 +83,29 @@ describe('tools/seo/generate.mjs', () => {
     expect(ld[0]).toMatchObject({ '@type': 'VideoObject', url: `${SITE}/watch/${first.id}/` })
     expect(ld[0].thumbnailUrl).toEqual(expect.arrayContaining(first.thumbnails))
 
+    // Search and My List: shells so a direct load is a 200, but noindex and out of the sitemap.
+    for (const [dir, title] of [
+      ['search', 'Search · UPOU OER'],
+      ['my-list', 'My List · UPOU OER'],
+    ]) {
+      const page = readFileSync(join(dist, dir, 'index.html'), 'utf8')
+      expect(page).toContain(`<title>${title}</title>`)
+      expect(page).toContain('<meta name="robots" content="noindex, follow" data-seo />')
+      expect(page).not.toMatch(/rel="canonical"|property="og:url"/)
+      expect(page).toContain(
+        '<script type="module" crossorigin src="/upou-networks/assets/index.js">',
+      )
+    }
+
     const sitemap = readFileSync(join(dist, 'sitemap.xml'), 'utf8')
     expect(sitemap.match(/<url>/g)).toHaveLength(2 + slugs.length + LIMIT)
     expect(sitemap).toContain(
       `<loc>${SITE}/watch/${first.id}/</loc><lastmod>${first.publishedAt}</lastmod>`,
     )
+    expect(sitemap).not.toMatch(/\/(search|my-list)\//)
     const robots = readFileSync(join(dist, 'robots.txt'), 'utf8')
     expect(robots).toContain('Disallow: /upou-networks/search')
+    expect(robots).toContain('Disallow: /upou-networks/my-list')
     expect(robots).toContain(`Sitemap: ${SITE}/sitemap.xml`)
 
     run()

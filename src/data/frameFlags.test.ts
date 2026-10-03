@@ -88,12 +88,10 @@ describe('frame flags', () => {
       const v = expandRecord(rec)
       expect(name(v.poster!)).toBe('maxres2.jpg')
       expect(name(v.thumbnails![0])).toBe('mq2.jpg')
-      expect(v.original).toBe(og)
       // Low-res: the source image is the flagged original, so the 640px stills stand in.
       const low = expandRecord({ ...rec, m: 0, b: og })
       expect(['sd2.jpg', 'sd3.jpg']).toContain(name(low.backdrop))
       expect(name(low.poster!)).toBe('sd2.jpg')
-      expect(low.original).toBe(og)
     }
   })
 
@@ -141,7 +139,6 @@ describe('frame flags', () => {
     ])
     const v = expandRecord(rec)
     expect(name(v.poster!)).toBe('maxres2.jpg')
-    expect(v.original).toBe('https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg')
   })
 
   it('counts near-duplicate stills once', () => {

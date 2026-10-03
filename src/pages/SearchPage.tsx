@@ -13,7 +13,7 @@ import EmptyState from '../components/ui/EmptyState'
 import SectionHeading from '../components/ui/SectionHeading'
 import { getCategories, getCategory, searchVideos, videos } from '../data/catalog'
 import { useSearchHistory } from '../lib/history'
-import { pageTitle, useSeo } from '../lib/seo'
+import { searchSeo, useSeo } from '../lib/seo'
 import { focusSearch } from '../lib/shortcuts'
 import { isGenericTag, isOrgTag, POPULAR_SERIES, POPULAR_TOPICS, tagKey } from '../lib/tags'
 
@@ -117,11 +117,7 @@ export default function SearchPage() {
     return `?${next}`
   }
 
-  useSeo({
-    title: pageTitle(q ? `“${q}” · Search` : 'Search'),
-    description: 'Search every UPOU OER video by title, topic or tag.',
-    noindex: true,
-  })
+  useSeo(searchSeo(q))
 
   // The header searches as you type, so a query is recorded once it rests; choosing a
   // collection filter or opening a result commits it at once.

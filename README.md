@@ -5,8 +5,8 @@ A proof-of-concept, streaming-style web app for browsing and watching open educa
 **10-second promo reel generated from that video's data**, then plays the embedded YouTube video.
 
 - React single-page app with no backend and no database. The video catalog is a static JSON file
-  produced by a crawler script, and per-user state (My List, watch history, theme, reel sound,
-  dismissed tips) lives in `localStorage`.
+  produced by a crawler script, and per-user state (My List, watch history, recent searches,
+  privacy choices, theme, reel sound, the autoplay switch, dismissed tips) lives in `localStorage`.
 - Responsive from 360px phones to 4K screens, keyboard accessible, light and dark themes, and
   respects `prefers-reduced-motion`. The visual direction is documented in
   [docs/design.md](docs/design.md).
@@ -24,25 +24,34 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
 
 - **Browse (`/`)** — an editorial Featured block with manual prev/next and an "Also new" list, a
   "Recently viewed" strip, a row of collection chips, and one capped grid per collection
-  (sections below the fold render lazily). A dismissible "How it works" strip greets first-time
-  visitors; the footer's "Help" link brings it back.
-- **Collections (`/collections`, `/collections/:slug`)** — every category with its cover, count
-  and sample titles; each collection page sorts Newest / Oldest / A–Z and pages with "Load more".
+  (sections below the fold render lazily). Chips and rows follow each collection's newest video,
+  newest first. With watch history off, a notice where Recently viewed sits turns it back on in
+  one press. A dismissible "How it works" strip greets first-time visitors; the footer's "Help"
+  link brings it back.
+- **Collections (`/collections`, `/collections/:slug`)** — every category, largest first, with its
+  cover, count and sample titles; each collection page sorts Newest / Oldest / A–Z and pages with
+  "Load more".
 - **Quick look (`?v=<id>` on any page)** — deep-linkable native `<dialog>` with the summary, tags,
   Play, Save, source links and "More like this".
 - **Search (`/search?q=`)** — accent-insensitive search across titles, categories, tags, and
   descriptions, with per-collection filter chips and suggested topics.
 - **My List** — save titles for later. It is stored in the browser and synced across tabs.
 - **Watch (`/watch/:id`)** — the promo reel, then the player, inside the app shell with the
-  title, meta, share link, topics and an "Up next" list.
+  title, meta, share link, topics and "Up next": a playlist that keeps its order from video to
+  video, with "More…" for the next eight picks and its own scroll area.
+- **Autoplay** — when a video ends, a "Next" card counts down 5 seconds (Play now, Cancel; Esc
+  cancels), then plays the next Up next video. The Autoplay switch beside Up next is on by
+  default and remembered in this browser.
 - **Theme** — light / dark / system toggle, stored under `upou:theme` and applied before the first
   paint without an inline script.
 - **Keyboard and TV remotes** — Esc goes back everywhere (dialogs close first), `/` focuses
   search, `?` opens the shortcuts sheet, and the arrow keys move focus to the nearest control in
   that direction anywhere on the page (`src/lib/spatial.ts`), so the whole app works from a
-  remote or a keyboard alone.
+  remote or a keyboard alone. On the player, Enter or ↓ reaches its Play / Pause key, so focus
+  never has to enter the YouTube frame.
 - **Previews** — hovering a card for a moment, or focusing it, plays that video's muted promo
   reel inside the card; it stops on leave, blur or Esc, and never starts under reduced motion.
+  The featured viewer previews the video it shows on focus and on each previous / next pick.
 - **Backdrops** — the featured block, quick look and watch page sit on a blurred still from the
   video, falling back to the thumbnail (and then to a plain surface) when an image is missing.
 - **Brand colors** — UPOU maroon, forest and gold bands, rules and badges in both themes, and a
@@ -50,7 +59,9 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   (`src/components/tones.ts`).
 - **Rotating thumbnails, friendly faces** — every page load shows another still of each video
   (the YouTube thumbnail or one of its three frames), and stills that catch a face not smiling
-  are never shown in cards, reels or hero slots (see [Catalog data](#catalog-data)).
+  are never shown in cards, hero slots or link previews while a clean image exists, nor ever in
+  reels and previews; a video with no clean image shows its least bad one (see
+  [Catalog data](#catalog-data)).
 - **Topic chips** — tags tidied into topics: no people's names, titles or episode labels, merged
   spellings (COVID19 = COVID-19, FMDS = its full name) and fixed acronym case (`src/lib/tags.ts`).
 - **Recommendations** — "Recommended for you" and "Because you watched …" on the home page and
@@ -63,6 +74,8 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   Burns motion, transitions, and a synthesized Web Audio sting. Every video looks different, and
   each one replays the same way every time. Skip Intro and a sound toggle are included.
 - **Player** — privacy-enhanced `youtube-nocookie.com` embed that autoplays when the reel ends.
+  Its end and play state arrive as the embed's own messages (no YouTube script), which drive
+  autoplay and the Play / Pause key.
 
 ## Stack
 
@@ -132,10 +145,9 @@ scripts write it by scoring the public 320 px YouTube stills with MediaPipe's fa
 are kept; no images or face data are committed. `src/data/images.ts` turns a record and its flags
 into the image fields of a `Video`: `thumbnail` and `backdrop` (this load's pick among the clean
 candidates, the beautiful ones when known), `poster` (the canonical image for hero slots, the
-player and the reel's end card: the best clean candidate, else the least bad), `frames` (the
-reel's three shots: clean stills best first, each shot once) and `original` (the video's own
-image, used only for link previews). The SEO generator uses the same module, so the static shells
-and the app show the same canonical images.
+player, the reel's end card and link previews: the best clean candidate, else the least bad) and
+`frames` (the reel's three shots: clean stills best first, each shot once). The SEO generator
+uses the same module, so the static shells and the app show the same canonical images.
 
 The snapshot was produced by a local crawler that:
 
@@ -152,9 +164,10 @@ tests swap in fixtures with `setCatalog()` from `src/data/testing.ts`.
 
 ### Local tooling (not committed)
 
-`scripts/` and `tmp/` are ignored by git; these tools only matter when the data is refreshed, and
-they rebuild every data file on this machine with no other dependency (details, steps and timings
-in `scripts/README.md`). Setup once: `py -m pip install -r scripts/faces/requirements.txt` and
+`scripts/` and `tmp/` are ignored by git, as is `.claude/` (Claude Code's local session state).
+These tools only matter when the data is refreshed, and they rebuild every data file on this
+machine with no other dependency (details, steps and timings in `scripts/README.md`). Setup once:
+`py -m pip install -r scripts/faces/requirements.txt` and
 `npm install --prefix scripts`.
 
 | Command                                                  | What it does                                                                                                                        |
@@ -204,9 +217,9 @@ tracking.
   merges into its scores (the shipped file is an empty `{}`). `node scripts/text/make-id-list.mjs`
   writes the catalog's watch URLs to `tmp/ids.txt` for the caption download. `tmp/` and `scripts/`
   are not committed.
-- **Stored in the browser.** Watch history (`upou:history`), committed searches (`upou:searches`)
-  and My List (`upou:my-list`) live in `localStorage` on the device, at most the last 20 history
-  entries and searches. Nothing leaves the device.
+- **Stored in the browser.** Watch history (`upou:history`), committed searches (`upou:searches`),
+  My List (`upou:my-list`) and the privacy choices (`upou:prefs`) live in `localStorage` on the
+  device, at most the last 20 history entries and searches. Nothing leaves the device.
 
 ## Project structure
 
@@ -234,6 +247,12 @@ public/fonts/            self-hosted type; licenses in public/THIRD_PARTY_LICENS
   needs no inline script.
 - Videos use the privacy-enhanced `youtube-nocookie.com` embed. All crawled text is rendered as
   plain text, never as HTML. External links open with `rel="noopener noreferrer"`.
+- The player listens only to messages whose origin is exactly `https://www.youtube-nocookie.com`
+  and whose source is its own iframe, parses them defensively and reads nothing but the player
+  state from them. It sends commands to that origin only, and only when the Play / Pause key is
+  pressed; no message can make it send one.
+- Values read back from `localStorage` are treated as untrusted (hand edits, older versions):
+  readers check types and keep only well-formed items, so a bad value cannot break a page.
 - `npm audit` reports 0 vulnerabilities. Run `npm run audit` (also part of `npm run verify`) after
   dependency changes.
 
@@ -249,9 +268,11 @@ How the build adapts to Pages:
 
 - **Base path:** the workflow passes `BASE_PATH=/<repo>/`, which Vite uses for asset URLs and
   React Router uses as its `basename`. Local builds keep `/`.
-- **Deep links:** `/collections/<slug>/` and `/watch/<id>/` are real files (see [SEO](#seo)). For
-  anything else Pages has no rewrite rules, so the build also writes `404.html` as a copy of
-  `index.html`; unknown paths boot the app, which then routes normally.
+- **Deep links:** `/collections/<slug>/`, `/watch/<id>/`, `/search/` and `/my-list/` are real
+  files (see [SEO](#seo)), so loading them directly is a 200; Pages redirects `/search?q=x` to
+  `/search/?q=x`, keeping the query. For anything else Pages has no rewrite rules, so the build
+  also writes `404.html` as a copy of `index.html`; unknown paths boot the app, which then routes
+  normally.
 - **Security headers:** Pages cannot send custom headers, so the CSP ships as a `<meta>` tag. A
   `<meta>` CSP cannot set `frame-ancestors`; hosts that support headers should add one.
 
@@ -270,10 +291,14 @@ it on an existing `dist/`) and takes a few seconds:
   meta description, canonical URL, robots, Open Graph and Twitter tags, JSON-LD (`WebSite` with a
   `SearchAction`, `CollectionPage` + `ItemList`, `VideoObject`, `BreadcrumbList`) and a plain-HTML
   summary inside `#root` (title, facts, links to YouTube, the source page and the collection) that
-  React replaces on mount. A watch page previews the video's own image (`og:image`), the home page
-  the featured video's canonical image; `VideoObject` lists only the stills the frame filter
-  allows. `404.html` stays the plain app. Because the shells are directories, canonical URLs end
-  with a slash (`/watch/<id>/`); Pages redirects `/watch/<id>` there.
+  React replaces on mount. Link previews (`og:image`) never show a face the frame filter rejects
+  when a clean image exists: a watch page previews the video's `poster`, a collection its newest
+  video with a clean image, the home page the newest featured video with one. A video with no
+  clean image at all previews its least bad one, as its card does. `VideoObject` lists only the
+  stills the frame filter allows. `/search/` and `/my-list/` get `noindex` shells (no canonical,
+  not in the sitemap) so that loading them directly is not a 404. `404.html` stays the plain app.
+  Because the shells are directories, canonical URLs end with a slash (`/watch/<id>/`); Pages
+  redirects `/watch/<id>` there.
 - **`sitemap.xml`** with every indexable URL (`lastmod` from the publish date) and **`robots.txt`**
   (allow all, `Disallow` for `/search` and `/my-list`, `Sitemap:` line). `public/robots.txt` is
   the development default; the generator overwrites it.

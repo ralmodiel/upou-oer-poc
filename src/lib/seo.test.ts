@@ -12,11 +12,15 @@ import {
   canonicalUrl,
   clamp,
   collectionJsonLd,
+  collectionSeo,
+  collectionsSeo,
   configureSite,
   describeVideo,
   headTags,
   homeSeo,
+  myListSeo,
   pageTitle,
+  searchSeo,
   serializeJsonLd,
   useSeo,
   videoJsonLd,
@@ -107,7 +111,7 @@ describe('JSON-LD', () => {
     expect(ld.thumbnailUrl).toEqual([v.backdrop, ...v.thumbnails!])
   })
 
-  it('previews the original image but lists only clean stills as thumbnails', () => {
+  it('previews and lists only the clean canonical image and stills, never a flagged original', () => {
     const still = (name: string) => `https://i.ytimg.com/vi/abcdefghijk/${name}.jpg`
     // The original is flagged (a face not smiling): the poster is the first clean still.
     const v: Video = {
@@ -115,12 +119,18 @@ describe('JSON-LD', () => {
       thumbnails: [still('mq2'), still('mq2'), still('mq3'), still('mq2')],
       backdrop: still('maxres3'),
       poster: still('maxres2'),
-      original: still('maxresdefault'),
     }
-    expect(videoSeo(v).image).toBe(still('maxresdefault'))
+    expect(videoSeo(v).image).toBe(still('maxres2'))
     expect(videoJsonLd(v).thumbnailUrl).toEqual([still('maxres2'), still('mq2'), still('mq3')])
-    // Without `original`, the rotating frame maps back to the original.
-    expect(videoSeo({ ...v, original: undefined }).image).toBe(still('maxresdefault'))
+    // Without a poster, the rotating frame maps back to the original.
+    expect(videoSeo({ ...v, poster: undefined }).image).toBe(still('maxresdefault'))
+  })
+
+  it('previews a collection with its newest clean video', () => {
+    const preview = { ...video, id: 'clean', poster: 'https://i.ytimg.com/vi/abcdefghijk/mq1.jpg' }
+    expect(collectionSeo({ ...category, preview }, [video]).image).toBe(preview.poster)
+    expect(collectionsSeo([{ ...category, preview }]).image).toBe(preview.poster)
+    expect(collectionSeo(category, [video]).image).toBe(video.poster ?? video.backdrop)
   })
 
   it('lists at most 100 videos of a collection', () => {
@@ -142,11 +152,11 @@ describe('JSON-LD', () => {
     })
   })
 
-  it('points the site search action at /search', () => {
+  it('points the site search action at the /search/ shell', () => {
     expect(websiteJsonLd()).toMatchObject({
       '@type': 'WebSite',
       url: `${SITE}/`,
-      potentialAction: { target: { urlTemplate: `${SITE}/search?q={search_term_string}` } },
+      potentialAction: { target: { urlTemplate: `${SITE}/search/?q={search_term_string}` } },
     })
   })
 
@@ -182,6 +192,16 @@ describe('JSON-LD', () => {
     expect(tags.some((t) => t.attrs.rel === 'canonical' || t.attrs.property === 'og:url')).toBe(
       false,
     )
+  })
+
+  it('keeps Search and My List out of the index, naming the query in the title', () => {
+    for (const o of [searchSeo(), searchSeo('climate'), myListSeo()]) {
+      expect(o.noindex).toBe(true)
+      expect(o.canonicalPath).toBeUndefined()
+      expect(o.title.length).toBeLessThanOrEqual(TITLE_MAX)
+    }
+    expect(searchSeo('climate').title).toBe('“climate” · Search · UPOU OER')
+    expect(myListSeo().title).toBe('My List · UPOU OER')
   })
 })
 

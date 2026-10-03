@@ -16,7 +16,7 @@ function Section({ row, limit }: Props) {
   return (
     <section
       aria-labelledby={headingId}
-      className={`lazy-section border-t border-line px-(--gutter) pt-6 pb-10 ${
+      className={`lazy-section px-(--gutter) py-8 sm:py-10 ${
         videos.length <= 4 ? 'lazy-section-short' : ''
       }`}
     >

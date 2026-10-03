@@ -19,12 +19,55 @@ interface Props {
   className?: string
 }
 
+const hide = (e: SyntheticEvent<HTMLImageElement>) => {
+  e.currentTarget.dataset.failed = ''
+}
+
+/**
+ * Decorative strip of a few videos' original stills, softened and fully grey (browse.css), with a
+ * neutral scrim: 16:9 tiles the height of its positioned parent, as many as fit. It sits beside a
+ * brand band, never under one.
+ */
+export function MosaicBackdrop({
+  videos,
+  scrim,
+  className = '',
+}: {
+  videos: readonly Video[]
+  scrim: string
+  className?: string
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+    >
+      <div className="backdrop-mosaic flex h-full gap-0.5">
+        {videos.map((video) => (
+          <div key={video.id} className="aspect-video h-full shrink-0 bg-surface-2">
+            <img
+              src={imagesOf(video, true).small}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onLoad={markLoaded}
+              onError={hide}
+              className="size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
+            />
+          </div>
+        ))}
+      </div>
+      <div className={`absolute inset-0 ${scrim}`} />
+    </div>
+  )
+}
+
 /**
  * Decorative, blurred still of a video behind a block. Absolutely positioned behind the
  * content (the parent needs `relative isolate`), so it never affects layout.
  */
 export default function Backdrop({ video, scrim, className = '' }: Props) {
-  // The original still, muted further in browse.css: a tone behind the page, never a colour wash.
+  // The original still, fully grey in browse.css: a tone behind the page, never a colour wash.
   const { small, large } = imagesOf(video, true)
   return (
     <div

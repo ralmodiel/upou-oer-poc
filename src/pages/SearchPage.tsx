@@ -6,6 +6,7 @@ import { DetailsContext, pageTarget } from '../components/details'
 import { useRovingRow } from '../components/hooks'
 import { SearchIcon } from '../components/icons'
 import { slugOfCategory } from '../components/media'
+import { MARK, toneOf } from '../components/tones'
 import Button from '../components/ui/Button'
 import Chip from '../components/ui/Chip'
 import EmptyState from '../components/ui/EmptyState'
@@ -17,6 +18,8 @@ import { focusSearch } from '../lib/shortcuts'
 import { isGenericTag, isOrgTag, POPULAR_SERIES, POPULAR_TOPICS, tagKey } from '../lib/tags'
 
 const PAGE_SIZE = 24
+// Filter chips shown before "All n collections" (about two rows on a laptop).
+const FACETS_SHOWN = 7
 // A query counts as committed (for recommendations) once it has rested this long.
 const COMMIT_MS = 1200
 // How far each query was expanded, so Back from the player shows the same page length.
@@ -133,9 +136,17 @@ export default function SearchPage() {
     return () => clearTimeout(timer)
   }, [q, slug, record])
 
+  // The biggest collections first; the rest (and never the active one) wait behind a toggle.
+  const [allFacets, setAllFacets] = useState(false)
+  const shownFacets =
+    allFacets || facets.length <= FACETS_SHOWN + 1
+      ? facets
+      : facets.filter((f, i) => i < FACETS_SHOWN || f.name === category?.name)
+
   // Filter chips: one Tab stop, entered at the active filter.
-  const activeFacet = category ? facets.findIndex((f) => f.name === category.name) + 1 : 0
-  const { listProps, tabIndexOf } = useRovingRow(facets.length + 1, activeFacet)
+  const activeFacet = category ? shownFacets.findIndex((f) => f.name === category.name) + 1 : 0
+  const toggles = facets.length > FACETS_SHOWN + 1 ? 1 : 0
+  const { listProps, tabIndexOf } = useRovingRow(shownFacets.length + 1 + toggles, activeFacet)
 
   // Phones: the filter row scrolls sideways, so bring the active chip into view.
   const row = useRef<HTMLUListElement>(null)
@@ -218,6 +229,7 @@ export default function SearchPage() {
               <ul
                 ref={row}
                 role="list"
+                data-spatial="group"
                 {...listProps}
                 className="-mx-(--gutter) flex gap-2 overflow-x-auto scroll-px-(--gutter) px-(--gutter) pb-1 scrollbar-none md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
               >
@@ -231,18 +243,32 @@ export default function SearchPage() {
                     All
                   </Chip>
                 </li>
-                {facets.map((f, i) => (
+                {shownFacets.map((f, i) => (
                   <li key={f.name}>
                     <Chip
                       to={{ search: filterLink(f.slug) }}
                       active={category?.name === f.name}
                       count={f.n}
+                      dot={MARK[toneOf(f.slug)]}
                       tabIndex={tabIndexOf(i + 1)}
                     >
                       {f.name}
                     </Chip>
                   </li>
                 ))}
+                {toggles > 0 && (
+                  <li>
+                    <button
+                      type="button"
+                      aria-expanded={allFacets}
+                      tabIndex={tabIndexOf(shownFacets.length + 1)}
+                      onClick={() => setAllFacets(!allFacets)}
+                      className="inline-flex h-10 cursor-pointer items-center rounded-pill px-3.5 text-sm font-semibold whitespace-nowrap text-maroon transition-colors hover:bg-surface-2 hover:text-maroon-2"
+                    >
+                      {allFacets ? 'Fewer collections' : `All ${facets.length} collections`}
+                    </button>
+                  </li>
+                )}
               </ul>
             </nav>
           )}
@@ -260,7 +286,7 @@ export default function SearchPage() {
                     Showing {visible.length} of {count}
                   </p>
                   {visible.length < count && (
-                    <Button variant="secondary" onClick={loadMore}>
+                    <Button variant="secondary" onClick={loadMore} data-spatial="wide">
                       Load {Math.min(PAGE_SIZE, count - visible.length)} more
                     </Button>
                   )}

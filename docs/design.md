@@ -202,3 +202,64 @@ colour rule stands (UPOU maroon, forest, paper and ink; never a black-and-red st
 - **Image sets**: cards and backdrops rotate among the YouTube thumbnail and its three stills per
   page load (seeded by the id); `m: 0` and `s: 0` in the catalog mark videos without 1280 px or
   640 px stills, which fall back to the next size down.
+
+## Brand color usage (round 3, user direction)
+
+Use more of the UP and UPOU colors in the page chrome, never as a tint over imagery or video.
+
+- **Palette roles:** maroon (`--color-maroon`, logo #8d0c34; UP maroon #7b1113 for deep bands) is the
+  primary brand surface and action color; forest (`--color-forest`, seal #00563f; UP forest #014421
+  for deep bands) is the secondary surface and "open/free" color; gold/amber (`--color-gold`,
+  `--color-amber`) are highlights (rules, badges, active indicators, hover underlines); charcoal
+  (`--color-ink` in light) anchors text.
+- **Where color goes (surfaces, not overlays):**
+  - A thin tri-color brand stripe (maroon · gold · forest, 3–4px) along the top of the header.
+  - The home intro band ("Open Educational Resources from the University of the Philippines Open
+    University") on a solid maroon or forest band with paper text and a gold rule.
+  - Section headings with a short gold rule and brand-colored eyebrows; alternating section
+    background bands (paper / forest-soft / maroon-soft) for rhythm.
+  - Each collection gets a deterministic brand color (maroon, forest, gold, charcoal) used for its
+    chip dot, the top bar of its collection card and the solid band of its category page header.
+  - Footer on a deep maroon (or forest) band with paper text and gold link hovers.
+  - Active nav/tab indicators in gold on maroon or maroon on paper; "New" badges in gold with
+    charcoal text; secondary buttons in forest outline.
+- **Never:** colored scrims, duotones, multiply/overlay blends or tinted gradients over thumbnails,
+  backdrops, previews or the reel's footage. Image backdrops stay neutral (grayscale + paper/ink
+  scrim). Brand color may frame an image (a border, a corner tab, a band beside it) but must not sit
+  on top of it.
+- **Contrast:** paper text on maroon/forest bands, charcoal text on gold/amber; check AA in both
+  themes (dark theme uses the lighter dark-mode brand tokens for text and the deep values for bands).
+
+### Both themes (user direction)
+
+Brand color must be just as present in dark mode as in light mode; dark mode is not a gray version
+of the page. Add band tokens (surfaces that carry paper/charcoal text) to `src/index.css` next to
+the existing tokens:
+
+| Token                 | Light     | Dark      | Text on it            |
+| --------------------- | --------- | --------- | --------------------- |
+| `--color-band-maroon` | `#7b1113` | `#6e0f26` | `#faf8f6`             |
+| `--color-band-forest` | `#014421` | `#0f4a35` | `#faf8f6`             |
+| `--color-band-gold`   | `#fcb51b` | `#e3a91a` | `#1a191a` / `#373637` |
+
+- The header stripe, intro band, footer band, collection bands and section rules use these in both
+  themes; soft section backgrounds use `maroon-soft` / `forest-soft` (already themed).
+- Dark mode keeps gold as the accent for rules, active states and badges; brand-colored text on dark
+  surfaces uses the lighter dark tokens (`--color-maroon` #ec7097, `--color-forest` #5fc59c).
+- Verify AA for every band/text pair in both themes with a script, and compare light and dark
+  screenshots of the same pages side by side: each brand element must be visible in both.
+
+## Round 3 addendum: reels and stills
+
+- **Frame filter:** candidate stills that catch a face not smiling, mid-word or looking angry are
+  flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation or
+  the reel; the original thumbnail is the fallback.
+- **Repeated stills:** when only one or two stills survive, a repeat gets the opposite crop side,
+  zoom and pan direction and a tighter crop (pixels are never mirrored); with a single surviving
+  image the reel plays one long slow move instead of three cuts.
+- **Title-card thumbnails:** reels whose only image is the designed original thumbnail use the
+  split template, so the reel title sits beside the card instead of over its baked-in text.
+- **Previews:** the card's own image dissolves to footage within ~0.5 s (1.1 s preview lead); text
+  travel is capped at large stages; kinetic titles enter a line at a time without overlapping words.
+- **Hand-off:** the reel's end card and the player poster share `video.poster` (the original still
+  unless flagged, else this load's pick), so the cut to the player is seamless.

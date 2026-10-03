@@ -3,7 +3,8 @@
 /*
   Promo reel. The whole 10 s timeline is CSS keyframes that start when the timeline mounts.
   Per-element timing comes from inline custom properties set by plan.ts:
-  --s shot start, --d entrance, --o exit, --w word, --g chip.
+  --s shot start, --d entrance, --o exit, --w word, --lw line, --g chip; --ko, --ks*, --kx*, --ky*
+  frame each still's Ken Burns move (a repeated still comes back with the mirrored crop).
   Sizes use container units, so the reel fits whatever 16:9 stage it is given (320–1600 px).
 */
 
@@ -33,6 +34,11 @@
   --motion: 1;
   /* Blur effects switch off for previews and reduced motion. */
   --fx: 1;
+  /* Previews bring the first beat (shade, kicker, title) forward by this much. */
+  --lead: 0ms;
+  /* How far kinetic words slide in, and how big they slam in from. */
+  --travel: 30cqw;
+  --slam: 1.1;
   /* Paper over footage: the ident and the loading state sit on the first still, not a blank card. */
   --wash: color-mix(in srgb, var(--paper) 80%, transparent);
   --o: 600s;
@@ -144,8 +150,10 @@
   animation-timing-function: var(--ease-io);
 }
 
+/* Each shot zooms about its own crop origin; a single-still reel makes one long move (--kb-ms). */
 .reel-kb {
-  animation: reel-kb 3400ms linear var(--s) both;
+  transform-origin: var(--ko, 50% 50%);
+  animation: reel-kb var(--kb-ms, 3400ms) linear var(--s) both;
 }
 
 /*
@@ -205,7 +213,7 @@
 /* The shade arrives with the first shot, so the paper ident stays clean. */
 .reel-shade {
   z-index: 1;
-  animation: reel-fade-in 600ms var(--ease) var(--t1) both;
+  animation: reel-fade-in 600ms var(--ease) calc(var(--t1) - var(--lead)) both;
 }
 
 .reel-frame,
@@ -221,14 +229,14 @@
 .reel-copy {
   z-index: 4;
   animation:
-    reel-drift calc(var(--tend) - var(--t1)) linear var(--t1) both,
-    reel-show 1ms step-end var(--t1) both;
+    reel-drift calc(var(--tend) - var(--t1) + var(--lead)) linear calc(var(--t1) - var(--lead)) both,
+    reel-show 1ms step-end calc(var(--t1) - var(--lead)) both;
 }
 
 /* Arrives with the kicker (its small-stage scrim would otherwise sit empty), leaves at --o. */
 .reel-titleblock {
   animation:
-    reel-fade-in 400ms var(--ease) calc(var(--t1) + 100ms) both,
+    reel-fade-in 400ms var(--ease) calc(var(--t1) + 100ms - var(--lead)) both,
     reel-out 520ms var(--ease-in) var(--o) forwards;
 }
 
@@ -240,7 +248,7 @@
   text-transform: uppercase;
   text-wrap: balance;
   color: var(--accent-hi);
-  animation: reel-rise-in 700ms var(--ease) var(--d) both;
+  animation: reel-rise-in 700ms var(--ease) calc(var(--d) - var(--lead)) both;
 }
 
 .reel-title {
@@ -260,7 +268,7 @@
 }
 
 .reel-word > span {
-  animation: reel-word-rise 760ms var(--ease) var(--w) both;
+  animation: reel-word-rise 760ms var(--ease) calc(var(--w) - var(--lead)) both;
 }
 
 .reel-word.is-hot {
@@ -335,7 +343,7 @@
   z-index: 3;
   border: 1px solid rgb(250 248 246 / 0.4);
   border-radius: calc(var(--radius) / 2);
-  animation: reel-rule-in 900ms var(--ease) var(--t1) both;
+  animation: reel-rule-in 900ms var(--ease) calc(var(--t1) - var(--lead)) both;
 }
 
 .reel[data-template='cinematic'] .reel-copy {
@@ -421,7 +429,7 @@
 .reel[data-template='split'] .reel-stage {
   border-radius: var(--radius);
   box-shadow: 0 10px 30px -12px rgb(27 26 23 / 0.4);
-  animation: reel-panel 950ms var(--ease) calc(var(--t1) - 150ms) both;
+  animation: reel-panel 950ms var(--ease) calc(var(--t1) - 150ms - var(--lead)) both;
 }
 
 /* An offset accent outline sits behind the panel, like a plate under a photograph. */
@@ -432,7 +440,7 @@
   margin: 1.4cqw 0 0 1.4cqw;
   border: 1.5px solid var(--accent);
   border-radius: var(--radius);
-  animation: reel-fade-in 800ms var(--ease) calc(var(--t1) + 400ms) both;
+  animation: reel-fade-in 800ms var(--ease) calc(var(--t1) + 400ms - var(--lead)) both;
 }
 
 .reel[data-template='split'][data-side='right'] .reel-frame {
@@ -457,6 +465,11 @@
 .reel[data-template='split'][data-side='right'] .reel-index {
   left: auto;
   right: 6cqw;
+}
+
+/* One still, one move: no shot count. */
+.reel[data-template][data-single] .reel-index {
+  display: none;
 }
 
 .reel-index-now {
@@ -571,6 +584,14 @@
   white-space: nowrap;
 }
 
+/* Each line masks its own slide, so words come in from the line's ends, never from past the stage's. */
+.reel[data-template='kinetic'][data-motion='slide'] .reel-line {
+  width: fit-content;
+  margin-inline: -0.1em;
+  padding-inline: 0.1em;
+  overflow-x: clip;
+}
+
 .reel[data-template='kinetic'] .reel-line[data-outline] {
   color: transparent;
   -webkit-text-stroke: max(1px, 0.02em) var(--light);
@@ -586,9 +607,24 @@
   animation-duration: 680ms;
 }
 
+/* Slams grow right and down, away from the words already set, and settle before the next word. */
+.reel[data-template='kinetic'][data-motion='slam'] :is(.reel-word > span, .reel-line) {
+  transform-origin: 0 0;
+}
+
 .reel[data-template='kinetic'][data-motion='slide'] .reel-word > span {
   animation-name: reel-word-slide;
   animation-duration: 760ms;
+}
+
+/* Long titles slam in a line at a time. */
+.reel[data-template='kinetic'][data-motion='slam'][data-unit='line'] .reel-word > span {
+  animation: none;
+}
+
+.reel[data-template='kinetic'][data-motion='slam'][data-unit='line'] .reel-line {
+  --slam: 0.5;
+  animation: reel-word-slam 680ms var(--ease) calc(var(--lw) - var(--lead)) both;
 }
 
 .reel[data-template='kinetic'] .reel-story {
@@ -669,13 +705,14 @@
   animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - 320ms) forwards;
 }
 
+/* A paper glow behind the wordmark: the ident sits on the first still, so no colour goes over it. */
 .reel-ident-wash {
   position: absolute;
   inset: 0;
   z-index: -1;
   background: radial-gradient(
     52cqw 40cqh at 50% 50%,
-    color-mix(in srgb, var(--accent) 14%, transparent),
+    color-mix(in srgb, var(--paper) 70%, transparent),
     transparent 70%
   );
   animation: reel-glow 1400ms var(--ease) both;
@@ -1091,8 +1128,11 @@
 
 /* ---------- Preview variant (card hover/focus): silent, no chrome, lighter effects ---------- */
 
+/* A hover answers quickly: the first beat comes 1.1 s early; slides stay short on the hero's stage. */
 .reel[data-variant='preview'] {
   --fx: 0;
+  --lead: 1100ms;
+  --travel: min(30cqw, 9rem);
 }
 
 .reel[data-variant='preview'] .reel-tx {
@@ -1106,7 +1146,7 @@
 
 /*
   Cards open on footage: no ident, the thumbnail as is while decoding, then the card's own image
-  (.reel-cover) over the first pan until it dissolves into the reel where the ident would have.
+  (.reel-cover) over the first pan until it dissolves into the reel at the (earlier) first beat.
 */
 .reel[data-variant='preview'] .reel-ident,
 .reel[data-variant='preview'] .reel-loading::before,
@@ -1118,12 +1158,12 @@
   position: absolute;
   inset: 0;
   z-index: 5;
-  animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - 320ms) forwards;
+  animation: reel-ident-out 480ms var(--ease-in) calc(var(--t1) - var(--lead) - 320ms) forwards;
 }
 
 .reel[data-variant='preview'] .reel-shot:first-child .reel-kb {
   animation-delay: 0s;
-  animation-duration: 4900ms;
+  animation-duration: calc(var(--kb-ms, 3400ms) + var(--s));
 }
 
 .reel[data-variant='preview'] :is(.reel-tags, .reel-index) {
@@ -1255,6 +1295,7 @@
   }
 
   .reel[data-template='kinetic'] .reel-line {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1390,6 +1431,11 @@
   .reel-live::after,
   .reel-wm span span {
     animation: none !important;
+  }
+
+  /* Stills hold their opening framing, so a repeated one still shows its other crop. */
+  .reel-kb {
+    transform: translate3d(var(--kx0), var(--ky0), 0) scale(var(--ks0));
   }
 
   /* The art stays in the card; the hand-off is a plain cut. */
@@ -1537,7 +1583,7 @@
 @keyframes reel-word-slam {
   from {
     opacity: 0;
-    transform: scale(calc(1 + var(--motion) * 1.1));
+    transform: scale(calc(1 + var(--motion) * var(--slam)));
     filter: blur(calc(var(--fx) * 14px));
   }
   55% {
@@ -1555,7 +1601,7 @@
 @keyframes reel-word-slide {
   from {
     opacity: 0;
-    transform: translate3d(calc(var(--from) * var(--motion) * 30cqw), 0, 0)
+    transform: translate3d(calc(var(--from) * var(--motion) * var(--travel)), 0, 0)
       skewX(calc(var(--from) * var(--motion) * -12deg));
   }
 }

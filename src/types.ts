@@ -15,6 +15,8 @@ export interface Video {
   thumbnails?: string[]
   /** 16:9, >= 1280px wide when available; matches `thumbnail` for hi-res videos. */
   backdrop: string
+  /** Large image for the reel end card and the player poster: the original unless flagged. */
+  poster?: string
   /** Three 16:9 still frames from the video, used by the promo reel. */
   frames: string[]
   featured?: boolean

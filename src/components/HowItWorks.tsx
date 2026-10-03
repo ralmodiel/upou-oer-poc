@@ -13,16 +13,19 @@ const KBD =
 const STEPS = [
   {
     Icon: FilmIcon,
+    tone: 'bg-maroon-soft text-maroon',
     title: 'Every video opens with a 10-second preview',
     text: 'Press Skip to jump straight into the video.',
   },
   {
     Icon: BookmarkIcon,
+    tone: 'bg-band-gold text-charcoal',
     title: 'Save titles to My List',
     text: 'Use Save on any card; your list stays in this browser.',
   },
   {
     Icon: GridIcon,
+    tone: 'bg-forest-soft text-forest',
     title: 'Browse by collection or search everything',
     text: (
       <>
@@ -77,9 +80,9 @@ export default function HowItWorks() {
           </Button>
         </div>
         <ol className="mt-4 grid gap-3 sm:grid-cols-3">
-          {STEPS.map(({ Icon, title, text }, i) => (
+          {STEPS.map(({ Icon, tone, title, text }, i) => (
             <li key={title} className="flex gap-3 rounded-card border border-line bg-paper p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-pill bg-maroon-soft text-maroon">
+              <span className={`grid size-10 shrink-0 place-items-center rounded-pill ${tone}`}>
                 <Icon className="size-5" />
               </span>
               <div>

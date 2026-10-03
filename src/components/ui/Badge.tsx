@@ -15,7 +15,7 @@ const TONE: Record<BadgeTone, string> = {
   maroon: 'bg-maroon-soft text-maroon',
   forest: 'bg-forest-soft text-forest',
   amber: 'bg-amber text-charcoal',
-  gold: 'bg-gold text-charcoal',
+  gold: 'bg-band-gold text-charcoal',
 }
 
 export default function Badge({ children, tone = 'neutral', className = '', title }: BadgeProps) {

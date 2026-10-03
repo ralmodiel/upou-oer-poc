@@ -32,12 +32,12 @@ describe('BrowsePage', () => {
     expect(screen.getByRole('region', { name: 'Arts and Multimedia' })).toBeInTheDocument()
     // Fewer than three videos: no section.
     expect(screen.queryByRole('region', { name: 'Education' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Continue watching' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Recently viewed' })).not.toBeInTheDocument()
   })
 
   it('keeps the old layout for one frame after Back from the player, then adds the strip', async () => {
     const router = renderHome()
-    const strip = () => screen.queryByRole('region', { name: 'Continue watching' })
+    const strip = () => screen.queryByRole('region', { name: 'Recently viewed' })
     expect(strip()).not.toBeInTheDocument()
 
     await act(() => router.navigate('/watch/climate-basics'))
@@ -47,7 +47,7 @@ describe('BrowsePage', () => {
 
     // The restored scroll position belongs to the layout without the new strip.
     expect(strip()).not.toBeInTheDocument()
-    expect(await screen.findByRole('region', { name: 'Continue watching' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Recently viewed' })).toBeInTheDocument()
   })
 
   // Last: it leaves watch history in this module's "last shown" memory, which the Back test above
@@ -62,7 +62,7 @@ describe('BrowsePage', () => {
     const titles = cards.map((c) => within(c).getByRole('link', { name: /^Play / }).textContent)
     expect(titles).not.toContain('Climate Change Basics')
     expect(
-      within(cards[0]).getByText(/^(Because you watched|Matches your search|More from) /),
+      within(cards[0]).getByText(/^(Because you|More from|From the same|Also in|Related video)/),
     ).toBeInTheDocument()
     const because = await screen.findByRole('region', {
       name: 'Because you watched “Climate Change Basics”',

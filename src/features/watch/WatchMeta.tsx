@@ -1,5 +1,7 @@
+import { Link } from 'react-router'
 import { ExternalLinkIcon, PlayIcon } from '../../components/icons'
 import LinkButton from '../../components/ui/LinkButton'
+import type { Category } from '../../data/catalog'
 import { formatDate } from '../../lib/format'
 import { watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
@@ -9,19 +11,31 @@ import './watch.css'
 
 const NewTab = () => <span className="sr-only"> (opens in a new tab)</span>
 
-/** Date · channel (the breadcrumb already names the collection), then the action row. */
-export default function WatchMeta({ video }: { video: Video }) {
+/**
+ * The collection as a tab in its brand colour, date · channel · licence, then the action row.
+ */
+export default function WatchMeta({ video, category }: { video: Video; category?: Category }) {
   const date = formatDate(video.publishedAt)
   return (
     <>
-      <ul className="watch-meta mt-3 flex flex-wrap items-center text-sm text-ink-2">
-        {date && (
-          <li>
-            <time dateTime={video.publishedAt}>{date}</time>
-          </li>
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-2">
+        {category && (
+          <Link to={`/collections/${category.slug}`} className="watch-tab">
+            <span>{category.name}</span>
+          </Link>
         )}
-        <li>{video.channel}</li>
-      </ul>
+        <div className="watch-meta">
+          <ul className="flex flex-wrap items-center">
+            {date && (
+              <li>
+                <time dateTime={video.publishedAt}>{date}</time>
+              </li>
+            )}
+            <li>{video.channel}</li>
+            <li className="font-medium text-forest">Free · CC BY 4.0</li>
+          </ul>
+        </div>
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <LinkButton
           variant="secondary"

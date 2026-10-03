@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
+import { MosaicBackdrop } from '../components/Backdrop'
+import PageBand from '../components/PageBand'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint } from '../components/browse-ui'
+import { toneOf } from '../components/tones'
 import Breadcrumbs from '../components/ui/Breadcrumbs'
 import Button from '../components/ui/Button'
-import LinkButton from '../components/ui/LinkButton'
-import SectionHeading from '../components/ui/SectionHeading'
+import NotFound from '../components/ui/NotFound'
 import {
   GENERAL_CATEGORY,
   getCategory,
@@ -64,21 +66,16 @@ export default function CategoryPage() {
 
   if (!category) {
     return (
-      <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
-        <Breadcrumbs items={[...crumbs, { label: 'Not found' }]} />
-        <SectionHeading
-          as="h1"
-          className="mt-4"
-          title="Collection not found"
-          description="There is no collection at this address. It may have been renamed."
-        />
-        <div className="mt-6 flex flex-wrap gap-3">
-          <LinkButton to="/collections">All collections</LinkButton>
-          <LinkButton to="/" variant="secondary">
-            Browse videos
-          </LinkButton>
-        </div>
-      </div>
+      <NotFound
+        title="Collection not found"
+        crumbs={[...crumbs, { label: 'Not found' }]}
+        actions={[
+          { label: 'All collections', to: '/collections' },
+          { label: 'Browse videos', to: '/' },
+        ]}
+      >
+        There is no collection at this address. It may have been renamed.
+      </NotFound>
     )
   }
 
@@ -99,49 +96,59 @@ export default function CategoryPage() {
   }
 
   return (
-    <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
-      <Breadcrumbs items={[...crumbs, { label: category.name }]} />
-      <SectionHeading
-        as="h1"
-        className="mt-4"
+    <>
+      <div className="px-(--gutter) pt-6 pb-4 sm:pt-8">
+        <Breadcrumbs items={[...crumbs, { label: category.name }]} />
+      </div>
+      {/* The collection's colour band, with its newest stills beside it (never under it). */}
+      <PageBand
+        tone={toneOf(slug)}
+        eyebrow="Collection"
         title={category.name}
-        description={`${all.length} ${all.length === 1 ? 'video' : 'videos'}${
-          category.name === GENERAL_CATEGORY ? ' without a subject category' : ''
-        }`}
+        aside={<MosaicBackdrop videos={getCategoryVideos(slug).slice(0, 4)} scrim="bg-paper/30" />}
       >
-        <div
-          role="group"
-          aria-label="Sort by"
-          className="inline-flex rounded-pill border border-line bg-surface p-0.5"
-        >
-          {SORTS.map((o) => (
-            <Link
-              key={o.value}
-              to={{ search: sortLink(o.value) }}
-              replace
-              preventScrollReset
-              aria-current={o.value === sort ? 'true' : undefined}
-              className="inline-flex h-10 items-center rounded-pill px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:text-ink aria-[current]:bg-ink aria-[current]:text-paper"
-            >
-              {o.label}
-            </Link>
-          ))}
+        {all.length} {all.length === 1 ? 'video' : 'videos'}
+        {category.name === GENERAL_CATEGORY ? ' without a subject category' : ''}
+      </PageBand>
+      <div className="px-(--gutter) pt-6 pb-16">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <span aria-hidden="true" className="text-sm text-ink-3">
+            Sort by
+          </span>
+          <div
+            role="group"
+            aria-label="Sort by"
+            className="inline-flex rounded-pill border border-line bg-surface p-0.5"
+          >
+            {SORTS.map((o) => (
+              <Link
+                key={o.value}
+                to={{ search: sortLink(o.value) }}
+                replace
+                preventScrollReset
+                aria-current={o.value === sort ? 'true' : undefined}
+                className="inline-flex h-10 items-center rounded-pill px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:text-ink aria-[current]:bg-ink aria-[current]:text-paper"
+              >
+                {o.label}
+              </Link>
+            ))}
+          </div>
         </div>
-      </SectionHeading>
-      <GridHint />
-      <div ref={grid} className="mt-8">
-        <VideoGrid videos={visible} showCategory={false} />
+        <GridHint />
+        <div ref={grid} className="mt-6">
+          <VideoGrid videos={visible} showCategory={false} />
+        </div>
+        <div className="mt-10 flex flex-col items-center gap-3">
+          <p role="status" className="text-sm text-ink-3">
+            Showing {visible.length} of {all.length}
+          </p>
+          {visible.length < all.length && (
+            <Button variant="secondary" onClick={loadMore} data-spatial="wide">
+              Load {Math.min(PAGE_SIZE, all.length - visible.length)} more
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="mt-10 flex flex-col items-center gap-3">
-        <p role="status" className="text-sm text-ink-3">
-          Showing {visible.length} of {all.length}
-        </p>
-        {visible.length < all.length && (
-          <Button variant="secondary" onClick={loadMore} data-spatial="wide">
-            Load {Math.min(PAGE_SIZE, all.length - visible.length)} more
-          </Button>
-        )}
-      </div>
-    </div>
+    </>
   )
 }

@@ -13,7 +13,11 @@ export function PlayerPoster({ video }: { video: Video }) {
   if (!isYouTubeId(video.youtubeId)) return null
   return (
     <div className="pointer-events-none absolute inset-0 bg-[#1b1a17]" aria-hidden="true">
-      <img src={heroImageOf(video)} alt="" className="size-full object-cover opacity-50" />
+      <img
+        src={video.poster ?? heroImageOf(video)}
+        alt=""
+        className="size-full object-cover opacity-50"
+      />
     </div>
   )
 }

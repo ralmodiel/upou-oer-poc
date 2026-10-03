@@ -38,10 +38,10 @@ describe('CollectionsPage', () => {
     )
     expect(research).toHaveTextContent('3 videos')
     expect(research).toHaveTextContent('Climate Change Basics')
-    expect(research.querySelector('img')).toHaveAttribute(
-      'src',
-      expect.stringContaining('climate-basics'),
-    )
+    // A mosaic of the three newest stills, the newest first and largest.
+    const tiles = research.querySelectorAll('img')
+    expect(tiles).toHaveLength(3)
+    expect(tiles[0]).toHaveAttribute('src', expect.stringContaining('climate-basics'))
   })
 })
 
@@ -51,7 +51,10 @@ describe('CategoryPage', () => {
   it('shows the collection newest first with breadcrumbs and a count', () => {
     renderAt('/collections/research')
     expect(screen.getByRole('heading', { level: 1, name: 'Research' })).toBeInTheDocument()
+    expect(screen.getByText('Collection')).toBeInTheDocument()
     expect(screen.getByText('3 videos')).toBeInTheDocument()
+    // The decorative strip of its newest stills beside the band.
+    expect(document.querySelectorAll('[aria-hidden="true"] .backdrop-mosaic img')).toHaveLength(3)
     const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' })
     expect(within(crumbs).getByRole('link', { name: 'Collections' })).toHaveAttribute(
       'href',
@@ -80,13 +83,15 @@ describe('CategoryPage', () => {
     expect(router.state.location.search).toBe('')
   })
 
-  it('shows a not-found state for an unknown slug', () => {
+  it('shows the shared not-found page for an unknown slug', () => {
     renderAt('/collections/nope')
     expect(screen.getByRole('heading', { level: 1, name: 'Collection not found' }))
+    expect(screen.getByText('Not found', { selector: 'p' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'All collections' })).toHaveAttribute(
       'href',
       '/collections',
     )
+    expect(screen.getByRole('link', { name: 'Browse videos' })).toHaveAttribute('href', '/')
   })
 })
 

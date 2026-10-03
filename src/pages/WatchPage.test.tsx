@@ -132,8 +132,12 @@ describe('WatchPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: testVideo.title })).not.toHaveAttribute(
       'data-long',
     )
-    // The collection is named by the breadcrumb, not repeated under the title.
-    expect(screen.getAllByText(testVideo.category)).toHaveLength(1)
+    // Under the title the collection is a tab in its brand colour, beside the licence fact.
+    const tabs = screen.getAllByRole('link', { name: testVideo.category })
+    expect(tabs.map((a) => a.getAttribute('href'))).toEqual([slug, slug])
+    expect(tabs[1]).toHaveClass('watch-tab')
+    expect(tabs[1].closest('[data-tone]')).toHaveAttribute('data-tone')
+    expect(screen.getByText('Free · CC BY 4.0')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Watch on YouTube/ })).toHaveAttribute(
       'href',
       'https://www.youtube.com/watch?v=abcDEF12345',

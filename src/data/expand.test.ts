@@ -29,6 +29,7 @@ describe('expandRecord', () => {
       thumbnail: image('mqdefault'),
       thumbnails: [image('mqdefault'), image('mq1'), image('mq2'), image('mq3')],
       backdrop: image('maxresdefault'),
+      poster: image('maxresdefault'),
       frames: [image('maxres1'), image('maxres2'), image('maxres3')],
     })
   })

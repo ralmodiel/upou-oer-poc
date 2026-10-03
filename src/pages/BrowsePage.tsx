@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigationType } from 'react-router'
 import CollectionChips from '../components/CollectionChips'
-import ContinueWatching from '../components/ContinueWatching'
 import Featured from '../components/Featured'
 import HowItWorks from '../components/HowItWorks'
+import PageBand from '../components/PageBand'
+import RecentlyViewed from '../components/RecentlyViewed'
 import Recommended from '../components/Recommended'
 import Section from '../components/Section'
 import { onIdle, useFrozen, useMediaQuery } from '../components/browse-hooks'
@@ -14,6 +15,7 @@ import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
 import { getCategories, getFeatured, getLatest, getRows, getVideo, videos } from '../data/catalog'
 import { isEmptyProfile, useProfile, type Profile } from '../lib/history'
+import { warmRecommenderAsync } from '../lib/recommend'
 import { homeSeo, useSeo } from '../lib/seo'
 import { useWatchHistory, type HistoryEntry } from '../lib/storage'
 import type { Video } from '../types'
@@ -74,7 +76,7 @@ const NO_RECS: HomeRecs = { limit: 0, pending: false, forYou: [], reasons: new M
 // As last computed, so Back lands on the same layout at once.
 let lastRecs: HomeRecs | null = null
 
-// `shown`: every title already on the page (featured, also new, continue watching, category rows),
+// `shown`: every title already on the page (featured, also new, recently viewed, category rows),
 // so no recommendation repeats one and the rows never wait for the recommender.
 function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>): HomeRecs {
   // Only when nothing unshown matches (a tiny catalog) may a section repeat a shown title.
@@ -107,8 +109,8 @@ function computeRecs(profile: Profile, limit: number, shown: ReadonlySet<string>
   }
 }
 
-// Personalised sections are computed once per visit, after the first paint (the recommender
-// indexes the catalog on first use); the grids render in a later frame so neither task is long.
+// Personalised sections are computed once per visit, after the first paint: the recommender
+// indexes the catalog in short slices first, and the grids render a frame later, so no task is long.
 // An empty profile skips the recommender entirely. The profile is frozen at mount so saving a
 // card here does not reshuffle the grids.
 function useHomeRecommendations(limit: number, shown: ReadonlySet<string>): HomeRecs {
@@ -118,12 +120,17 @@ function useHomeRecommendations(limit: number, shown: ReadonlySet<string>): Home
   useEffect(() => {
     if (empty) return
     let frame = 0
+    let cancelled = false
     const cancelIdle = onIdle(() => {
-      const next = computeRecs(profile, limit, shown)
-      lastRecs = next
-      frame = requestAnimationFrame(() => setRecs(next))
+      void warmRecommenderAsync().then(() => {
+        if (cancelled) return
+        const next = computeRecs(profile, limit, shown)
+        lastRecs = next
+        frame = requestAnimationFrame(() => setRecs(next))
+      })
     })
     return () => {
+      cancelled = true
       cancelIdle()
       cancelAnimationFrame(frame)
     }
@@ -158,7 +165,7 @@ export default function BrowsePage() {
   }, [featured])
   const wide = useMediaQuery('(min-width: 48rem)')
   const cards = wide ? CARDS : PHONE_CARDS
-  // A title already above (featured, also new, continue watching) is left out of its category
+  // A title already above (featured, also new, recently viewed) is left out of its category
   // row, which takes the next newest instead.
   const rows = getRows(CARDS * 2)
   const shownRows = useMemo(() => {
@@ -196,9 +203,11 @@ export default function BrowsePage() {
   return (
     <>
       <GridHint />
-      <Featured videos={featured} alsoNew={alsoNew} intro={<Intro />} />
+      <Intro />
+      <Featured videos={featured} alsoNew={alsoNew} />
       <HowItWorks />
-      <div className="space-y-2">
+      {/* Sections alternate tinted and paper bands (browse.css). */}
+      <div className="home-bands">
         <Recommended
           title="Recommended for you"
           description="Picked from what you watched, searched and saved in this browser."
@@ -207,7 +216,7 @@ export default function BrowsePage() {
           pending={recs.pending}
           cards={cards}
         />
-        <ContinueWatching videos={recent} />
+        <RecentlyViewed videos={recent} />
         <CollectionChips />
         {recs.because && (
           <Recommended
@@ -222,10 +231,7 @@ export default function BrowsePage() {
           <Section key={row.id} row={row} />
         ))}
         {!wide && sectionCount === shownRows.length && (
-          <section
-            aria-label="More collections"
-            className="border-t border-line px-(--gutter) py-10 text-center"
-          >
+          <section aria-label="More collections" className="px-(--gutter) py-10 text-center">
             <p className="text-sm text-ink-2">
               {rows.length - shownRows.length} more collections, plus everything in these.
             </p>
@@ -239,17 +245,17 @@ export default function BrowsePage() {
   )
 }
 
-/** Visible page title: the full meaning of OER, for first-time visitors (and search engines). */
+/** Visible page title on the maroon band: the full meaning of OER, for first-time visitors. */
 function Intro() {
   return (
-    <div className="px-(--gutter) pt-6 sm:pt-8">
-      <h1 className="font-display text-xl leading-snug text-balance text-ink sm:text-2xl">
-        Open Educational Resources from the University of the Philippines Open University
-      </h1>
-      <p className="mt-1 text-sm text-ink-2">
-        {videos.length.toLocaleString('en')} free videos: lectures, webinars and student work.
-        Browse by collection or search everything.
-      </p>
-    </div>
+    <PageBand
+      tone="maroon"
+      title="Open Educational Resources from the University of the Philippines Open University"
+      titleClassName="text-xl leading-snug sm:text-2xl lg:text-[1.75rem]"
+      compact
+    >
+      {videos.length.toLocaleString('en')} free videos: lectures, webinars and student work. Browse
+      by collection or search everything.
+    </PageBand>
   )
 }

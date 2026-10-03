@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
-import { fixtureVideos } from '../components/test-fixtures'
+import { fixtureVideos, manyVideos } from '../components/test-fixtures'
 import { setCatalog } from '../data/testing'
 import SearchPage from './SearchPage'
 
@@ -15,6 +15,46 @@ function renderAt(path: string) {
   render(<RouterProvider router={router} />)
   return router
 }
+
+// Ten collections of "Lecture" videos, the first with the most.
+const tenCollections = Array.from({ length: 10 }, (_, i) =>
+  manyVideos(i === 0 ? 3 : 1, `Subject ${String(i + 1).padStart(2, '0')}`).map((v) => ({
+    ...v,
+    id: `${v.id}-s${i}`,
+  })),
+).flat()
+
+describe('SearchPage filter chips', () => {
+  it('shows the biggest collections first and the rest behind a toggle', async () => {
+    setCatalog(tenCollections)
+    renderAt('/search?q=lecture')
+    const filters = screen.getByRole('navigation', { name: 'Filter by collection' })
+    // "All" plus seven collections, then the toggle.
+    expect(within(filters).getAllByRole('link')).toHaveLength(8)
+    const toggle = within(filters).getByRole('button', { name: 'All 10 collections' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
+    expect(within(filters).getAllByRole('link')).toHaveLength(11)
+    expect(within(filters).getByRole('button', { name: 'Fewer collections' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    cleanup()
+    setCatalog(fixtureVideos)
+  })
+
+  it('always shows the active collection', () => {
+    setCatalog(tenCollections)
+    renderAt('/search?q=lecture&category=subject-10')
+    const filters = screen.getByRole('navigation', { name: 'Filter by collection' })
+    expect(within(filters).getByRole('link', { name: 'Subject 10 (1)' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+    cleanup()
+    setCatalog(fixtureVideos)
+  })
+})
 
 describe('SearchPage', () => {
   it('shows matching titles for a query, keeping it in detail links', () => {

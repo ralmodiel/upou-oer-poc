@@ -22,6 +22,8 @@ const ENDINGS = ['iris', 'fade', 'rise'] as const
 const ACCENTS: readonly Accent[] = ['forest', 'amber', 'gold', 'ink']
 /** Longest title the reel sets in type; longer ones are cut at a word boundary with an ellipsis. */
 export const REEL_TITLE_MAX = 140
+// Kinetic titles longer than this enter a line at a time instead of word by word.
+const KINETIC_WORDS = 6
 // Root notes (A1–C2) for the audio sting.
 const NOTES = [55, 58.27, 61.74, 65.41]
 
@@ -55,6 +57,10 @@ export interface ReelPlan {
   ending: (typeof ENDINGS)[number]
   /** No 1280px stills (640px or 320px ones): the reel frames them instead of blowing them up. */
   lowRes: boolean
+  /** Every shot is the same still: one long move replaces the three cuts. */
+  single: boolean
+  /** Kinetic long titles enter a line at a time (`line`), everything else word by word. */
+  unit: 'word' | 'line'
   style: CSSProperties
   /** Title as shown in the reel (clamped to REEL_TITLE_MAX). */
   title: string
@@ -149,25 +155,53 @@ export function toLines(words: string[], maxLines = 4): string[][] {
   return lines
 }
 
-function kenBurns(rand: () => number) {
+// A Ken Burns move: scale s0 → s1 about a crop origin (fractions of the frame), panning along `angle`.
+interface Move {
+  s0: number
+  s1: number
+  ox: number
+  oy: number
+  angle: number
+}
+
+function kenBurns(rand: () => number, frameRand: () => number): Move {
   const lo = 1.06 + rand() * 0.03
   const hi = 1.17 + rand() * 0.07
   const [s0, s1] = rand() < 0.5 ? [lo, hi] : [hi, lo]
-  // Max pan (% of the frame) that keeps the edges covered at scale s.
-  const room = (s: number) => (s - 1) * 50 * 0.85
   const angle = rand() * Math.PI * 2
+  // Off-centre to one side, and a little high so heads stay in frame.
+  const ox = 0.5 + (frameRand() < 0.5 ? -1 : 1) * (0.18 + frameRand() * 0.17)
+  const oy = 0.36 + frameRand() * 0.16
+  return { s0, s1, ox, oy, angle }
+}
+
+// A repeated still comes back reframed: the mirrored crop (never the mirrored image, which would
+// flip any text in it), zooming and panning the other way, and a little tighter.
+const reframe = (m: Move, tighter: number): Move => ({
+  s0: m.s1 + tighter,
+  s1: m.s0 + tighter,
+  ox: 1 - m.ox,
+  oy: m.oy,
+  angle: m.angle + Math.PI,
+})
+
+// The single-still move runs twice as long, so it zooms less and keeps title cards whole.
+const gentle = (m: Move): Move => ({ ...m, s0: 1 + (m.s0 - 1) * 0.7, s1: 1 + (m.s1 - 1) * 0.7 })
+
+function moveVars({ s0, s1, ox, oy, angle }: Move): Vars {
   const dx = Math.cos(angle)
   const dy = Math.sin(angle) * 0.7
+  // How far (% of the frame) the still can shift one way at scale s and keep the edges covered.
+  const room = (s: number, origin: number, way: number) =>
+    (way > 0 ? origin : 1 - origin) * (s - 1) * 85
   return {
-    dx,
-    vars: {
-      '--ks0': s0.toFixed(3),
-      '--ks1': s1.toFixed(3),
-      '--kx0': pct(-dx * room(s0)),
-      '--ky0': pct(-dy * room(s0)),
-      '--kx1': pct(dx * room(s1)),
-      '--ky1': pct(dy * room(s1)),
-    } satisfies Vars,
+    '--ko': `${pct(ox * 100)} ${pct(oy * 100)}`,
+    '--ks0': s0.toFixed(3),
+    '--ks1': s1.toFixed(3),
+    '--kx0': pct(-dx * room(s0, ox, -dx)),
+    '--ky0': pct(-dy * room(s0, oy, -dy)),
+    '--kx1': pct(dx * room(s1, ox, dx)),
+    '--ky1': pct(dy * room(s1, oy, dy)),
   }
 }
 
@@ -205,8 +239,19 @@ function transitionVars(tx: Transition, rand: () => number): Vars {
 
 /** Everything the reel shows, derived deterministically from the video's data. */
 export function buildReelPlan(video: Video): ReelPlan {
-  const rand = seededRandom(video.youtubeId || video.id)
-  const template = pick(rand, TEMPLATES)
+  const seed = video.youtubeId || video.id
+  const rand = seededRandom(seed)
+  // Framing has its own sequence, so the rest of the plan stays as it was.
+  const frameRand = seededRandom(`${seed}:framing`)
+  const frames = video.frames.length ? video.frames : [video.backdrop]
+  const sources = SHOT_AT.map((_, i) => frames[i % frames.length])
+  // One still three times would stutter: it gets a single slow move under the whole montage.
+  const single = new Set(sources).size === 1
+  // The original thumbnail standing in for all three stills is often a title card with its own
+  // type: it goes in the split template's frame, beside the reel's title rather than under it.
+  const card = single && !/\/(maxres|sd|mq)[1-3]\.jpg$/.test(sources[0])
+  const seeded = pick(rand, TEMPLATES)
+  const template = card ? 'split' : seeded
   const accent = pick(rand, ACCENTS)
   const side = rand() < 0.5 ? 'left' : 'right'
   const motion = rand() < 0.5 ? 'slam' : 'slide'
@@ -214,10 +259,12 @@ export function buildReelPlan(video: Video): ReelPlan {
   const rootHz = pick(rand, NOTES)
   const category = video.category.trim()
 
-  const frames = video.frames.length ? video.frames : [video.backdrop]
   // The thumbnail set is the original plus the three stills at 320px.
   const smallFrames = video.thumbnails?.slice(1) ?? []
   const lowRes = !frames.some((src) => /maxres/.test(src))
+  // Repeats crop tighter; the split panel is half the stage, so it can go deeper.
+  const tighter = lowRes ? 0.05 : template === 'split' ? 0.24 : 0.16
+  const moves: Move[] = []
   let prev: Transition | undefined
   let drift = 1
   const shots = SHOT_AT.map((at, i): Shot => {
@@ -226,18 +273,27 @@ export function buildReelPlan(video: Video): ReelPlan {
       TRANSITIONS.filter((t) => t !== prev),
     )
     prev = tx
-    const kb = kenBurns(rand)
+    const fresh = kenBurns(rand, frameRand)
+    const first = sources.indexOf(sources[i])
+    const move = first < i ? reframe(moves[first], tighter) : single ? gentle(fresh) : fresh
+    moves.push(move)
     // Text drifts against the first pan for a touch of parallax.
-    if (i === 0) drift = kb.dx >= 0 ? -1 : 1
+    if (i === 0) drift = Math.cos(move.angle) >= 0 ? -1 : 1
     // Hide once fully covered (longest cover transition is the 1.1 s end-card iris).
-    const hideAt = (SHOT_AT[i + 1] ?? END_AT) + 1200
+    const hideAt = (single ? END_AT : (SHOT_AT[i + 1] ?? END_AT)) + 1200
     return {
-      src: frames[i % frames.length],
-      small: smallFrames[i % smallFrames.length] ?? frames[i % frames.length],
+      src: sources[i],
+      small: smallFrames[i % smallFrames.length] ?? sources[i],
       tx,
-      style: css({ '--s': ms(at), '--o': ms(hideAt), ...kb.vars, ...transitionVars(tx, rand) }),
+      style: css({
+        '--s': ms(at),
+        '--o': ms(hideAt),
+        ...(single && { '--kb-ms': ms(hideAt - at) }),
+        ...moveVars(move),
+        ...transitionVars(tx, rand),
+      }),
     }
-  })
+  }).slice(0, single ? 1 : undefined)
 
   // Hook: description first; otherwise the topics themselves (facts, no boilerplate), and the
   // chips take the rest. A video with neither shows its title and kicker alone.
@@ -254,9 +310,15 @@ export function buildReelPlan(video: Video): ReelPlan {
   const chars = title.length
   const long = words.length > 7 || chars > 48
   const kinetic = template === 'kinetic'
+  const byLine = kinetic && words.length > KINETIC_WORDS
   const firstWord = SHOT_AT[0] + 250
-  const span = Math.min(kinetic ? 1300 : 900, (words.length - 1) * (kinetic ? 190 : 120))
-  const step = words.length > 1 ? span / (words.length - 1) : 0
+  // Kinetic words land one clear of the next: a slam settles before the next word grows over its
+  // place. Other templates fit the whole title into 0.9 s.
+  const step = kinetic
+    ? motion === 'slam'
+      ? 240
+      : 190
+    : Math.min(120, 900 / Math.max(1, words.length - 1))
   const hookIn = long ? 4600 : 4100
   const chipsIn = hookIn + 1000
   const exitAt = END_AT - 350
@@ -270,17 +332,23 @@ export function buildReelPlan(video: Video): ReelPlan {
   const wordLines = toLines(words, kinetic ? 7 : 4)
   const outline = wordLines.length > 1 && rand() < 0.6 ? Math.floor(rand() * wordLines.length) : -1
   const from = rand() < 0.5 ? 1 : -1
+  const lineStep = Math.min(300, 1400 / Math.max(1, wordLines.length - 1))
 
   let index = 0
   const lines = wordLines.map((line, li): Line => {
-    const built = line.map((text): Word => {
+    const dir = li % 2 ? -from : from
+    const start = byLine ? firstWord + li * lineStep : firstWord + index * step
+    // Lines sliding in from the left lead with their last word, so no word passes another.
+    const reverse = kinetic && motion === 'slide' && dir < 0
+    const built = line.map((text, k): Word => {
       const i = index++
-      return { text, hot: i === hot, style: css({ '--w': ms(firstWord + i * step) }) }
+      const at = byLine ? start : start + (reverse ? line.length - 1 - k : k) * step
+      return { text, hot: i === hot, style: css({ '--w': ms(at) }) }
     })
     return {
       words: built,
       outline: li === outline && !built.some((w) => w.hot),
-      style: css({ '--from': li % 2 ? -from : from }),
+      style: css({ '--from': dir, '--lw': ms(start) }),
     }
   })
 
@@ -297,6 +365,8 @@ export function buildReelPlan(video: Video): ReelPlan {
     motion,
     ending,
     lowRes,
+    single,
+    unit: byLine ? 'line' : 'word',
     style: css({
       '--t1': ms(SHOT_AT[0]),
       '--t2': ms(SHOT_AT[1]),

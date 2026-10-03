@@ -42,7 +42,8 @@ export interface PromoReelProps {
   /**
    * `full` (default) is the watch stage: Skip, sound and the end-card countdown.
    * `preview` fits a card's 16:9 box on hover or focus: silent, no controls, lighter effects
-   * and type sized for 160–480px stages. Same 10 s timeline, still seeded per video.
+   * and type sized for 160–800px stages. Same 10 s timeline, still seeded per video, except
+   * that the card's image gives way to the reel at 0.5 s instead of 1.5 s.
    */
   variant?: ReelVariant
   /** Start silent whatever the stored preference (previews always are). */
@@ -99,7 +100,7 @@ export default function PromoReel({
   useEffect(() => {
     const controller = new AbortController()
     const small = preview && (rootRef.current?.clientWidth ?? 0) <= CARD_STAGE_PX
-    const backdrop = small ? video.thumbnail : video.backdrop
+    const backdrop = small ? video.thumbnail : (video.poster ?? video.backdrop)
     const shots = plan.shots.map((s) => (small ? s.small : s.src))
     void settleImages([backdrop, ...shots], DECODE_CAP_MS, controller.signal).then(
       ([backdropOk, ...shotOk]) => {
@@ -180,6 +181,8 @@ export default function PromoReel({
       data-side={plan.side}
       data-motion={plan.motion}
       data-end={plan.ending}
+      data-unit={plan.unit}
+      data-single={plan.single || undefined}
       data-lowres={(plan.lowRes && !preview) || undefined}
       style={style}
     >
@@ -243,7 +246,7 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
           </div>
         ))}
       </div>
-      {/* Previews start on the card's own image and dissolve into the reel at the first beat. */}
+      {/* Previews start on the card's own image and dissolve into the reel half a second in. */}
       {preview && stills.backdrop && (
         <div className="reel-cover" aria-hidden="true">
           <img src={stills.backdrop} alt="" draggable={false} />

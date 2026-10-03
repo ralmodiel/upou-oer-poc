@@ -1,5 +1,5 @@
-// SectionHeading: `title` rendered `as` h1|h2|h3 (default h2, h1 uses the page-title scale), optional
-// `eyebrow`, `count`, a "See all (n)" link via `seeAllTo` (+ `seeAllLabel`; `seeAllContext` names the
+// SectionHeading: `title` rendered `as` h1|h2|h3 (default h2, h1 uses the page-title scale) under a
+// short gold rule (`rule={false}` drops it), optional `eyebrow`, `count`, a "See all (n)" link via `seeAllTo` (+ `seeAllLabel`; `seeAllContext` names the
 // section for assistive tech so repeated links stay distinct), `description`, and `children` for
 // controls on the right.
 import type { ReactNode } from 'react'
@@ -17,6 +17,7 @@ export interface SectionHeadingProps {
   seeAllContext?: string
   description?: ReactNode
   children?: ReactNode
+  rule?: boolean
   className?: string
 }
 
@@ -37,6 +38,7 @@ export default function SectionHeading({
   seeAllContext,
   description,
   children,
+  rule = true,
   className = '',
 }: SectionHeadingProps) {
   const showCountInline = count !== undefined && !seeAllTo
@@ -44,6 +46,9 @@ export default function SectionHeading({
   return (
     <div className={`flex flex-wrap items-end justify-between gap-x-6 gap-y-2 ${className}`}>
       <div className="min-w-0">
+        {rule && (
+          <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
+        )}
         {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
         <Tag id={id} className={TITLE[Tag]}>
           {title}

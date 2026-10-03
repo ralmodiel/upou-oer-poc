@@ -24,12 +24,12 @@ function Recommended({ title, description, videos, reasons, pending, cards }: Pr
     <section
       aria-labelledby={headingId}
       aria-busy={pending || undefined}
-      className="border-t border-line px-(--gutter) pt-6 pb-10"
+      className="px-(--gutter) py-8 sm:py-10"
     >
       <SectionHeading id={headingId} title={title} description={description} />
       <div className="mt-5">
         {pending ? (
-          <GridSkeleton count={cards} />
+          <GridSkeleton count={cards} reasons />
         ) : (
           <CardReasons value={reasons ?? null}>
             <VideoGrid videos={videos} layout="section" showCategory />

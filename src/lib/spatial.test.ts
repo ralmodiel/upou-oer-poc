@@ -195,6 +195,61 @@ describe('findTarget', () => {
   })
 })
 
+describe('chip groups', () => {
+  // A Play button, two wrapped rows of chips (c1 c2 c3 / c4; c2 is the tab stop) and a card.
+  function chipsPage(tabStop = true) {
+    const tab = (on: boolean) => (tabStop ? `tabindex="${on ? 0 : -1}"` : '')
+    document.body.innerHTML = `
+      <main>
+        <button id="play">Play</button>
+        <ul id="chips" data-spatial="group">
+          <li><a id="c1" href="/c/1" ${tab(false)}>One</a></li>
+          <li><a id="c2" href="/c/2" ${tab(true)}>Two</a></li>
+          <li><a id="c3" href="/c/3" ${tab(false)} aria-current="true">Three</a></li>
+          <li><a id="c4" href="/c/4" ${tab(false)}>Four</a></li>
+        </ul>
+        <article id="k1"><a id="k1-link" href="/w/1" data-card-link>Card</a></article>
+      </main>`
+    place('#play', [0, 10, 100, 40])
+    place('#chips', [100, 10, 600, 100])
+    place('#c1', [100, 10, 100, 40])
+    place('#c2', [100, 120, 100, 40])
+    place('#c3', [100, 230, 100, 40])
+    place('#c4', [160, 10, 100, 40])
+    place('#k1', [260, 10, 300, 200])
+    place('#k1-link', [390, 10, 280, 20])
+  }
+
+  it('is one stop for ↑ / ↓, entered at its tab stop', () => {
+    chipsPage()
+    focus('#play')
+    expect(id(findTarget('down'))).toBe('c2')
+    focus('#c1')
+    expect(id(findTarget('down'))).toBe('k1-link')
+    focus('#k1-link')
+    expect(id(findTarget('up'))).toBe('c2')
+    focus('#c4')
+    expect(id(findTarget('up'))).toBe('play')
+  })
+
+  it('walks its chips in order with ← / →, row after row', () => {
+    chipsPage()
+    focus('#c2')
+    expect(id(findTarget('right'))).toBe('c3')
+    focus('#c3')
+    expect(id(findTarget('right'))).toBe('c4')
+    expect(id(findTarget('left'))).toBe('c2')
+    focus('#c4')
+    expect(findTarget('right')).toBeNull()
+  })
+
+  it('without a tab stop, is entered at its active chip', () => {
+    chipsPage(false)
+    focus('#play')
+    expect(id(findTarget('down'))).toBe('c3')
+  })
+})
+
 describe('keepsArrow', () => {
   it('lets fields keep left/right until the caret hits an edge; widgets keep every arrow', () => {
     document.body.innerHTML =

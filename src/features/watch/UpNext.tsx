@@ -3,11 +3,14 @@ import SectionHeading from '../../components/ui/SectionHeading'
 import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
 import type { UpNextItem } from './recommendations'
+import './watch.css'
+
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 /**
  * Compact list of recommended videos; each row is one link, so it is keyboard operable as is
- * (the shell's focus ring applies). The reason sits above the title in sentence case and may
- * take two lines; without one the collection eyebrow stands in.
+ * (the shell's focus ring applies, and the thumbnail takes a gold frame). The reason sits above
+ * the title in sentence case and may take two lines; without one the collection eyebrow stands in.
  */
 export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
   if (!items.length) return null
@@ -22,7 +25,7 @@ export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
           <li key={v.id}>
             <Link
               to={`/watch/${v.id}`}
-              className="group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2"
+              className="watch-next group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2"
             >
               <img
                 src={v.thumbnail}
@@ -31,15 +34,17 @@ export default function UpNext({ items }: { items: readonly UpNextItem[] }) {
                 height={180}
                 loading="lazy"
                 decoding="async"
-                className="aspect-video w-28 shrink-0 rounded-lg bg-surface-2 object-cover ring-1 ring-black/5 sm:w-36"
+                className="aspect-video w-28 shrink-0 self-start rounded-lg bg-surface-2 object-cover ring-1 ring-black/5 sm:w-36"
               />
-              <span className="min-w-0">
+              <span className="min-w-0 self-center">
                 {reason ? (
-                  <span className="line-clamp-2 text-xs font-medium text-forest">{reason}</span>
+                  <span className="line-clamp-2 text-xs/snug font-medium text-forest">
+                    {sentence(reason)}
+                  </span>
                 ) : (
                   <span className="eyebrow block truncate">{v.category}</span>
                 )}
-                <span className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink group-hover:text-maroon">
+                <span className="mt-1 line-clamp-2 text-sm/snug font-semibold text-ink group-hover:text-maroon">
                   {v.title}
                 </span>
                 <span className="mt-1 block truncate text-xs text-ink-3">

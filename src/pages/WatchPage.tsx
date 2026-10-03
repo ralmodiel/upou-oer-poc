@@ -5,6 +5,7 @@ import { ChevronRightIcon } from '../components/icons'
 import Breadcrumbs, { type Crumb } from '../components/ui/Breadcrumbs'
 import Button from '../components/ui/Button'
 import NotFound from '../components/ui/NotFound'
+import { toneOf } from '../components/tones'
 import { getCategoryByName, getVideo } from '../data/catalog'
 import YouTubePlayer, { PlayerPoster } from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
@@ -98,7 +99,7 @@ function Watch({ video }: { video: Video }) {
   crumbs.push({ label: video.title })
 
   return (
-    <div className="watch-page pb-16">
+    <div className="watch-page pb-16" data-tone={category ? toneOf(category.slug) : undefined}>
       <WatchBackdrop video={video} />
       <div className="mx-auto w-full max-w-[1600px] px-(--gutter)">
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
@@ -136,27 +137,33 @@ function Watch({ video }: { video: Video }) {
               >
                 {video.title}
               </h1>
-              <WatchMeta video={video} />
-              {/* Most source pages have none; the meta row and topics carry the facts then. */}
-              {video.description && (
-                <p className="mt-5 max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
-                  {video.description}
-                </p>
-              )}
-              <WatchTags tags={video.tags} />
+              <WatchMeta video={video} category={category} />
+              {/* Under a gold rule; most source pages have no description, and then the topics
+                  carry the facts (empty, the block and its rule go away). */}
+              <div className="watch-about">
+                {video.description && (
+                  <p className="max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
+                    {video.description}
+                  </p>
+                )}
+                <WatchTags tags={video.tags} />
+              </div>
             </article>
           </div>
 
           <aside className="pt-10 lg:col-span-4 lg:pt-16">
             <UpNext items={upNext} />
             {category && (
-              <Link
-                to={`/collections/${category.slug}`}
-                className="mt-6 inline-flex min-h-10 items-center gap-2 font-semibold text-maroon hover:underline"
-              >
-                More in {category.name}
-                <span className="font-normal text-ink-3">({category.count})</span>
-                <ChevronRightIcon className="size-4" />
+              <Link to={`/collections/${category.slug}`} className="watch-more mt-5">
+                <span>
+                  <span className="watch-more-label">More in {category.name}</span>{' '}
+                  <span className="font-normal whitespace-nowrap text-ink-3">
+                    ({category.count})
+                  </span>
+                </span>
+                <span className="watch-more-icon" aria-hidden="true">
+                  <ChevronRightIcon className="size-4" />
+                </span>
               </Link>
             )}
           </aside>

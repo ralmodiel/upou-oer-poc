@@ -8,6 +8,7 @@ import { HOW_IT_WORKS_KEY } from '../lib/howitworks'
 import Footer from './Footer'
 import Header, { TabBar } from './Header'
 import HowItWorks from './HowItWorks'
+import ShortcutsSheet from './ShortcutsSheet'
 import { useReturnFocus } from './hooks'
 import { fixtureVideos } from './test-fixtures'
 
@@ -94,6 +95,17 @@ describe('Header and tab bar', () => {
     await userEvent.click(screen.getByRole('menuitemradio', { name: 'Dark' }))
     expect(document.documentElement.dataset.theme).toBe('dark')
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+})
+
+describe('ShortcutsSheet', () => {
+  it('lists the remote keys, including what ↓ does from a card and in a chip row', () => {
+    render(<ShortcutsSheet />)
+    expect(
+      screen.getByText('From a card, ↓ reaches its Save and Details before the next row'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Along a row of chips (↑ or ↓ leaves the row)')).toBeInTheDocument()
+    expect(screen.getByText('Previous or next section of the page')).toBeInTheDocument()
   })
 })
 

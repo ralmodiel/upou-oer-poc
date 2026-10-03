@@ -61,15 +61,15 @@ html:has(dialog[data-details][open]) {
   contain-intrinsic-size: auto 30rem;
 }
 
-/* Hero and quick-look backdrops: a blurred, nearly grey still (a flash frame must never wash the
-   page) that drifts slowly once, then rests. */
+/* Hero and quick-look backdrops: a blurred, fully grey still (no colour cast beside the brand
+   bands; a flash frame must never wash the page) that drifts slowly once, then rests. */
 .backdrop-img {
   scale: 1.1;
-  filter: blur(32px) grayscale(0.7) saturate(0.6);
+  filter: blur(32px) grayscale(1);
   transform-origin: 50% 40%;
 }
 [data-theme='dark'] .backdrop-img {
-  filter: blur(32px) grayscale(0.7) saturate(0.6) brightness(0.75);
+  filter: blur(32px) grayscale(1) brightness(0.75);
 }
 @media (prefers-reduced-motion: no-preference) {
   .backdrop-img[data-loaded] {
@@ -81,6 +81,22 @@ html:has(dialog[data-details][open]) {
       translate: -1.5% 1%;
     }
   }
+}
+
+/* Collection header strip: softened and fully grey, so the stills stay quiet beside the band. */
+.backdrop-mosaic {
+  filter: blur(2px) grayscale(1);
+}
+[data-theme='dark'] .backdrop-mosaic {
+  filter: blur(2px) grayscale(1) brightness(0.8);
+}
+
+/* Home rhythm: tinted bands alternate with paper (forest-soft, paper, maroon-soft, paper, ...). */
+.home-bands > section:nth-of-type(4n + 1) {
+  background-color: var(--color-forest-soft);
+}
+.home-bands > section:nth-of-type(4n + 3) {
+  background-color: var(--color-maroon-soft);
 }
 
 /* Preview reel over a card's thumbnail (the reel sizes itself to this box). Transparent, so the

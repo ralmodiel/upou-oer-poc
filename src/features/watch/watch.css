@@ -1,8 +1,29 @@
 /* Watch page bits that utilities don't cover. */
 
+/*
+  Brand colour lives in the chrome around the stage, never over imagery: the collection's tone
+  (tones.ts) as a solid tab, gold rules and accents, forest for the open-licence fact.
+*/
 .watch-page {
+  --tone: var(--color-band-maroon, #7b1113);
+  --on-tone: var(--color-on-band, #faf8f6);
+  --gold: var(--color-band-gold, #fcb51b);
+  --on-gold: var(--color-charcoal, #373637);
   position: relative;
   isolation: isolate;
+}
+
+.watch-page[data-tone='forest'] {
+  --tone: var(--color-band-forest, #014421);
+}
+
+.watch-page[data-tone='gold'] {
+  --tone: var(--gold);
+  --on-tone: var(--on-gold);
+}
+
+.watch-page[data-tone='charcoal'] {
+  --tone: var(--color-band-charcoal, #373637);
 }
 
 /*
@@ -15,6 +36,8 @@
   inset: 0 0 auto;
   z-index: -1;
   height: min(calc(56.25vw + 8rem), 100dvh);
+  /* A short page ends the band (and its fade) at the page's own end. */
+  max-height: 100%;
   overflow: hidden;
   pointer-events: none;
 }
@@ -34,8 +57,8 @@
   object-fit: cover;
   transform-origin: 0 0;
   transform: scale(4.6) translate(-6.5%, -6.5%);
-  /* Mostly desaturated: a maroon slide must not wash the page red. */
-  filter: blur(6px) grayscale(0.65);
+  /* Neutral: no still may tint the page (brand colour stays in the chrome). */
+  filter: blur(6px) grayscale(1);
   opacity: 0;
 }
 
@@ -86,19 +109,148 @@
   outline: none;
 }
 
+/* The collection tab: a small solid label in the collection's colour; the link around it is 40px tall. */
+.watch-tab {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 2.5rem;
+  margin-block: -0.375rem;
+}
+
+.watch-tab > span {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--tone);
+  color: var(--on-tone);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.watch-tab:hover > span {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.watch-tab:focus-visible {
+  outline: none;
+}
+
+.watch-tab:focus-visible > span {
+  outline: 2px solid var(--color-maroon);
+  outline-offset: 2px;
+}
+
+/* The description and topics open with the same short gold rule as the section headings. */
+.watch-about {
+  margin-top: 1.75rem;
+}
+
+.watch-about::before {
+  content: '';
+  display: block;
+  width: 2.5rem;
+  height: 0.25rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: var(--gold);
+}
+
+.watch-about:empty {
+  display: none;
+}
+
+.watch-about > p + section {
+  margin-top: 1.5rem;
+}
+
+.watch-about > section:first-child {
+  margin-top: 0;
+}
+
+/* "More in <collection>": maroon text on a gold underline, a gold chevron disc. */
+.watch-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  font-weight: 600;
+  color: var(--color-maroon);
+}
+
+.watch-more-label {
+  text-decoration: underline 2px var(--gold);
+  text-underline-offset: 0.35em;
+}
+
+.watch-more-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--on-gold);
+  transition: translate 0.2s var(--ease-out-soft, ease);
+}
+
+.watch-more:hover .watch-more-label {
+  text-decoration-thickness: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-more:hover .watch-more-icon {
+    translate: 0.2rem 0;
+  }
+}
+
+/* Up next: the hovered or focused row's thumbnail takes a gold frame. */
+.watch-next img {
+  transition: box-shadow 0.2s;
+}
+
+.watch-next:is(:hover, :focus-visible) img {
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+/* Saved to My List: a gold pill. */
+.watch-save[aria-pressed='true'] {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--on-gold);
+}
+
 /* Very long titles step down a size. */
 .watch-title[data-long] {
   font-size: clamp(1.375rem, 1rem + 1.4vw, 2.125rem);
 }
 
-/* Date · channel: the dot belongs to the item that follows, so a wrapped line never starts with one. */
+/* Date · channel · licence: every item brings its dot, and the dot opening a line is clipped away. */
+.watch-meta {
+  overflow: hidden;
+}
+
+.watch-meta ul {
+  margin-left: -1.25rem;
+}
+
 .watch-meta li {
   white-space: nowrap;
 }
 
-.watch-meta li + li::before {
+.watch-meta li::before {
   content: '·';
-  margin-inline: 0.5rem;
+  display: inline-block;
+  width: 1.25rem;
+  text-align: center;
   color: var(--color-ink-3);
 }
 

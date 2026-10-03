@@ -2,16 +2,20 @@ import { useState, type FocusEvent, type KeyboardEvent } from 'react'
 import type { Video } from '../types'
 import VideoCard from './VideoCard'
 
+// Card widths: the columns of the 92vw content box (4vw gutters, 1600px at most) less the 1rem
+// gaps, so a 320px still is chosen wherever it is big enough.
 const LAYOUTS = {
   // Page grids sit right under the page h1; section grids under a section h2; compact under the modal's h3.
   page: {
     list: 'grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5',
-    sizes: '(min-width: 96rem) 18vw, (min-width: 64rem) 23vw, (min-width: 48rem) 30vw, 45vw',
+    sizes:
+      '(min-width: 108rem) 307px, (min-width: 96rem) calc(18.4vw - 13px), (min-width: 64rem) calc(23vw - 12px), (min-width: 48rem) calc(30.7vw - 11px), calc(46vw - 8px)',
     heading: 'h2',
   },
   section: {
     list: 'grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 lg:grid-cols-4',
-    sizes: '(min-width: 64rem) 23vw, (min-width: 48rem) 30vw, 45vw',
+    sizes:
+      '(min-width: 108rem) 388px, (min-width: 64rem) calc(23vw - 12px), (min-width: 48rem) calc(30.7vw - 11px), calc(46vw - 8px)',
     heading: 'h3',
   },
   compact: {

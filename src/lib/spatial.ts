@@ -5,6 +5,9 @@
 // (tabindex="-1" on a link or button), minus anything aria-hidden, inert, hidden, disabled,
 // zero-size or marked data-spatial="skip"; plain containers with tabindex="-1" are not stops.
 // data-spatial="wide" gives a centred control the shape of its full-width row.
+// data-spatial="group" (a wrapped or scrolling row of chips) makes the row one stop for ↑ / ↓: it is
+// entered at its current chip (the roving tab stop, else the active or first one) and left as a
+// whole, while ← / → walk its chips in order.
 // While a <dialog> is open only its contents count. A card's stretched link ([data-card-link])
 // stands for its whole <article>, so a grid moves card by card; inside a card its own controls
 // (Save, Details) come first. Pinned bars (sticky header, tab bar) are targets only when nothing
@@ -32,6 +35,7 @@ export interface Box {
 const SELECTOR = 'a[href], button, input, select, textarea, [tabindex]'
 const INTERACTIVE = 'a[href], button, input, select, textarea'
 const HIDDEN = '[aria-hidden="true"], [inert], [hidden], [data-spatial="skip"]'
+const GROUP = '[data-spatial="group"]'
 // Widgets whose arrow keys mean something natively.
 const OWNS_ARROWS =
   'select, input[type="range"], input[type="number"], input[type="radio"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"], [role="slider"], [role="listbox"], [role="menu"], [role="menubar"], [role="radiogroup"], [role="tablist"], [role="tree"], [role="grid"], [role="combobox"], audio, video'
@@ -153,6 +157,19 @@ const rectOf = (el: Element) => toBox(el.getBoundingClientRect())
 // Visually hidden (sr-only) elements are a pixel large.
 const visible = (b: Box) => b.right - b.left >= 2 && b.bottom - b.top >= 2
 
+/** Where focus enters a chip group: its tab stop, else its active chip, else the first. */
+function entryOf(group: Element): HTMLElement | null {
+  const items = candidates(group)
+  return (
+    items.find((el) => el.getAttribute('tabindex') === '0') ??
+    items.find((el) =>
+      el.matches('[aria-current]:not([aria-current="false"]), [aria-pressed="true"]'),
+    ) ??
+    items[0] ??
+    null
+  )
+}
+
 const openDialog = () => {
   const dialogs = document.querySelectorAll('dialog[open]')
   return dialogs.length ? dialogs[dialogs.length - 1] : null
@@ -187,7 +204,7 @@ export function keepsArrow(target: EventTarget | null, dir: Direction): boolean 
 /**
  * The element focus should move to for `dir`, or null when nothing lies that way. Inside a card
  * its own controls come first (↓ from the title reaches Save and Details, ↑ from them the title);
- * beyond it the page moves card by card.
+ * beyond it the page moves card by card. A chip group counts as one target.
  */
 export function findTarget(dir: Direction, from: Element | null = document.activeElement) {
   const dialog = openDialog()
@@ -205,13 +222,24 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
     const own = nearest(rectOf(start), inside, dir, (m) => m.box)
     if (own) return own.el
   }
+  // ← / → inside a chip group: the previous or next chip, row after row.
+  const group = start && isCandidate(start) ? start.closest(GROUP) : null
+  if (start && group && (dir === 'left' || dir === 'right')) {
+    const chips = candidates(group).filter((el) => visible(rectOf(el)))
+    const next = chips[chips.indexOf(start) + (dir === 'right' ? 1 : -1)]
+    if (next) return next
+  }
 
-  const pool = candidates(root).filter((el) => el !== start && !home?.contains(el))
+  const pool = candidates(root).filter(
+    (el) => el !== start && !home?.contains(el) && !group?.contains(el),
+  )
   const fromBox = start
     ? isCandidate(start)
       ? home
         ? rectOf(home)
-        : boxOf(start)
+        : group
+          ? rectOf(group)
+          : boxOf(start)
       : entryPoint(rectOf(start), dir)
     : entryPoint(viewportBox(), dir)
   const barOf = barFinder(dialog)
@@ -222,8 +250,14 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   // From a bar: `first` holds that bar's items. From the page: the page, with bars in `last`.
   const first: { el: HTMLElement; box: Box }[] = []
   const last: { el: HTMLElement; box: Box }[] = []
-  for (const el of pool) {
-    const box = boxOf(el)
+  const groups = new Set<Element>()
+  for (const item of pool) {
+    // A chip group enters as one target: its whole box, landing on its entry chip.
+    const chipGroup = item.closest(GROUP)
+    if (chipGroup && groups.has(chipGroup)) continue
+    if (chipGroup) groups.add(chipGroup)
+    const el = chipGroup ? (entryOf(chipGroup) ?? item) : item
+    const box = chipGroup ? rectOf(chipGroup) : boxOf(el)
     if (!visible(box)) continue
     if (onScreenOnly && !overlaps(box, viewport)) continue
     const bar = barOf(el)

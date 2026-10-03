@@ -7,7 +7,7 @@ import { getRows } from '../data/catalog'
 import { setCatalog } from '../data/testing'
 import { useSpatialNavigation } from '../lib/spatial'
 import CollectionChips from './CollectionChips'
-import ContinueWatching from './ContinueWatching'
+import RecentlyViewed from './RecentlyViewed'
 import DetailModal from './DetailModal'
 import Featured from './Featured'
 import Section from './Section'
@@ -134,7 +134,7 @@ describe('VideoGrid keyboard (roving tabindex)', () => {
 
 describe('Featured', () => {
   it('shows the featured video with Play and Details, and steps with prev/next', async () => {
-    renderAt('/', <Featured videos={research} alsoNew={fixtureVideos.slice(3, 7)} />)
+    renderAt('/', <Featured videos={research} alsoNew={fixtureVideos.slice(3, 7)} start={0} />)
     const region = screen.getByRole('region', { name: 'Featured' })
     expect(within(region).getByRole('heading', { level: 3, name: 'Climate Change Basics' }))
     expect(within(region).getByRole('link', { name: 'Play' })).toHaveAttribute(
@@ -164,21 +164,27 @@ describe('Featured', () => {
     expect(within(region).getByText('3 of 3')).toBeInTheDocument()
   })
 
-  it('does not mark the featured image as a Tab stop', () => {
+  it('opens on one of its slides chosen per page load unless told where to start', () => {
     renderAt('/', <Featured videos={research} alsoNew={[]} />)
+    const region = screen.getByRole('region', { name: 'Featured' })
+    expect(within(region).getByText(/^[1-3] of 3$/)).toBeInTheDocument()
+  })
+
+  it('does not mark the featured image as a Tab stop', () => {
+    renderAt('/', <Featured videos={research} alsoNew={[]} start={0} />)
     const image = document.querySelector('a[aria-hidden="true"]')
     expect(image).toHaveAttribute('href', '/watch/climate-basics')
     expect(image).toHaveAttribute('tabindex', '-1')
   })
 })
 
-describe('ContinueWatching and CollectionChips', () => {
+describe('RecentlyViewed and CollectionChips', () => {
   it('renders nothing without history and a strip with it', () => {
-    const { rerender } = render(<ContinueWatching videos={[]} />)
+    const { rerender } = render(<RecentlyViewed videos={[]} />)
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
     rerender(<></>)
-    renderAt('/', <ContinueWatching videos={research.slice(0, 2)} />)
-    const strip = screen.getByRole('region', { name: 'Continue watching' })
+    renderAt('/', <RecentlyViewed videos={research.slice(0, 2)} />)
+    const strip = screen.getByRole('region', { name: 'Recently viewed' })
     expect(within(strip).getAllByRole('listitem')).toHaveLength(2)
     expect(within(strip).getByRole('link', { name: 'Play Climate Change Basics' })).toHaveAttribute(
       'href',

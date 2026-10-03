@@ -1,4 +1,4 @@
-import { memo, useId, useState, type ReactNode } from 'react'
+import { memo, useId, useState } from 'react'
 import { formatDate } from '../lib/format'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
@@ -16,9 +16,12 @@ interface Props {
   videos: readonly Video[]
   /** Newest titles shown beside the featured one. */
   alsoNew: readonly Video[]
-  /** Page intro rendered over the backdrop, above the featured block. */
-  intro?: ReactNode
+  /** First slide; by default a random one per page load. */
+  start?: number
 }
+
+// Drawn once per page load, so a refresh opens on another slide (and backdrop) too.
+const LOAD_PICK = Math.random()
 
 // Fades the blurred still into the page, fully by the bottom edge where the text sits.
 const SCRIM = 'bg-linear-to-b from-paper/70 via-paper/85 via-55% to-paper'
@@ -27,10 +30,11 @@ const SCRIM = 'bg-linear-to-b from-paper/70 via-paper/85 via-55% to-paper'
  * Editorial opener on a full-bleed backdrop of the featured video: the video with its text,
  * manual prev/next, and an "Also new" list.
  */
-function Featured({ videos, alsoNew, intro }: Props) {
+function Featured({ videos, alsoNew, start }: Props) {
   const headingId = useId()
-  const [index, setIndex] = useState(0)
   const count = videos.length
+  const first = start ?? Math.floor(LOAD_PICK * count)
+  const [index, setIndex] = useState(first)
   const video = videos[Math.min(index, count - 1)]
   if (!video) return null
   const go = (delta: number) => setIndex((i) => (i + delta + count) % count)
@@ -39,7 +43,6 @@ function Featured({ videos, alsoNew, intro }: Props) {
   return (
     <div className="relative isolate overflow-hidden">
       <Backdrop video={video} scrim={SCRIM} />
-      {intro}
       <section
         aria-labelledby={headingId}
         className="px-(--gutter) pt-6 pb-8 sm:pt-8 lg:pt-10 lg:pb-10"
@@ -72,9 +75,10 @@ function Featured({ videos, alsoNew, intro }: Props) {
             </div>
 
             <div role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}`}>
-              <Hero video={video} priority={index === 0} />
+              <Hero video={video} priority={index === first} />
               <div className="mt-5">
                 <h3
+                  title={video.title}
                   className={`font-display text-balance text-ink ${
                     long ? 'line-clamp-4 text-2xl sm:text-3xl' : 'line-clamp-3 text-title'
                   }`}
@@ -168,7 +172,10 @@ function AlsoNewItem({ video }: { video: Video }) {
       </Thumbnail>
       <div className="min-w-0">
         <p className="eyebrow truncate">{video.category}</p>
-        <h4 className="mt-1 line-clamp-2 text-base/snug font-semibold text-ink transition-colors group-hover/item:text-maroon">
+        <h4
+          title={video.title}
+          className="mt-1 line-clamp-2 text-base/snug font-semibold text-ink transition-colors group-hover/item:text-maroon"
+        >
           <PlayLink
             video={video}
             aria-label={`Play ${video.title}`}

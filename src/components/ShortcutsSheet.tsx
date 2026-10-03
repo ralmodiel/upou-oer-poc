@@ -7,6 +7,8 @@ import IconButton from './ui/IconButton'
 
 const KEYS: { keys: string[]; text: string }[] = [
   { keys: ['←', '→', '↑', '↓'], text: 'Move the highlight to the nearest card or control' },
+  { keys: ['↓'], text: 'From a card, ↓ reaches its Save and Details before the next row' },
+  { keys: ['←', '→'], text: 'Along a row of chips (↑ or ↓ leaves the row)' },
   { keys: ['Enter'], text: 'Open the highlighted video or press the control' },
   { keys: ['Esc', 'Backspace'], text: 'Back: closes an open panel first, then the previous page' },
   { keys: ['Tab'], text: 'Next control; in a grid it moves on past the cards (Shift + Tab: back)' },
@@ -54,7 +56,7 @@ export default function ShortcutsSheet() {
         </p>
         <dl className="mt-3 divide-y divide-line text-sm">
           {KEYS.map(({ keys, text }) => (
-            <div key={keys[0]} className="flex items-center gap-4 py-2.5">
+            <div key={text} className="flex items-center gap-4 py-2.5">
               <dt className="flex w-24 shrink-0 flex-wrap gap-1">
                 {keys.map((key) => (
                   <kbd

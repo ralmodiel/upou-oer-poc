@@ -1,6 +1,7 @@
 // Chip: pill-shaped filter / tag. With `to` it is a link (route-active by default, or pass `active`
 // for query-string filters → aria-current); without `to` it is a toggle button (`active` →
-// aria-pressed). Optional trailing `count`, `size` md|sm, `tabIndex` for roving rows. Inside a
+// aria-pressed). Optional leading colour `dot` (a bg class), trailing `count`, `size` md|sm, `tabIndex`
+// for roving rows. Inside a
 // list, an over-long label truncates at the row (index.css caps the item via data-chip).
 import type { MouseEventHandler, ReactNode } from 'react'
 import { Link, NavLink, type To } from 'react-router'
@@ -11,6 +12,8 @@ export interface ChipProps {
   end?: boolean
   active?: boolean
   count?: number
+  /** Background class of a small leading dot (a collection's brand colour). */
+  dot?: string
   size?: 'md' | 'sm'
   tabIndex?: number
   onClick?: MouseEventHandler<HTMLElement>
@@ -21,7 +24,7 @@ export interface ChipProps {
 // Single line, sized to its label (so items in a scroll row keep their width), capped at the
 // container with an ellipsis for the rare over-long label.
 const BASE =
-  'inline-flex w-max max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border font-medium whitespace-nowrap transition-colors'
+  'inline-flex w-max max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border font-medium whitespace-nowrap transition-[background-color,color,border-color,translate] motion-safe:active:translate-y-px'
 const SIZE = {
   md: 'h-10 px-4 text-sm',
   // Compact tags; still 40px tall on touch screens.
@@ -39,6 +42,7 @@ export default function Chip({
   end,
   active,
   count,
+  dot,
   size = 'md',
   tabIndex,
   onClick,
@@ -47,6 +51,7 @@ export default function Chip({
 }: ChipProps) {
   const content = (
     <>
+      {dot && <span aria-hidden="true" className={`size-2 shrink-0 rounded-pill ${dot}`} />}
       <span className="truncate">{children}</span>
       {count !== undefined && <span className="shrink-0 text-xs tabular-nums">{count}</span>}
     </>

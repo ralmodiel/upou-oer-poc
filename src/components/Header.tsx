@@ -30,8 +30,9 @@ import ThemeToggle from './ThemeToggle'
 import Menu, { type MenuSection } from './ui/Menu'
 import { buttonClass, iconButtonClass } from './ui/button-styles'
 
+// Active section: a maroon underline on paper (gold in dark mode).
 const NAV_LINK =
-  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 lg:px-3 lg:after:inset-x-3'
+  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
 
 // Saved ids that still exist in the catalog.
 function useSavedCount() {
@@ -59,7 +60,8 @@ export default function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b border-line transition-[background-color,box-shadow] ${
+      // The UP tri-colour stripe runs along the top edge (inside the header's height).
+      className={`sticky top-0 z-40 border-b border-line transition-[background-color,box-shadow] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:brand-stripe ${
         scrolled
           ? 'bg-paper/85 shadow-[0_10px_24px_-20px_rgb(27_26_23/0.45)] backdrop-blur-md'
           : 'bg-paper'
@@ -321,8 +323,9 @@ function SearchBox() {
   )
 }
 
+// Active tab: maroon label and top bar on paper, gold in dark mode.
 const TAB =
-  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-b-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100'
+  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-[3px] after:rounded-b-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 dark:aria-[current=page]:text-band-gold dark:after:bg-band-gold'
 
 /** Phone navigation (< md): Browse · Collections · Search · My List, pinned to the bottom. */
 export function TabBar() {

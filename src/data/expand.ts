@@ -63,6 +63,8 @@ export function expandRecord(r: CatalogRecord): Video {
   // The reel plays three shots: repeat the remaining stills, or show the canonical image when none remain.
   const stills = unflagged([1, 2, 3])
   const shots = stills.length ? [0, 1, 2].map((k) => stills[k % stills.length]) : [0, 0, 0]
+  // A source-site backdrop (og:image) is kept over the rotating 640px frames.
+  const backdrop = !hiRes && r.b ? r.b : large[pick]
   return {
     id: r.id,
     youtubeId: r.y,
@@ -76,8 +78,9 @@ export function expandRecord(r: CatalogRecord): Video {
     thumbnail: small[pick],
     // The original first (hero slots and lists use it), then the small versions of the reel shots.
     thumbnails: [small[0], ...shots.map((i) => small[i])],
-    // A source-site backdrop (og:image) is kept over the rotating 640px frames.
-    backdrop: !hiRes && r.b ? r.b : large[pick],
+    backdrop,
+    // The reel's end card and the player poster share one image: the original unless it is flagged.
+    poster: mask & 1 ? backdrop : large[0],
     frames: shots.map((i) => large[i]),
     ...(r.f ? { featured: true } : {}),
   }

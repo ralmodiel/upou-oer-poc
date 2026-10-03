@@ -44,8 +44,11 @@ export function FactsLine({ video, className = '' }: { video: Video; className?:
   )
 }
 
-/** Placeholder with the geometry of a section grid, shown while recommendations compute. */
-export function GridSkeleton({ count }: { count: number }) {
+/**
+ * Placeholder with the geometry of a section grid (card for card), shown while recommendations
+ * compute; `reasons` gives each card the two-line reason slot.
+ */
+export function GridSkeleton({ count, reasons = false }: { count: number; reasons?: boolean }) {
   return (
     <div
       aria-hidden="true"
@@ -54,10 +57,21 @@ export function GridSkeleton({ count }: { count: number }) {
       {Array.from({ length: count }, (_, i) => (
         <div key={i}>
           <Skeleton className="aspect-video w-full" rounded="card" />
-          <Skeleton className="mt-3 h-3 w-1/3" />
-          <Skeleton className="mt-2 h-4 w-11/12" />
-          <Skeleton className="mt-1.5 h-4 w-2/3" />
-          <Skeleton className="mt-2 h-3 w-1/4" />
+          {/* Eyebrow, two title lines, date, actions: the line heights of VideoCard. */}
+          <div className={`mt-3 flex ${reasons ? 'h-8 items-end pb-0.5' : 'h-4 items-center'}`}>
+            <Skeleton className={`h-3 ${reasons ? 'w-3/4' : 'w-1/3'}`} />
+          </div>
+          <div className="mt-1 flex h-11 flex-col justify-center gap-1.5">
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+          <div className="mt-1 flex h-5 items-center">
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <div className="mt-1 flex h-10 items-center gap-4">
+            <Skeleton className="h-4 w-12" rounded="pill" />
+            <Skeleton className="h-4 w-16" rounded="pill" />
+          </div>
         </div>
       ))}
     </div>

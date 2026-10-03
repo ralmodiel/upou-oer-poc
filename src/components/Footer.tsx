@@ -2,8 +2,11 @@ import type { ReactNode } from 'react'
 import { useHelp } from '../lib/howitworks'
 import { openShortcuts } from '../lib/shortcuts'
 
+// The footer is a deep maroon band: paper text, gold on hover and for headings (band-focus turns
+// the focus ring gold too).
 const LINK =
-  'rounded-sm text-ink-2 underline decoration-line underline-offset-4 transition-colors hover:text-maroon hover:decoration-maroon'
+  'rounded-sm text-on-band underline decoration-on-band/40 underline-offset-4 transition-colors hover:text-band-gold hover:decoration-band-gold'
+const HEADING = 'text-xs font-semibold tracking-[0.08em] text-band-gold uppercase'
 // List items: the same look with a 40px tall hit area.
 const ITEM = `${LINK} -my-2.5 inline-block py-2.5`
 const ACTION = `${ITEM} cursor-pointer text-left`
@@ -38,20 +41,20 @@ export default function Footer() {
   const help = useHelp()
 
   return (
-    <footer className="mt-16 border-t border-line bg-surface text-sm">
+    <footer className="mt-16 bg-band-maroon text-sm text-on-band band-focus">
       <div className="grid gap-10 px-(--gutter) py-12 md:grid-cols-3 md:gap-8">
         <section aria-labelledby="footer-about">
-          <h2 id="footer-about" className="eyebrow">
+          <h2 id="footer-about" className={HEADING}>
             Proof of concept
           </h2>
-          <p className="mt-3 leading-relaxed text-ink-2">{DISCLAIMER}</p>
-          <p className="mt-3 leading-relaxed text-ink-3">
+          <p className="mt-3 leading-relaxed text-on-band/90">{DISCLAIMER}</p>
+          <p className="mt-3 leading-relaxed text-on-band/75">
             It is not affiliated with, endorsed by, or intended to imitate the design of any
             commercial streaming service.
           </p>
         </section>
         <section aria-labelledby="footer-source">
-          <h2 id="footer-source" className="eyebrow">
+          <h2 id="footer-source" className={HEADING}>
             Source
           </h2>
           <ul className="mt-3 space-y-2.5">
@@ -65,7 +68,7 @@ export default function Footer() {
                 YouTube channel
               </External>
             </li>
-            <li className="leading-relaxed text-ink-3">
+            <li className="leading-relaxed text-on-band/75">
               Videos © UP Open University, shared under{' '}
               <External href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</External>{' '}
               unless stated otherwise.
@@ -73,11 +76,11 @@ export default function Footer() {
           </ul>
         </section>
         <section aria-labelledby="footer-project">
-          <h2 id="footer-project" className="eyebrow">
+          <h2 id="footer-project" className={HEADING}>
             Project
           </h2>
           <ul className="mt-3 space-y-2.5">
-            <li className="text-ink-3">Code: MIT License</li>
+            <li className="text-on-band/75">Code: MIT License</li>
             <li>
               <a href={LICENSES_URL} className={ITEM}>
                 Third-party licenses
@@ -101,9 +104,9 @@ export default function Footer() {
           </ul>
         </section>
       </div>
-      <div className="flex flex-col gap-2 border-t border-line px-(--gutter) py-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="font-display text-lg leading-none text-ink">
-          UPOU <span className="text-maroon">OER</span>
+      <div className="flex flex-col gap-2 border-t border-on-band/15 px-(--gutter) py-5 text-xs text-on-band/75 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-display text-lg leading-none text-on-band">
+          UPOU <span className="text-band-gold">OER</span>
         </p>
         <p>
           Open Educational Resources from UP Open University · a proof of concept, not a product.

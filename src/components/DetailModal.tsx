@@ -24,7 +24,7 @@ import { DetailsContext, wasOpenedInApp } from './details'
 import { prefersReducedMotion, useDocumentTitle } from './hooks'
 import { CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
 import { stopPreview } from './preview'
-import { moreLikeThis } from './recs'
+import { CardReasons, moreLikeThis, reasonsFor } from './recs'
 import Chip from './ui/Chip'
 import IconButton from './ui/IconButton'
 import { buttonClass } from './ui/button-styles'
@@ -62,6 +62,8 @@ function DetailDialog({ video }: { video: Video }) {
   // The taste profile as of this title: saving a card below must not reshuffle the grid.
   const profile = useFrozen(useProfile(), video.id)
   const similar = useMemo(() => moreLikeThis(video, { profile, limit: SIMILAR }), [video, profile])
+  // Why each one is here, in place of the collection eyebrow.
+  const reasons = useMemo(() => reasonsFor(similar, profile, video), [similar, profile, video])
   const tags = useMemo(() => topicTags(video.tags), [video])
 
   useLayoutEffect(() => {
@@ -210,7 +212,12 @@ function DetailDialog({ video }: { video: Video }) {
               </p>
             )}
             {tags.length > 0 && (
-              <ul role="list" aria-label="Topics" className="mt-5 flex flex-wrap gap-2">
+              <ul
+                role="list"
+                aria-label="Topics"
+                data-spatial="group"
+                className="mt-5 flex flex-wrap gap-2"
+              >
                 {tags.map((tag) => (
                   <li key={tag}>
                     <Chip
@@ -238,12 +245,15 @@ function DetailDialog({ video }: { video: Video }) {
             aria-labelledby={`${titleId}-similar`}
             className="border-t border-line p-5 md:px-8 md:py-7"
           >
+            <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
             <h3 id={`${titleId}-similar`} className="font-display text-xl text-ink sm:text-2xl">
               More like this
             </h3>
             <div className="mt-4">
               <DetailsContext value={target}>
-                <VideoGrid videos={similar} layout="compact" />
+                <CardReasons value={reasons}>
+                  <VideoGrid videos={similar} layout="compact" />
+                </CardReasons>
               </DetailsContext>
             </div>
           </section>

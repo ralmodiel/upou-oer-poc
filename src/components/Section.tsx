@@ -19,16 +19,19 @@ const NEAR = '200% 0px'
 
 /**
  * One home section: a collection heading, a "See all" link and a row of its newest videos that
- * scrolls sideways (Carousel), ending on a "See all" tile. Until it nears the viewport, a skeleton
- * of the same size stands in.
+ * scrolls sideways (Carousel), ending on a "See all" tile when the collection holds more. Until it
+ * nears the viewport, a skeleton of the same size stands in.
  */
 function Section({ row, eager = true }: Props) {
   const headingId = useId()
   const [ref, near] = useNear<HTMLElement>(eager, NEAR)
   const to = `/collections/${row.slug}`
-  const carousel = useCarousel(near ? row.videos.length + 1 : 0)
+  // A See all tile ends the row only when the collection holds more than the row shows.
+  const more = row.count > row.videos.length
+  const items = row.videos.length + (more ? 1 : 0)
+  const carousel = useCarousel(near ? items : 0)
   // The first page at once, the rest of the row (and its See all tile) when the row is used or idle.
-  const rest = !carousel.full && row.videos.length + 1 > FIRST_ITEMS
+  const rest = !carousel.full && items > FIRST_ITEMS
   return (
     <section
       ref={ref}
@@ -52,14 +55,14 @@ function Section({ row, eager = true }: Props) {
               layout="row"
               first={carousel.first}
               seeAll={
-                rest
+                rest || !more
                   ? undefined
                   : { to, count: row.count, title: row.title, tone: toneOf(row.slug) }
               }
             />
           </Carousel>
         ) : (
-          <RowSkeleton count={Math.min(row.videos.length + 1, 5)} eyebrow={false} />
+          <RowSkeleton count={Math.min(items, FIRST_ITEMS)} eyebrow={false} />
         )}
       </div>
     </section>

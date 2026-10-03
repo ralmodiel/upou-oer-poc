@@ -160,17 +160,31 @@ function useHomeRecommendations(
 
 // The collections with the newest videos, newest first, then a link to all of them: twelve rows
 // that scroll sideways (Carousel; two cards to a page on phones, three at md, four from lg), each
-// up to sixteen of the collection's newest videos and a "See all" tile. "Recommended for you" and
-// "Because you watched" are rows of twelve picks.
+// twelve to sixteen of the collection's newest videos and a "See all" tile when it holds more.
+// "Recommended for you" and "Because you watched" are rows of twelve picks.
 const SECTIONS = 12
 const ROW_CARDS = 16
+// A collection gets a row only when it fills three pages at four cards a page, so its See all tile
+// never comes before the third page (smaller ones are a chip or "All collections" away).
+const ROW_MIN = 12
+// Videos read per collection: a row's sixteen and room for the titles shown above it (five
+// featured, four also new, up to twenty recently viewed).
+const ROW_POOL = ROW_CARDS + 29
 const PICKS = 12
 const NO_VIDEOS: Video[] = []
-const MIN_ROW = 3
 
 const without = (list: Video[], ids: ReadonlySet<string>) => {
   const rest = list.filter((v) => !ids.has(v.id))
   return rest.length ? rest : list
+}
+
+// A collection row leaves out the titles shown above it, unless that leaves fewer than ROW_MIN:
+// then the newest of those top it up, the row kept in date order.
+function rowVideos(list: readonly Video[], above: ReadonlySet<string>): Video[] {
+  const rest = list.filter((v) => !above.has(v.id))
+  if (rest.length >= ROW_MIN) return rest.slice(0, ROW_CARDS)
+  const topUp = new Set(list.filter((v) => above.has(v.id)).slice(0, ROW_MIN - rest.length))
+  return list.filter((v) => !above.has(v.id) || topUp.has(v))
 }
 
 // A long title is cut at a word boundary, without trailing punctuation.
@@ -205,18 +219,19 @@ export default function BrowsePage() {
   }, [featured])
   // A title already above (featured, also new, recently viewed) is left out of its category
   // row, which takes the next newest instead.
-  const rows = getRows(ROW_CARDS * 2)
+  const rows = getRows(ROW_POOL)
   const above = useMemo(
     () => new Set([...featured, ...alsoNew, ...recent].map((v) => v.id)),
     [featured, alsoNew, recent],
   )
-  const shownRows = useMemo(() => {
-    return rows.slice(0, SECTIONS).map((row) => {
-      const rest = row.videos.filter((v) => !above.has(v.id))
-      // A small collection shown almost entirely above keeps its own list rather than going bare.
-      return { ...row, videos: (rest.length >= MIN_ROW ? rest : row.videos).slice(0, ROW_CARDS) }
-    })
-  }, [above, rows])
+  const shownRows = useMemo(
+    () =>
+      rows
+        .filter((row) => row.count >= ROW_MIN)
+        .slice(0, SECTIONS)
+        .map((row) => ({ ...row, videos: rowVideos(row.videos, above) })),
+    [above, rows],
+  )
   const shown = useMemo(
     () =>
       new Set(

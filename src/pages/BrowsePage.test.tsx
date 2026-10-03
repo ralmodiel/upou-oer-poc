@@ -8,6 +8,14 @@ import BrowsePage from './BrowsePage'
 
 setCatalog(fixtureVideos)
 
+// `n` videos in one collection, a day apart and newest first from `from` (ids prefixed by name).
+const collection = (name: string, n: number, from = Date.UTC(2026, 0, 1)) =>
+  manyVideos(n, name).map((v, i) => ({
+    ...v,
+    id: `${name.toLowerCase().replace(/\W+/g, '-')}-${v.id}`,
+    publishedAt: new Date(from - i * 86_400_000).toISOString(),
+  }))
+
 function renderHome() {
   const router = createMemoryRouter([
     { path: '/', Component: BrowsePage },
@@ -33,6 +41,7 @@ describe('BrowsePage', () => {
       disconnect() {}
     }
     vi.stubGlobal('IntersectionObserver', FakeObserver)
+    setCatalog([...fixtureVideos, ...collection('Research', 12)])
     try {
       const router = createMemoryRouter(
         [
@@ -54,26 +63,81 @@ describe('BrowsePage', () => {
           {} as IntersectionObserver,
         ),
       )
-      expect(await within(research).findAllByRole('article')).toHaveLength(3)
+      // The first page (and the card after it) first.
+      expect((await within(research).findAllByRole('article')).length).toBeGreaterThanOrEqual(5)
     } finally {
       vi.unstubAllGlobals()
+      setCatalog(fixtureVideos)
     }
   })
 
-  it('opens with the featured block, the collection chips and one grid section per category', () => {
-    renderHome()
-    expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Collections' })).toBeInTheDocument()
-    const research = screen.getByRole('region', { name: 'Research' })
-    expect(within(research).getAllByRole('article')).toHaveLength(3)
-    expect(within(research).getByRole('link', { name: 'See all (3) in Research' })).toHaveAttribute(
-      'href',
-      '/collections/research',
-    )
-    expect(screen.getByRole('region', { name: 'Arts and Multimedia' })).toBeInTheDocument()
-    // Fewer than three videos: no section.
-    expect(screen.queryByRole('region', { name: 'Education' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Recently viewed' })).not.toBeInTheDocument()
+  it('gives a row only to collections that fill three pages, newest first', () => {
+    // Small Subject has the newest videos but only four; Research, Arts and Education (fixtures)
+    // are small too. Featured takes Small Subject's four, Also new Alpha's newest four.
+    setCatalog([
+      ...fixtureVideos,
+      ...collection('Small Subject', 4, Date.UTC(2027, 0, 1)),
+      ...collection('Alpha Studies', 14, Date.UTC(2026, 11, 1)),
+      ...collection('Gamma Studies', 12, Date.UTC(2026, 8, 1)),
+      ...collection('Beta Studies', 20),
+    ])
+    try {
+      renderHome()
+      expect(screen.getByRole('region', { name: 'Featured' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Collections' })).toBeInTheDocument()
+      const headings = Array.from(document.querySelectorAll('section h2'), (h) => h.textContent)
+      const rows = ['Alpha Studies', 'Gamma Studies', 'Beta Studies']
+      expect(headings.filter((h) => h?.endsWith('Studies') || h === 'Small Subject')).toEqual(rows)
+      for (const name of ['Small Subject', 'Research', 'Arts and Multimedia', 'Education'])
+        expect(screen.queryByRole('region', { name })).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Recently viewed' })).not.toBeInTheDocument()
+      const alpha = screen.getByRole('region', { name: 'Alpha Studies' })
+      expect(
+        within(alpha).getByRole('link', { name: 'See all (14) in Alpha Studies' }),
+      ).toHaveAttribute('href', '/collections/alpha-studies')
+      expect(document.querySelector('section[aria-label="More collections"]')).toHaveTextContent(
+        '4 more collections',
+      )
+    } finally {
+      setCatalog(fixtureVideos)
+    }
+  })
+
+  it('fills each row to at least twelve cards, ending on See all only when there is more', () => {
+    setCatalog([
+      ...fixtureVideos,
+      ...collection('Small Subject', 4, Date.UTC(2027, 0, 1)),
+      ...collection('Alpha Studies', 14, Date.UTC(2026, 11, 1)),
+      ...collection('Gamma Studies', 12, Date.UTC(2026, 8, 1)),
+      ...collection('Beta Studies', 20),
+    ])
+    try {
+      renderHome()
+      const row = (name: string) => {
+        const region = screen.getByRole('region', { name })
+        // Pointing at a row renders all of it at once.
+        fireEvent.pointerEnter(region.querySelector('.row')!)
+        const cards = Array.from(region.querySelectorAll('article'))
+        const titles = cards.map((c) => c.querySelector('[data-card-link]')!.textContent)
+        return { cards: cards.length, titles, tile: region.querySelector('li:last-child > a') }
+      }
+      // Alpha's four newest are in Also new: two of them top its ten others up to twelve, in date
+      // order; it holds more than that, so See all ends the row.
+      const alpha = row('Alpha Studies')
+      expect(alpha.cards).toBe(12)
+      expect(alpha.titles.slice(0, 3)).toEqual(['Lecture 01', 'Lecture 02', 'Lecture 05'])
+      expect(alpha.tile).toHaveAccessibleName('See all 14 videos in Alpha Studies')
+      // Twelve videos, all in the row: no tile, the last card ends it.
+      const gamma = row('Gamma Studies')
+      expect(gamma.cards).toBe(12)
+      expect(gamma.tile).toBeNull()
+      const beta = row('Beta Studies')
+      expect(beta.cards).toBe(16)
+      expect(beta.tile).toHaveAccessibleName('See all 20 videos in Beta Studies')
+      expect(beta.tile).toHaveAttribute('href', '/collections/beta-studies')
+    } finally {
+      setCatalog(fixtureVideos)
+    }
   })
 
   it('keeps the old layout for one frame after Back from the player, then adds the strip', async () => {

@@ -484,8 +484,11 @@ collection. Only the behaviour comes from streaming sites; the look stays this s
 
 - **Rows** (`Carousel`, `carousel-state.ts`, `.row` in `browse.css`): every home row is one line of
   cards that scrolls sideways and snaps to cards, at the old grid sizes: two cards to a page on
-  phones, three at md, four from lg. A collection row holds up to 16 of its newest videos (titles
-  shown above left out), then a "See all n videos" tile under the collection's colour bar.
+  phones, three at md, four from lg. Only collections with 12 or more videos get a row, so the
+  Next button always has at least two more pages after the first (the 12 newest-first such
+  collections). A row holds 12 to 16 of its newest videos (titles shown above left out, topped back
+  up to 12 from them when needed); a "See all n videos" tile under the collection's colour bar ends
+  it only when the collection holds more than the row shows.
   "Recommended for you" is now one row of 12 picks; "Because you watched" (12) and Recently viewed
   (its smaller cards) are rows too, behind the same privacy switches. Phones show all 12
   collection rows: one line each is about as long as seven rows of two by two.

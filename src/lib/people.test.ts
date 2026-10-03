@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { isGenericTag, isPersonTag, registerNameTokens, topicTags } from './tags'
+import { isGenericTag, isNameToken, isPersonTag, registerNameTokens, topicTags } from './tags'
 
 describe('person tags', () => {
   beforeAll(() =>
@@ -44,5 +44,28 @@ describe('person tags', () => {
       'Climate Change',
       'Research',
     ])
+  })
+})
+
+describe('learned name tokens', () => {
+  beforeAll(() =>
+    registerNameTokens([
+      'Dr. Ma. Cristina D. Padolina',
+      'Mr. Noel Rosal,',
+      'Director Multi Media Center and Information Service UP Open University',
+    ]),
+  )
+
+  it('knows first and last names, whatever their case or punctuation', () => {
+    for (const word of ['Padolina', 'cristina', 'Rosal', 'noel'])
+      expect(isNameToken(word), word).toBe(true)
+    expect(isPersonTag('Ma. Cristina Padolina')).toBe(true)
+  })
+
+  it('learns nothing from a titled office', () => {
+    for (const word of ['media', 'information', 'open', 'university']) {
+      expect(isNameToken(word), word).toBe(false)
+    }
+    expect(isPersonTag('Open University')).toBe(false)
   })
 })

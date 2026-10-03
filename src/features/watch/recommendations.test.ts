@@ -16,12 +16,12 @@ const clone = (id: string, title: string, publishedAt = '2024-01-01') => ({
 
 describe('titleKey', () => {
   it('groups speaker cuts of one talk and keeps instalments apart', () => {
-    expect(titleKey(`${talk} | Ms. Nelia A. Rafael, RN`)).toBe(talk.toLowerCase())
+    expect(titleKey(`${talk} | Ms. Nelia A. Rafael, RN`)).toBe(titleKey(talk))
     expect(titleKey(`${talk} | Dr. Meg Leslie Yu`)).toBe(titleKey(`${talk} | Ms. L. Omena, RN`))
     expect(titleKey('Caring for the Special Child | Episode 5 (Part 3)')).not.toBe(
       titleKey('Caring for the Special Child | Episode 5 (Part 4)'),
     )
-    expect(titleKey('FICS Chat | Episode 6: Sampling')).toBe('fics chat | episode 6: sampling')
+    expect(titleKey('FICS Chat | Episode 6: Sampling')).toBe('fics chat episode 6 sampling')
   })
 })
 
@@ -41,5 +41,16 @@ describe('upNextFor', () => {
     expect(new Set(items.map((i) => i.video.id)).size).toBe(8)
     expect(items.map((i) => i.video.id)).not.toContain(testVideo.id)
     for (const { reason } of items) expect(reason).not.toMatch(/^More from (?!this collection)/)
+    // Reasons vary: never the same one on three rows in a row.
+    const reasons = items.map((i) => i.reason)
+    for (let i = 2; i < reasons.length; i++) {
+      expect(reasons[i] === reasons[i - 1] && reasons[i] === reasons[i - 2]).toBe(false)
+    }
+  })
+
+  it('skips re-uploads of the video being watched', () => {
+    const copy = clone('copy', testVideo.title, '2025-01-01')
+    setCatalog([testVideo, copy, clone('other', 'Another title')])
+    expect(upNextFor(testVideo, profile).map((i) => i.video.id)).not.toContain('copy')
   })
 })

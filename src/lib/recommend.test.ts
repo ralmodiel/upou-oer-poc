@@ -4,7 +4,16 @@ import { setNeighbors } from '../data/recs'
 import { setCatalog } from '../data/testing'
 import type { Video } from '../types'
 import type { Profile } from './history'
-import { explain, recommendFor, recommendForProfile, seriesKeyOf } from './recommend'
+import {
+  explain,
+  explainList,
+  isNearDuplicate,
+  recommendFor,
+  recommendForProfile,
+  seriesKeyOf,
+  titleKey,
+  warmRecommenderAsync,
+} from './recommend'
 
 const make = (id: string, over: Partial<Video> = {}): Video => ({
   id,
@@ -82,7 +91,7 @@ describe('recommendFor', () => {
       make('x', { title: 'Soil Health Basics', category: 'Agriculture' }),
       make('y', { title: 'Soil Health Advanced', category: 'Agriculture' }),
       make('z', {
-        title: 'Soil Health Advanced',
+        title: 'Soil Health Methods',
         category: 'Science',
         publishedAt: '2026-06-01T00:00:00+08:00',
       }),
@@ -101,7 +110,7 @@ describe('recommendFor', () => {
         tags: ['Soil'],
         publishedAt: '2026-06-01T00:00:00+08:00',
       }),
-      make('w', { title: 'Soil Health Advanced', category: 'Agriculture', tags: ['Soil', 'Rain'] }),
+      make('w', { title: 'Soil Health Methods', category: 'Agriculture', tags: ['Soil', 'Rain'] }),
       make('r', { title: 'Rain Patterns', category: 'Science', tags: ['Rain'] }),
     ])
     const [x] = videos
@@ -172,7 +181,7 @@ describe('recommendFor', () => {
         category: 'Agriculture',
         publishedAt: '2026-06-01T00:00:00+08:00',
       }),
-      make('z', { title: 'Soil Health Advanced', category: 'Agriculture' }),
+      make('z', { title: 'Soil Health Methods', category: 'Agriculture' }),
       ...filler,
     ])
     const [x] = videos
@@ -259,11 +268,15 @@ describe('explain', () => {
 
   it('describes the link to the current video', () => {
     expect(explain(a, b)).toBe('Same series')
-    expect(explain(a, c)).toBe('Shares topics: Climate')
-    expect(explain(make('p', { title: 'Weather at Sea', category: 'Science' }), d)).toBe(
-      'Also about Weather',
+    expect(explain(a, c)).toBe('Shares a topic: Climate')
+    expect(explain(make('p', { title: 'Ocean Weather at Sea', category: 'Science' }), d)).toBe(
+      'Also about Ocean Weather',
     )
-    expect(explain(e, f)).toBe('Shares topics: Bread')
+    // One shared title word is not a reason.
+    expect(explain(make('p', { title: 'Weather at Sea', category: 'Science' }), d)).toBe(
+      'More from Science',
+    )
+    expect(explain(e, f)).toBe('Shares a topic: Bread')
     expect(explain(make('p', { title: 'Knives', category: 'Cooking' }), f)).toBe(
       'More from Cooking',
     )
@@ -278,19 +291,177 @@ describe('explain', () => {
     })
     setCatalog([...list, long])
     expect(explain(null, f, profile({ watched: [{ id: 'e', at: NOW }] }))).toBe(
-      'Because you watched “Baking Bread at Home”',
+      'Because you watched “Baking Bread…”',
     )
     expect(explain(null, g, profile({ searches: [{ q: 'Nursing care', at: NOW }] }))).toBe(
-      'Matches your search “Nursing care”',
+      'Because you searched “Nursing care”',
     )
     expect(explain(null, f, profile({ saved: ['e'] }))).toBe(
       'Because you saved “Baking Bread at Home”',
     )
     const reason = explain(null, f, profile({ watched: [{ id: 'long', at: NOW }] }))
     expect(reason.startsWith('Because you watched “A Very Long')).toBe(true)
-    expect(reason.length).toBeLessThanOrEqual(60)
+    expect(reason.length).toBeLessThanOrEqual(40)
     expect(explain(null, g, profile({}))).toBe('More from Health')
     expect(explain(null, h)).toBe('Recommended for you')
+  })
+})
+
+describe('one row per talk', () => {
+  const talk = 'Public Health Preparedness Amidst Pandemic: Nursing Experience'
+  const health = (id: string, title: string, publishedAt = '2026-01-01T00:00:00+08:00') =>
+    make(id, { title, category: 'Health', tags: ['Nursing'], publishedAt })
+  const filler = [
+    make('u1', { title: 'Knitting Patterns', category: 'Crafts' }),
+    make('u2', { title: 'Jazz History', category: 'Music' }),
+  ]
+
+  it('shows the newest cut of a talk, keeps episodes apart and drops re-uploads', () => {
+    setCatalog([
+      health('q', 'Nursing in a Pandemic'),
+      health('a', `${talk} | Ms. Ana Reyes, RN`),
+      health('b', `${talk} | Dr. Ben Cruz`, '2026-03-01T00:00:00+08:00'),
+      health('c', `Let’s Talk It Over: ${talk}`, '2026-02-01T00:00:00+08:00'),
+      health('e1', 'Nursing Care | Episode 1'),
+      health('e2', 'Nursing Care | Episode 2'),
+      health('q2', 'Nursing in a pandemic'),
+      ...filler,
+    ])
+    const recs = ids(recommendFor(videos[0]))
+    expect(recs.filter((id) => ['a', 'b', 'c'].includes(id))).toEqual(['b'])
+    expect(recs).toEqual(expect.arrayContaining(['e1', 'e2']))
+    expect(recs).not.toContain('q2')
+    const taste = profile({ watched: [{ id: 'e1', at: NOW }] })
+    expect(ids(recommendForProfile(taste)).filter((id) => ['a', 'b', 'c'].includes(id))).toEqual([
+      'b',
+    ])
+  })
+
+  it('tells cuts and re-uploads from instalments', () => {
+    expect(titleKey(`${talk} | Ms. Nelia A. Rafael, RN`)).toBe(titleKey(talk))
+    expect(titleKey('Caring for the Special Child | Episode 5 (Part 3)')).not.toBe(
+      titleKey('Caring for the Special Child | Episode 5 (Part 4)'),
+    )
+    const v = (title: string) => make(title, { title })
+    expect(isNearDuplicate(v(`Let’s Talk It Over: ${talk}`), v(`${talk} | Dr. X`))).toBe(true)
+    expect(
+      isNearDuplicate(
+        v('FMDS Continuing Education Program | Closing Ceremonies'),
+        v('Continuing Education Program Closing Ceremonies'),
+      ),
+    ).toBe(true)
+    expect(isNearDuplicate(v('LP Modeling (Part I)'), v('LP Modeling (Part II)'))).toBe(false)
+    // A short title is the series; its guest makes the episode.
+    expect(
+      isNearDuplicate(v('Akdang Buhay | Dr. Jaime An Lim'), v('Akdang Buhay | Dr. Ana Cruz')),
+    ).toBe(false)
+  })
+})
+
+describe('recommendForProfile search slots', () => {
+  // Ten loaves (no shared series name) and three nursing titles; the user watched four loaves.
+  const loaves = 'Rye Flat Quick Sweet Corn Soda Milk Honey Oat Seed'.split(' ')
+  const bakers = loaves.map((kind, i) =>
+    make(`k${i}`, { title: `${kind} Bread Baking`, category: `Cooking ${i % 4}`, tags: ['Bread'] }),
+  )
+  const nurses = ['Ethics', 'Leadership', 'Informatics'].map((topic, i) =>
+    make(`n${i}`, { title: `Nursing ${topic}`, category: 'Health', tags: ['Nursing'] }),
+  )
+  const watched = ['e', 'f', 'k0', 'k1'].map((id, i) => ({ id, at: NOW - i }))
+
+  it('keeps two of every eight places for the latest search, within the caps', () => {
+    setCatalog([...list, ...bakers, ...nurses])
+    const taste = profile({ watched, searches: [{ q: 'nursing', at: NOW }] })
+    const recs = recommendForProfile(taste, { limit: 8 })
+    expect(recs).toHaveLength(8)
+    expect(recs[1].tags).toContain('Nursing')
+    expect(recs[4].tags).toContain('Nursing')
+    expect(recs.filter((v) => v.category === 'Health').length).toBeLessThanOrEqual(3)
+    const reasons = explainList(null, recs, taste)
+    expect(reasons[1]).toBe('Because you searched “nursing”')
+    expect(reasons[4]).toBe('Because you searched “nursing”')
+    expect(
+      recommendForProfile(taste, { limit: 4 }).filter((v) => v.tags.includes('Nursing')),
+    ).toHaveLength(1)
+  })
+
+  it('reserves nothing without a search', () => {
+    setCatalog([...list, ...bakers, ...nurses])
+    const recs = recommendForProfile(profile({ watched }), { limit: 8 })
+    expect(recs.some((v) => v.tags.includes('Nursing'))).toBe(false)
+  })
+})
+
+describe('explainList', () => {
+  const filler = [
+    make('u1', { title: 'Knitting Patterns', category: 'Crafts' }),
+    make('u2', { title: 'Jazz History', category: 'Music' }),
+    make('u3', { title: 'Opera Basics', category: 'Music' }),
+  ]
+
+  it('never shows one reason on three rows in a row', () => {
+    const episodes = Array.from({ length: 7 }, (_, i) =>
+      make(`s${i}`, { title: `Tech Tips ${i + 1}: Topic ${i}`, category: 'Tech', tags: ['Tips'] }),
+    )
+    setCatalog([...episodes, ...filler])
+    const [first, ...rest] = videos.slice(0, 7)
+    expect(explain(first, rest[0])).toBe('Same series')
+    const reasons = explainList(first, rest)
+    expect(reasons).toHaveLength(6)
+    for (let i = 2; i < reasons.length; i++) {
+      expect(reasons[i] === reasons[i - 1] && reasons[i] === reasons[i - 2]).toBe(false)
+    }
+    // A reason used three times gives way to another true one ("More from Tech").
+    expect(reasons.filter((r) => r === 'Same series')).toHaveLength(3)
+    expect(reasons).toContain('More from Tech')
+    for (const r of reasons) expect(r.length).toBeLessThanOrEqual(40)
+  })
+
+  it('names no generic words and no people', () => {
+    setCatalog([
+      make('a', {
+        title: 'Opening Remarks by Dr. Jose Rizal',
+        category: 'Events',
+        tags: ['Dr. Jose Rizal'],
+      }),
+      make('b', {
+        title: 'Closing Remarks by Dr. Jose Rizal',
+        category: 'Talks',
+        tags: ['Dr. Jose Rizal', 'Jose Rizal'],
+      }),
+      make('c', { title: 'Values and Digital Transformation', category: 'Talks' }),
+      make('d', { title: 'Public Value and Digital Governance', category: 'Policy' }),
+      ...filler,
+    ])
+    const [a, b, c, d] = videos
+    expect(explain(a, b)).toBe('Same speaker')
+    expect(explain(c, d)).toBe('Related video')
+  })
+
+  it('joins adjacent words into a phrase and calms shouting titles', () => {
+    setCatalog([
+      make('x', { title: 'CLIMATE CHANGE AND LOCAL GOVERNANCE', category: 'Policy' }),
+      make('y', { title: 'Climate Change Adaptation in Cities', category: 'Science' }),
+      ...filler,
+    ])
+    const [x, y] = videos
+    expect(explain(y, x)).toBe('Also about Climate Change')
+  })
+})
+
+describe('warmRecommenderAsync', () => {
+  it('builds the index in steps that later calls share', async () => {
+    const first = warmRecommenderAsync()
+    expect(warmRecommenderAsync()).toBe(first)
+    await first
+    expect(ids(recommendFor(list[0]))[0]).toBe('b')
+    await expect(warmRecommenderAsync()).resolves.toBeUndefined()
+  })
+
+  it('lets a synchronous call finish a build in progress', async () => {
+    const pending = warmRecommenderAsync()
+    expect(ids(recommendFor(list[0]))[0]).toBe('b')
+    await expect(pending).resolves.toBeUndefined()
   })
 })
 

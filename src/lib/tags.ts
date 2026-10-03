@@ -29,13 +29,18 @@ const GENERIC = new Set([
   'compilation',
   'livestream',
   'tvupupopenuniversity',
+  'universityofthephilippinesupopenuniversity',
+  'instructionalresources',
+  'informative',
+  'ltio',
 ])
 
 // People are tagged with a title ("Dr. Myra Oruga", "aProf. Benjamin Gonzales", "Juan dela Cruz Jr.").
 const HONORIFIC =
   /^(dr|prof|aprof|asst\.? ?prof|assoc\.? ?prof|mr|ms|mrs|atty|engr|arch|ar|sir|ma'am|hon|dean|fr|sr|br|rev|pres|dir|director|chancellor|vice chancellor)\.?\s+\S/i
 const NAME_SUFFIX = /\s(jr|sr|ii|iii|iv)\.?$/i
-const INITIAL = /^[A-Z]\.?$/
+// An initial, or "Ma." (María) before a first name.
+const INITIAL = /^(?:[A-Z]|Ma)\.?$/
 const PARTICLE = /^(de|dela|del|de la|la|los|las|van|von|da|di|du|san|santa|sta|sto)$/i
 const WORD = /^\p{Lu}[\p{L}'’-]+$/u
 
@@ -61,7 +66,7 @@ export function registerNameTokens(tags: Iterable<string>) {
     const name = t.replace(HONORIFIC, (m) => m.slice(-1))
     const parts = nameParts(name)
     if (NOT_A_NAME.test(` ${name} `) || parts.length > MAX_NAME_PARTS) continue
-    for (const w of parts) nameTokens.add(w.toLowerCase())
+    for (const w of parts) nameTokens.add(w.toLowerCase().replace(/[^\p{L}'’-]/gu, ''))
   }
 }
 
@@ -106,6 +111,9 @@ const ORG = new Set([
   'iuptv',
   'upounetworksmultimediacenter',
   'bandalaria',
+  'universityofthephilippines',
+  'abscbn',
+  'osa',
 ])
 
 export const isOrgTag = (tag: string) => ORG.has(tagKey(tag)) || isPersonTag(tag)

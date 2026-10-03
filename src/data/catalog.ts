@@ -1,6 +1,6 @@
 import records from './catalog.json'
 import { formatDate } from '../lib/format'
-import { registerNameTokens } from '../lib/tags'
+import { isOrgTag, registerNameTokens, topicTags } from '../lib/tags'
 import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 
@@ -172,11 +172,22 @@ export function getLatest(limit = 12): Video[] {
   return cached(`latest:${limit}`, () => byDate().slice(0, limit))
 }
 
-/** The description, or a short summary from metadata (most source pages have no description). */
+/**
+ * The description, or else a line of facts (most source pages have no description):
+ * "Mar 1, 2026 · Research · Climate, Rainfall".
+ */
 export function summaryOf(v: Video): string {
   if (v.description) return v.description
-  const topics = v.tags.slice(0, 3).join(' · ')
-  return `An open educational video from ${v.channel}'s ${v.category} collection.${topics ? ` Topics: ${topics}.` : ''}`
+  const topics = topicTags(v.tags)
+    .filter((t) => !isOrgTag(t))
+    .slice(0, 2)
+  return [
+    formatDate(v.publishedAt),
+    v.category === GENERAL_CATEGORY ? '' : v.category,
+    topics.join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export interface Fact {

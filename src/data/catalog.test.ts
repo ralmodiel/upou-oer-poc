@@ -49,11 +49,17 @@ const shipped = videos
 afterEach(() => setCatalog(shipped))
 
 describe('catalog helpers', () => {
-  it('falls back to a metadata summary when the description is empty', () => {
+  it('falls back to a line of facts, not boilerplate, when the description is empty', () => {
     expect(summaryOf(list[4])).toBe('privacy policy basics')
-    expect(summaryOf(list[0])).toBe(
-      "An open educational video from UP Open University's Research collection. Topics: Climate.",
-    )
+    expect(summaryOf(list[0])).toBe('Mar 1, 2026 · Research · Climate')
+    // No "General" collection, no people, faculties or housekeeping tags.
+    const general = make('g', {
+      category: GENERAL_CATEGORY,
+      publishedAt: '2026-02-01',
+      tags: ['Dr. Myra Oruga', 'FMDS', 'upou', 'open data', 'Gender', 'Research'],
+    })
+    expect(summaryOf(general)).toBe('Feb 1, 2026 · Open Data, Gender')
+    expect(summaryOf(make('h', { publishedAt: '', tags: [] }))).toBe('Misc')
   })
 
   it('states facts for a video: publish date, collection size, channel', () => {

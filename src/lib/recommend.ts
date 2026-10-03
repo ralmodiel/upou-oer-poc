@@ -5,7 +5,15 @@ import { GENERAL_CATEGORY, videos } from '../data/catalog'
 import { neighborsOf } from '../data/recs'
 import type { Video } from '../types'
 import type { Profile } from './history'
-import { isGenericTag, isNameToken, isOrgTag, isPersonTag, tagKey, tidyTag } from './tags'
+import {
+  isGenericTag,
+  isNameToken,
+  isOrgTag,
+  isPersonTag,
+  POPULAR_SERIES,
+  tagKey,
+  tidyTag,
+} from './tags'
 import { normalizeText, stem, STOPWORDS, termWeightsOf, tokenize } from './text'
 
 export interface RecommendOptions {
@@ -46,6 +54,8 @@ const SLOT_BLOCK = 8
 const SAME_TALK = 0.8
 // Explanations
 const MAX_REASON = 40
+/** Uses of one reason in a list before another true one is preferred. */
+const MAX_SAME = 3
 const MIN_QUOTE = 16
 const MIN_AFFINITY = 0.08
 /** "Also about …" needs two shared title terms, one of them in at most 3% of the catalog. */
@@ -82,6 +92,8 @@ interface Index {
   seriesSize: Map<string, number>
   /** Per series: tag keys most members carry (the series itself, not a topic). */
   seriesTags: Map<string, Set<string>>
+  /** Tag keys that name a programme ("Akdang Buhay", "Infoteach"): a series, not a topic. */
+  programmes: Set<string>
   /** Per document: its informative tag keys (not generic, not catalog-wide). */
   tags: Set<string>[]
   tagDf: Map<string, number>
@@ -173,6 +185,8 @@ export function seriesKeyOf(title: string): string | undefined {
   return key
 }
 
+/** Shorter than this, a title's body ("Akdang Buhay") needs its speaker to name the talk. */
+const MIN_BODY = 20
 // A suffix like these makes a title its own instalment rather than another cut of the same talk.
 const INSTALMENT =
   /\b(episode|ep|part|session|module|chapter|lesson|lecture|day|week|vol|volume)\b|\d/i
@@ -193,18 +207,43 @@ const plainOf = (s: string): string => {
 export function titleKey(title: string): string {
   const cut = title.lastIndexOf(' | ')
   return plainOf(
-    cut >= 20 && !INSTALMENT.test(title.slice(cut + 3)) ? title.slice(0, cut) : title,
+    cut >= MIN_BODY && !INSTALMENT.test(title.slice(cut + 3)) ? title.slice(0, cut) : title,
   )
 }
 
 const TAIL = / [|–—-] /g
+const EDGE = /^[^\p{L}\p{N}&]+|[^\p{L}\p{N}]+$/gu
 
-/** Where a trailing speaker credit starts ("… | Dr. X, RN", "… – Prof. Y"), else the length. */
-function bodyEnd(title: string): number {
-  let at = -1
-  for (const m of title.matchAll(TAIL)) at = m.index
-  return at >= 0 && isPersonTag(title.slice(at + 3).split(',')[0]) ? at : title.length
+const NAME_WORD = /^["“”‘’']?\p{Lu}[\p{L}'’.-]*["“”‘’']?$/u
+const PARTICLES = new Set(['de', 'dela', 'del', 'la', 'los', 'las', 'van', 'von', 'da', 'di', 'y'])
+
+/** A speaker: a person tag, or two to four capitalised words with a known name among them. */
+function isSpeaker(text: string): boolean {
+  if (isPersonTag(text)) return true
+  const words = text.split(/\s+/)
+  return (
+    words.length >= 2 &&
+    words.length <= 4 &&
+    words.every((w) => NAME_WORD.test(w) || PARTICLES.has(w)) &&
+    words.some((w) => isNameToken(w.replace(/[^\p{L}'’-]/gu, '')))
+  )
 }
+
+/** A title's speaker credit ("… | Dr. X, RN – Affiliation"): where it starts and the name. */
+function creditOf(title: string): { at: number; name: string } | undefined {
+  const seps = Array.from(title.matchAll(TAIL), (m) => m.index)
+  for (let i = 0; i < seps.length; i++) {
+    const name = title
+      .slice(seps[i] + 3, seps[i + 1])
+      .split(',')[0]
+      .trim()
+    if (isSpeaker(name)) return { at: seps[i], name }
+  }
+  return undefined
+}
+
+/** Where the speaker credit starts, else the title's length. */
+const bodyEnd = (title: string): number => creditOf(title)?.at ?? title.length
 
 /** A term that is someone's name; "Santos" stems to "santo". */
 const isName = (term: string) => isNameToken(term) || isNameToken(`${term}s`)
@@ -213,9 +252,13 @@ const MARKS =
   /\b(?:part|pt|episode|ep|session|module|chapter|lesson|lecture|vol|volume|book|day|week|level|unit|no)\.?\s*([ivx]+|\d+)\b|\d+/g
 
 function talkOf(title: string, key = titleKey(title)): Talk {
-  const terms = new Set(tokenize(title.slice(0, bodyEnd(title))).filter((t) => !isName(t)))
+  const end = bodyEnd(title)
+  // Faculty prefixes ("FMDS …") do not make another talk.
+  const words = (end >= MIN_BODY ? title.slice(0, end) : title)
+    .split(/\s+/)
+    .filter((w) => !isOrgTag(w.replace(EDGE, '')))
   const marks = Array.from(normalizeText(title).matchAll(MARKS), (m) => m[1] ?? m[0]).join(' ')
-  return { key, terms, marks }
+  return { key, terms: new Set(tokenize(words.join(' '))), marks }
 }
 
 function sameTalk(a: Talk, b: Talk): boolean {
@@ -232,12 +275,47 @@ export const isNearDuplicate = (a: Video, b: Video): boolean =>
 
 const stampOf = (at: unknown): number => (typeof at === 'number' && Number.isFinite(at) ? at : 0)
 
-function build(list: readonly Video[]): Index {
-  const n = list.length
-  const bags = list.map((v) => termWeightsOf(v))
-  const df = new Map<string, number>()
-  for (const bag of bags) for (const t of bag.keys()) df.set(t, (df.get(t) ?? 0) + 1)
+/** Work per step of a sliced build, in ms: short enough to keep the page responsive on slow phones. */
+const STEP_MS = 8
+/** How often (in documents) a build step checks the clock. */
+const CHECK_EVERY = 16
 
+const countInto = (counts: Map<string, number>, keys: Iterable<string>) => {
+  for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1)
+}
+
+/** What the first pass learns about each document. */
+interface Scan {
+  bags: Map<string, number>[]
+  df: Map<string, number>
+  keysOf: string[][]
+  seriesKeys: (string | undefined)[]
+  titleKeys: string[]
+  stamps: Float64Array
+}
+
+function newScan(n: number): Scan {
+  return {
+    bags: [],
+    df: new Map(),
+    keysOf: [],
+    seriesKeys: [],
+    titleKeys: [],
+    stamps: new Float64Array(n),
+  }
+}
+
+function scanOne(scan: Scan, v: Video, d: number, keyOf: (tag: string) => string | null) {
+  const bag = termWeightsOf(v)
+  scan.bags.push(bag)
+  countInto(scan.df, bag.keys())
+  scan.keysOf.push([...new Set(v.tags.map(keyOf))].filter((k) => k !== null))
+  scan.seriesKeys.push(seriesKeyOf(v.title))
+  scan.titleKeys.push(titleKey(v.title))
+  scan.stamps[d] = Date.parse(v.publishedAt) || 0
+}
+
+function vocabulary(df: Map<string, number>, n: number): Pick<Index, 'terms' | 'idf'> {
   // Terms in over a quarter of a large catalog ("elearning", "university") carry no signal.
   const common = Math.max(n / 4, 20)
   const terms = new Map<string, number>()
@@ -246,14 +324,16 @@ function build(list: readonly Video[]): Index {
     idf[terms.size] = count > common ? 0 : Math.log(n / count)
     terms.set(t, terms.size)
   }
+  return { terms, idf }
+}
 
-  const docs = bags.map((bag) => project({ terms, idf }, bag))
-  const offsets = new Int32Array(terms.size + 1)
+function postings(docs: Vec[], termCount: number): Pick<Index, 'offsets' | 'postDoc' | 'postW'> {
+  const offsets = new Int32Array(termCount + 1)
   for (const vec of docs) for (const id of vec.ids) offsets[id + 1]++
-  for (let t = 0; t < terms.size; t++) offsets[t + 1] += offsets[t]
+  for (let t = 0; t < termCount; t++) offsets[t + 1] += offsets[t]
   const cursor = offsets.slice(0, -1)
-  const postDoc = new Int32Array(offsets[terms.size])
-  const postW = new Float32Array(offsets[terms.size])
+  const postDoc = new Int32Array(offsets[termCount])
+  const postW = new Float32Array(offsets[termCount])
   docs.forEach((vec, d) => {
     for (let i = 0; i < vec.ids.length; i++) {
       const k = cursor[vec.ids[i]]++
@@ -261,25 +341,25 @@ function build(list: readonly Video[]): Index {
       postW[k] = vec.ws[i]
     }
   })
+  return { offsets, postDoc, postW }
+}
 
-  // Tags repeat across the catalog: normalize each spelling once (null marks a generic tag).
-  const keyMemo = new Map<string, string | null>()
-  const keyOf = (tag: string) => {
-    let k = keyMemo.get(tag)
-    if (k === undefined) keyMemo.set(tag, (k = isGenericTag(tag) ? null : tagKey(tag)))
-    return k
-  }
+type Grouping = Pick<
+  Index,
+  'series' | 'seriesSize' | 'seriesTags' | 'programmes' | 'tags' | 'tagDf' | 'tagLimit' | 'groups'
+>
+
+/** Tags, series and title groups, from the first pass. */
+function grouping({ keysOf, seriesKeys, titleKeys, stamps }: Scan, n: number): Grouping {
   const tagDf = new Map<string, number>()
-  const keysOf = list.map((v) => [...new Set(v.tags.map(keyOf))].filter((k) => k !== null))
-  for (const keys of keysOf) for (const k of keys) tagDf.set(k, (tagDf.get(k) ?? 0) + 1)
+  for (const keys of keysOf) countInto(tagDf, keys)
   const tagLimit = Math.max(n / 10, 20)
   const tags = keysOf.map((keys) => new Set(keys.filter((k) => (tagDf.get(k) ?? 0) <= tagLimit)))
 
   const seriesSize = new Map<string, number>()
-  const keys = list.map((v) => seriesKeyOf(v.title))
-  for (const k of keys) if (k) seriesSize.set(k, (seriesSize.get(k) ?? 0) + 1)
+  for (const k of seriesKeys) if (k) seriesSize.set(k, (seriesSize.get(k) ?? 0) + 1)
   const maxSeries = Math.max(n * 0.05, 10)
-  const series = keys.map((k) => {
+  const series = seriesKeys.map((k) => {
     const size = k ? (seriesSize.get(k) ?? 0) : 0
     return size >= 2 && size <= maxSeries ? k : undefined
   })
@@ -294,12 +374,20 @@ function build(list: readonly Video[]): Index {
   for (const [k, ds] of members) {
     if (ds.length < 3) continue
     const counts = new Map<string, number>()
-    for (const d of ds) for (const t of keysOf[d]) counts.set(t, (counts.get(t) ?? 0) + 1)
+    for (const d of ds) countInto(counts, keysOf[d])
     seriesTags.set(k, new Set([...counts].filter(([, c]) => c * 2 >= ds.length).map(([t]) => t)))
   }
+  // A tag that starts like the series' name and that few videos outside it carry is the programme.
+  const programmes = new Set(POPULAR_SERIES.map(tagKey))
+  for (const [k, ts] of seriesTags) {
+    const name = k.replace(/ /g, '')
+    const size = seriesSize.get(k) ?? 0
+    for (const t of ts) {
+      const own = (tagDf.get(t) ?? 0) <= 2 * size
+      if (own && t.length >= 4 && (name.startsWith(t) || t.startsWith(name))) programmes.add(t)
+    }
+  }
 
-  const stamps = Float64Array.from(list, (v) => Date.parse(v.publishedAt) || 0)
-  const titleKeys = list.map((v) => titleKey(v.title))
   const byKey = new Map<string, number[]>()
   titleKeys.forEach((k, d) => {
     const ds = byKey.get(k)
@@ -308,27 +396,54 @@ function build(list: readonly Video[]): Index {
   })
   const groups = new Map<string, number[]>()
   for (const [k, ds] of byKey) {
-    if (ds.length > 1) groups.set(k, ds.sort((a, b) => stamps[b] - stamps[a]))
+    if (ds.length > 1)
+      groups.set(
+        k,
+        ds.sort((a, b) => stamps[b] - stamps[a]),
+      )
   }
+  return { series, seriesSize, seriesTags, programmes, tags, tagDf, tagLimit, groups }
+}
 
+/** The index build as steps of about STEP_MS each (see warmRecommenderAsync). */
+function* building(list: readonly Video[]): Generator<void, Index, void> {
+  const n = list.length
+  let started = performance.now()
+  const due = (d: number) => {
+    if (d % CHECK_EVERY !== CHECK_EVERY - 1 || performance.now() - started < STEP_MS) return false
+    started = performance.now()
+    return true
+  }
+  // Tags repeat across the catalog: normalize each spelling once (null marks a generic tag).
+  const keyMemo = new Map<string, string | null>()
+  const keyOf = (tag: string) => {
+    let k = keyMemo.get(tag)
+    if (k === undefined) keyMemo.set(tag, (k = isGenericTag(tag) ? null : tagKey(tag)))
+    return k
+  }
+  const scan = newScan(n)
+  for (let d = 0; d < n; d++) {
+    scanOne(scan, list[d], d, keyOf)
+    if (due(d)) yield
+  }
+  const vocab = vocabulary(scan.df, n)
+  yield
+  const docs: Vec[] = []
+  for (let d = 0; d < n; d++) {
+    docs.push(project(vocab, scan.bags[d]))
+    if (due(d)) yield
+  }
+  const posted = postings(docs, vocab.terms.size)
+  yield
   return {
     source: list,
     docs,
     pos: new Map(list.map((v, i) => [v.id, i])),
-    terms,
-    idf,
-    offsets,
-    postDoc,
-    postW,
-    series,
-    seriesSize,
-    seriesTags,
-    tags,
-    tagDf,
-    tagLimit,
-    stamps,
-    keys: titleKeys,
-    groups,
+    ...vocab,
+    ...posted,
+    ...grouping(scan, n),
+    stamps: scan.stamps,
+    keys: scan.titleKeys,
     talks: [],
     rareIdf: Math.log(n / Math.max(2, n * RARE_SHARE)),
   }
@@ -336,15 +451,79 @@ function build(list: readonly Video[]): Index {
 
 let index: Index | undefined
 
-// `videos` is a live binding that setCatalog() replaces, so identity tells us when to rebuild.
-function getIndex(): Index {
-  if (!index || index.source !== videos) index = build(videos)
-  return index
+interface Job {
+  list: readonly Video[]
+  steps: Generator<void, Index, void>
+  /** Set while warmRecommenderAsync drives the steps. */
+  done?: Promise<void>
 }
 
-/** Builds the index ahead of the first recommendation (e.g. from an idle callback). */
+/** The build under way, shared by the sliced and the synchronous paths. */
+let job: Job | undefined
+
+const jobFor = (list: readonly Video[]): Job =>
+  job?.list === list ? job : (job = { list, steps: building(list) })
+
+// `videos` is a live binding that setCatalog() replaces, so identity tells us when to rebuild.
+function getIndex(): Index {
+  if (index?.source === videos) return index
+  // Finishes a sliced build in progress rather than starting over.
+  const { steps } = jobFor(videos)
+  let step = steps.next()
+  while (!step.done) step = steps.next()
+  job = undefined
+  return (index = step.value)
+}
+
+/** Builds the index ahead of the first recommendation, in one go. */
 export const warmRecommender = (): void => {
   getIndex()
+}
+
+interface Scheduler {
+  yield?: () => Promise<void>
+}
+
+/** Lets the browser paint and handle input: scheduler.yield() where supported. */
+function yieldToMain(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: Scheduler }).scheduler
+  if (scheduler?.yield) return scheduler.yield()
+  return new Promise((resolve) => {
+    if (typeof MessageChannel === 'undefined') {
+      setTimeout(resolve, 0)
+      return
+    }
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => {
+      channel.port1.close()
+      resolve()
+    }
+    channel.port2.postMessage(null)
+  })
+}
+
+async function runSlices(current: Job): Promise<void> {
+  for (;;) {
+    await yieldToMain()
+    // Done meanwhile by a synchronous call, or the catalog changed.
+    if (index?.source === current.list || job !== current) return
+    const step = current.steps.next()
+    if (step.done) {
+      index = step.value
+      job = undefined
+      return
+    }
+  }
+}
+
+/**
+ * Builds the index in steps of about 8 ms, yielding to the browser between them, so no task runs
+ * long. Calls share one build; a recommendation asked for meanwhile finishes it at once.
+ */
+export function warmRecommenderAsync(): Promise<void> {
+  if (index?.source === videos) return Promise.resolve()
+  const current = jobFor(videos)
+  return (current.done ??= runSlices(current))
 }
 
 // Videos outside the catalog (fixtures, stale links) are vectorized on the fly.
@@ -431,8 +610,8 @@ const hasSignal = (p?: Profile): p is Profile =>
 
 /**
  * The ranking with one entry per talk, up to `max`. A title group (speaker cuts, re-uploads)
- * shows its newest eligible member at the rank of its best one; a near-identical title after the
- * first is dropped, and so is a re-upload of `video` itself.
+ * shows its newest eligible member at the rank of its best one, as do near-identical titles; a
+ * re-upload of `video` itself is dropped.
  */
 function uniqueTalks(
   idx: Index,
@@ -452,9 +631,11 @@ function uniqueTalks(
     if (taken.has(d)) continue
     if (idx.keys[d] === ownKey && plainOf(idx.source[d].title) === ownTitle) continue
     const talk = talkAt(idx, d)
-    if (out.some((p) => sameTalk(talkAt(idx, p), talk))) continue
-    out.push(d)
+    const twin = out.findIndex((p) => sameTalk(talkAt(idx, p), talk))
     taken.add(d)
+    // Of near-identical titles, the newer upload stands in.
+    if (twin < 0) out.push(d)
+    else if (idx.stamps[d] > idx.stamps[out[twin]]) out[twin] = d
   }
   return out
 }
@@ -546,8 +727,9 @@ export function recommendFor(
     for (const k of idx.tags[d]) if (ownTags.has(k) && !(sameSeries && seriesTags?.has(k))) shared++
     score += Math.min(TAG_BOOST_CAP, shared * TAG_BOOST)
     if (score <= 0) continue
-    if (affinity) score += PROFILE_WEIGHT * affinity[d]
+    // A watched video resembles the taste it shaped: no boost, and a penalty.
     if (watched.has(v.id)) score *= WATCHED_PENALTY
+    else if (affinity) score += PROFILE_WEIGHT * affinity[d]
     scores[d] = score
     candidates.push(d)
   }
@@ -572,7 +754,8 @@ function searchMatches(
   const ids = queryTerms(idx, query)
   if (!ids.length) return []
   const hits = new Uint8Array(idx.docs.length)
-  for (const t of ids) for (let k = idx.offsets[t]; k < idx.offsets[t + 1]; k++) hits[idx.postDoc[k]]++
+  for (const t of ids)
+    for (let k = idx.offsets[t]; k < idx.offsets[t + 1]; k++) hits[idx.postDoc[k]]++
   const matching = (d: number) => hits[d] === ids.length && open(d)
   const found: number[] = []
   for (let d = 0; d < hits.length; d++) if (matching(d)) found.push(d)
@@ -593,12 +776,7 @@ function withinCaps(idx: Index, list: readonly number[], d: number): boolean {
 }
 
 /** Puts the latest search's best matches in their reserved positions, within the caps. */
-function withSearchSlots(
-  idx: Index,
-  picked: number[],
-  matches: number[],
-  limit: number,
-): number[] {
+function withSearchSlots(idx: Index, picked: number[], matches: number[], limit: number): number[] {
   let out = picked.slice(0, limit)
   const slots: number[] = []
   for (let p = 0; p < limit; p++) if (SEARCH_SLOTS.includes(p % SLOT_BLOCK)) slots.push(p)
@@ -661,35 +839,44 @@ national international new special plenary concurrent address highlight recap mo
 class seminar workshop training meeting summit symposium congress colloquium convention festival
 celebration anniversary story experience perspective insight reflection conversation interview
 documentary feature update report review guide primer fundamental essential challenge opportunity
-issue trend future role impact toward beyond upou university faculty office department college
-institute center centre de del dela la los san`
+issue trend future role impact toward beyond initiative prepare preparing masterclass microvideo
+briefing phase first second third fourth fifth upou university faculty
+office department college institute center centre de del dela la los san`
     .split(/\s+/)
+    .map(stem),
+)
+// A tag naming an institution ("University of Minnesota") is not a topic.
+const INSTITUTION: ReadonlySet<string> = new Set(
+  'university college institute school academy department office center centre commission council foundation agency bureau ministry faculty'
+    .split(' ')
     .map(stem),
 )
 
 const JOINERS = new Set(['of', 'and', 'in', 'for', 'on', 'the', 'to', '&'])
 const PHRASE_BREAK = /[^\p{L}\p{N}\s'’‘`´&-]+/u
-const EDGE = /^[^\p{L}\p{N}&]+|[^\p{L}\p{N}]+$/gu
 const LETTERS = /[^\p{L}]+/gu
 
-const isShouty = (s: string): boolean => {
-  const letters = s.replace(LETTERS, '')
-  return letters.length > 4 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()
+/** All capitals across at least two words ("CLOSING CEREMONIES"); one capitalised word may be an acronym. */
+const isShouty = (words: readonly string[]): boolean => {
+  if (words.length < 2) return false
+  const letters = words.join('').replace(LETTERS, '')
+  return (
+    letters.length > 4 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()
+  )
 }
 
-/** "CLOSING" → "Closing" when the whole source shouts; short acronyms ("ODEL", "CHED") stay. */
-const calm = (word: string, shouty: boolean): string =>
-  shouty && word.length > 4 && word === word.toUpperCase()
-    ? word[0] + word.slice(1).toLowerCase()
-    : word
+/** In a shouting phrase "CLOSING" → "Closing" and "NG" → "ng"; short acronyms ("ODEL") stay. */
+function calm(word: string, shouty: boolean, first = false): string {
+  if (!shouty || word !== word.toUpperCase()) return word
+  const lower = word.toLowerCase()
+  if (STOPWORDS.has(lower)) return first ? word[0] + lower.slice(1) : lower
+  return word.length > 4 ? word[0] + lower.slice(1) : word
+}
 
-const displayTag = (tag: string): string =>
-  isShouty(tag) && tag.includes(' ')
-    ? tag
-        .split(' ')
-        .map((w) => calm(w, true))
-        .join(' ')
-    : tidyTag(tag)
+const displayTag = (tag: string): string => {
+  const words = tag.split(' ')
+  return isShouty(words) ? words.map((w, i) => calm(w, true, i === 0)).join(' ') : tidyTag(tag)
+}
 
 /** `text` cut to `room` characters at a word boundary, with an ellipsis. */
 function clip(text: string, room: number): string {
@@ -697,10 +884,35 @@ function clip(text: string, room: number): string {
   const cut = text.slice(0, room - 1)
   const space = cut.lastIndexOf(' ')
   const head = space > room / 2 ? cut.slice(0, space) : cut
-  return `${head.replace(/\s+(?:and|of|the|for|in|on|to|&)$/i, '').replace(/[\s,;:|–—-]+$/, '')}…`
+  const tidy = head.replace(/\s+(?:and|of|the|for|in|on|at|to|a|an|by|with|from|&)$/i, '')
+  return `${tidy.replace(/[\s,;:|–—-]+$/, '')}…`
 }
 
 const fit = (s: string): string => clip(s, MAX_REASON)
+
+const isJoiner = (word: string) => JOINERS.has(word.toLowerCase())
+
+/** The longest stretch of whole words that fits; ties go to the end ("Descriptive Statistics"). */
+function fitWords(phrase: string, room: number): string {
+  if (phrase.length <= room) return phrase
+  const words = phrase.split(' ')
+  let best = ''
+  let bestSize = 0
+  for (let i = 0; i < words.length; i++) {
+    for (let j = words.length; j > i; j--) {
+      const part = words.slice(i, j)
+      while (part.length && isJoiner(part[0])) part.shift()
+      while (part.length && isJoiner(part[part.length - 1])) part.pop()
+      const text = part.join(' ')
+      const size = part.filter((w) => !isJoiner(w)).length
+      if (text && text.length <= room && size >= bestSize) {
+        best = text
+        bestSize = size
+      }
+    }
+  }
+  return best || clip(phrase, room)
+}
 
 const quoted = (prefix: string, text: string): string =>
   `${prefix} “${clip(text, Math.max(MIN_QUOTE, MAX_REASON - prefix.length - 3))}”`
@@ -713,16 +925,35 @@ const idfOf = (idx: Index, term: string): number => {
   return id === undefined ? 0 : idx.idf[id]
 }
 
-/** Lowercase words of a video's people: its person tags and its title's speaker credit. */
-function peopleOf(v: Video): Set<string> {
-  const out = new Set<string>()
-  const add = (s: string) => {
-    for (const w of s.toLowerCase().split(LETTERS)) if (w) out.add(w)
-  }
-  for (const tag of v.tags) if (isPersonTag(tag)) add(tag)
-  const end = bodyEnd(v.title)
-  if (end < v.title.length) add(v.title.slice(end))
-  return out
+const lettersOf = (s: string): string[] => s.toLowerCase().split(LETTERS).filter(Boolean)
+
+const HONORIFICS = new Set(
+  'dr prof aprof asst assoc mr mrs ms atty engr arch sir hon dean director chancellor vice pres fr rev phd rn md jr sr ii iii iv'.split(
+    ' ',
+  ),
+)
+
+/** A video's people (person tags, the title's speaker credit), each as lowercase name words. */
+function speakersOf(v: Video): Set<string>[] {
+  const names = v.tags.filter((t) => isPersonTag(t))
+  const credit = creditOf(v.title)
+  if (credit) names.push(credit.name)
+  return names.map(
+    (name) => new Set(lettersOf(name).filter((w) => !HONORIFICS.has(w) && !PARTICLES.has(w))),
+  )
+}
+
+const wordsOfPeople = (people: Set<string>[]): Set<string> => new Set(people.flatMap((p) => [...p]))
+
+/** Someone both videos credit: two name words in common ("Noel Rosal", "Mayor Noel Rosal"). */
+function sameSpeaker(a: Set<string>[], b: Set<string>[]): boolean {
+  return a.some((x) =>
+    b.some((y) => {
+      let both = 0
+      for (const w of x) if (y.has(w)) both++
+      return both >= 2
+    }),
+  )
 }
 
 /** A title's body (speaker credit dropped) as phrases of words, split at punctuation. */
@@ -744,17 +975,18 @@ const usable = (idx: Index, term: string, word: string, people: ReadonlySet<stri
   !isName(term) &&
   !isNameToken(word) &&
   !people.has(word.toLowerCase()) &&
-  !isOrgTag(word)
+  !isOrgTag(word) &&
+  !idx.programmes.has(tagKey(word))
 
 /** The informative terms of a video's title, each with the word that spells it. */
-function titleTermsOf(idx: Index, v: Video): Map<string, string> {
-  const people = peopleOf(v)
-  const shouty = isShouty(v.title)
+function titleTermsOf(idx: Index, v: Video, people: ReadonlySet<string>): Map<string, string> {
   const out = new Map<string, string>()
-  for (const phrase of phrasesOf(v.title))
+  for (const phrase of phrasesOf(v.title)) {
+    const shouty = isShouty(phrase)
     for (const word of phrase)
       for (const t of tokenize(word))
         if (!out.has(t) && usable(idx, t, word, people)) out.set(t, calm(word, shouty))
+  }
   return out
 }
 
@@ -770,6 +1002,8 @@ interface Context {
   series?: string
   ownTags: Set<string>
   ownTerms: Map<string, string>
+  ownSpeakers: Set<string>[]
+  ownPeople: Set<string>
   watched: string[]
   saved: string[]
   /** Recent searches, newest first. */
@@ -783,12 +1017,16 @@ function contextOf(
 ): Context {
   // The video on screen is never its own reason.
   const other = (id: string) => id !== video?.id
+  const speakers = video ? speakersOf(video) : []
+  const people = wordsOfPeople(speakers)
   return {
     idx,
     video: video ?? undefined,
     series: video ? seriesOf(idx, video) : undefined,
     ownTags: video ? tagKeysOf(idx, video) : new Set(),
-    ownTerms: video ? titleTermsOf(idx, video) : new Map(),
+    ownTerms: video ? titleTermsOf(idx, video, people) : new Map(),
+    ownSpeakers: speakers,
+    ownPeople: people,
     watched: profile?.watched.map((e) => e.id).filter(other) ?? [],
     saved: profile?.saved.filter(other) ?? [],
     searches: (profile?.searches ?? [])
@@ -797,15 +1035,37 @@ function contextOf(
   }
 }
 
-const isGenericTopic = (tag: string) => tokenize(tag).every((t) => GENERIC_TERMS.has(t))
+/** A tag fit to name as a topic: no organisation or institution, no name, not only generic words. */
+function isTopic(tag: string, people: ReadonlySet<string>): boolean {
+  if (isOrgTag(tag) || tag.split(/[\s/]+/).some((w) => isOrgTag(w))) return false
+  const terms = tokenize(tag)
+  if (terms.every((t) => GENERIC_TERMS.has(t)) || terms.some((t) => INSTITUTION.has(t)))
+    return false
+  // "Padolina", or a speaker the person-tag rules missed ("Jefferson Chua").
+  return !lettersOf(tag).every((w) => isNameToken(w) || people.has(w))
+}
 
-/** Topic tags both videos carry (minus their series' own and organisations), rarest first. */
-function sharedTopics(ctx: Context, candidate: Video, sameSeries: boolean): string[] {
+const A_TOPIC = 'Shares a topic: '
+
+interface Topics {
+  names: string[]
+  /** Both carry a programme's tag: another instalment of it. */
+  programme: boolean
+}
+
+/** Topic tags both videos carry (minus their series' own), rarest first. */
+function sharedTopics(
+  ctx: Context,
+  candidate: Video,
+  theirPeople: ReadonlySet<string>,
+  sameSeries: boolean,
+): Topics {
   const { idx } = ctx
   const theirs = tagKeysOf(idx, candidate)
   const seriesTags = sameSeries && ctx.series ? idx.seriesTags.get(ctx.series) : undefined
+  const people = new Set([...ctx.ownPeople, ...theirPeople])
   const seen = new Set<string>()
-  const names: string[] = []
+  const out: Topics = { names: [], programme: false }
   const sorted = [...candidate.tags].sort(
     (a, b) => (idx.tagDf.get(tagKey(a)) ?? 0) - (idx.tagDf.get(tagKey(b)) ?? 0),
   )
@@ -813,66 +1073,93 @@ function sharedTopics(ctx: Context, candidate: Video, sameSeries: boolean): stri
     const k = tagKey(tag)
     if (seen.has(k) || !ctx.ownTags.has(k) || !theirs.has(k) || seriesTags?.has(k)) continue
     seen.add(k)
-    if (!isOrgTag(tag) && !isGenericTopic(tag)) names.push(displayTag(tag))
+    if (idx.programmes.has(k)) {
+      out.programme = true
+      continue
+    }
+    const name = displayTag(tag)
+    // A tag too long to show whole names an event or a title, not a topic.
+    if (A_TOPIC.length + name.length <= MAX_REASON && isTopic(tag, people)) out.names.push(name)
   }
-  return names
+  return out
 }
 
 function topicReason(names: string[]): string {
   const two = names.length > 1 && `Shares topics: ${names[0]}, ${names[1]}`
-  return two && two.length <= MAX_REASON ? two : fit(`Shares a topic: ${names[0]}`)
+  return two && two.length <= MAX_REASON ? two : A_TOPIC + names[0]
+}
+
+interface Shared {
+  runs: string[]
+  terms: string[]
+  /** How many title words matched. */
+  words: number
 }
 
 /** Adjacent title words both titles share, as phrases in the candidate's order ("Climate Change"). */
-function sharedRuns(ctx: Context, candidate: Video): { runs: string[]; terms: string[] } {
-  const people = peopleOf(candidate)
-  const shouty = isShouty(candidate.title)
-  const runs: string[] = []
-  const terms: string[] = []
+function sharedRuns(
+  ctx: Context,
+  candidate: Video,
+  people: ReadonlySet<string>,
+  except: ReadonlySet<string>,
+): Shared {
+  const out: Shared = { runs: [], terms: [], words: 0 }
   for (const phrase of phrasesOf(candidate.title)) {
+    const shouty = isShouty(phrase)
     let run: string[] = []
     let gap = ''
     const flush = () => {
-      if (run.length) runs.push(run.join(' '))
+      if (run.length) out.runs.push(run.join(' '))
       run = []
       gap = ''
     }
     for (const word of phrase) {
       const subs = tokenize(word)
       const shared = subs.filter(
-        (t) => ctx.ownTerms.has(t) && !terms.includes(t) && usable(ctx.idx, t, word, people),
+        (t) =>
+          ctx.ownTerms.has(t) &&
+          !except.has(t) &&
+          !out.terms.includes(t) &&
+          usable(ctx.idx, t, word, people),
       )
       if (shared.length) {
         if (gap) run.push(gap)
         gap = ''
-        terms.push(...shared)
-        // A shouting title borrows the other title's spelling ("ASEAN", "Closing").
+        out.terms.push(...shared)
+        out.words++
+        // A shouting phrase borrows the other title's spelling ("ASEAN", "Closing").
         const own = ctx.ownTerms.get(shared[0])
-        run.push(
-          shouty ? (own?.toLowerCase() === word.toLowerCase() ? own : calm(word, true)) : word,
-        )
-      } else if (!subs.length && run.length && !gap && JOINERS.has(word.toLowerCase())) {
+        run.push(shouty && own?.toLowerCase() === word.toLowerCase() ? own : calm(word, shouty))
+      } else if (!subs.length && run.length && !gap && isJoiner(word)) {
         gap = word.toLowerCase()
       } else flush()
     }
     flush()
   }
-  return { runs, terms }
+  return out
 }
 
 const ALSO_ABOUT = 'Also about '
 
-function titleReason(ctx: Context, candidate: Video): string | undefined {
+/** "Also about Climate Change": two shared title words, one of them rare in the catalog. */
+function titleReason(
+  ctx: Context,
+  candidate: Video,
+  people: ReadonlySet<string>,
+  sameSeries: boolean,
+): string | undefined {
   if (ctx.ownTerms.size < MIN_TITLE_TERMS) return undefined
-  const { runs, terms } = sharedRuns(ctx, candidate)
-  if (terms.length < MIN_TITLE_TERMS || !terms.some((t) => idfOf(ctx.idx, t) >= ctx.idx.rareIdf))
+  // In one series its name is no topic ("Maikling Pelikula").
+  const except = new Set(sameSeries && ctx.series ? tokenize(ctx.series) : [])
+  const { runs, terms, words } = sharedRuns(ctx, candidate, people, except)
+  if (words < MIN_TITLE_TERMS || !terms.some((t) => idfOf(ctx.idx, t) >= ctx.idx.rareIdf))
     return undefined
   const room = MAX_REASON - ALSO_ABOUT.length
   const ordered = runs
-    .map((run, i) => ({ run, i, words: run.split(' ').length }))
-    .sort((a, b) => b.words - a.words || a.i - b.i)
+    .map((run, i) => ({ run, i, size: run.split(' ').length }))
+    .sort((a, b) => b.size - a.size || a.i - b.i)
     .map((r) => r.run)
-  let payload = clip(ordered[0], room)
+  let payload = fitWords(ordered[0], room)
   for (const run of ordered.slice(1)) {
     const next = `${payload}, ${run}`
     if (next.length > room) break
@@ -921,16 +1208,19 @@ function reasonsFor(ctx: Context, candidate: Video): string[] {
   const { idx, video } = ctx
   const out: string[] = []
   if (video) {
+    const speakers = speakersOf(candidate)
+    const people = wordsOfPeople(speakers)
     const sameSeries = ctx.series !== undefined && seriesOf(idx, candidate) === ctx.series
-    const topics = sharedTopics(ctx, candidate, sameSeries)
+    const { names: topics, programme } = sharedTopics(ctx, candidate, people, sameSeries)
     // In a short series the sequence is the point; in a long programme the topic says more.
     const seriesFirst =
       sameSeries && ((idx.seriesSize.get(ctx.series ?? '') ?? 0) <= SERIES_FULL || !topics.length)
     if (seriesFirst) out.push('Same series')
     if (topics.length) out.push(topicReason(topics))
-    const about = titleReason(ctx, candidate)
+    const about = titleReason(ctx, candidate, people, sameSeries)
     if (about) out.push(about)
-    if (sameSeries && !seriesFirst) out.push('Same series')
+    if ((sameSeries && !seriesFirst) || (programme && !sameSeries)) out.push('Same series')
+    if (sameSpeaker(ctx.ownSpeakers, speakers)) out.push('Same speaker')
   }
   const searched = ctx.searches.find((s) => matchesSearch(idx, candidate, s))
   const watched = closest(idx, candidate, ctx.watched)
@@ -978,7 +1268,8 @@ export function explain(
 
 /**
  * Reasons for a whole list, one per item: explain() for each, except that no reason shows on three
- * rows in a row. The row's next true reason takes over, or else a rewording.
+ * rows in a row (the row's next true reason takes over, or else a rewording), and one used three
+ * times gives way to another true reason where the row has one.
  */
 export function explainList(
   video: Video | null | undefined,
@@ -987,15 +1278,20 @@ export function explainList(
 ): string[] {
   const ctx = contextOf(getIndex(), video, profile)
   const out: string[] = []
+  const used = new Map<string, number>()
   for (const item of items) {
     const n = out.length
     const repeats = (text: string) => n >= 2 && out[n - 1] === text && out[n - 2] === text
     const options = reasonsFor(ctx, item)
-    out.push(
+    // The last option is the generic one: no better than a repeat.
+    const specific = options.slice(0, -1)
+    const reason =
+      specific.find((t) => !repeats(t) && (used.get(t) ?? 0) < MAX_SAME) ??
       options.find((t) => !repeats(t)) ??
-        options.flatMap(rewordingsOf).find((t) => !repeats(t)) ??
-        options[0],
-    )
+      options.flatMap(rewordingsOf).find((t) => !repeats(t)) ??
+      options[0]
+    used.set(reason, (used.get(reason) ?? 0) + 1)
+    out.push(reason)
   }
   return out
 }

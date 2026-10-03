@@ -69,6 +69,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Local working data (tmp/) may hold copies of the tree; never test them.
+    exclude: ['**/node_modules/**', '**/dist/**', 'tmp/**'],
     setupFiles: ['./src/test/setup.ts'],
     css: false,
   },

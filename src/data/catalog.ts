@@ -1,5 +1,6 @@
 import records from './catalog.json'
 import { formatDate } from '../lib/format'
+import { registerNameTokens } from '../lib/tags'
 import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 
@@ -274,6 +275,7 @@ export function searchVideos(query: string, { category, limit = 60 }: SearchOpti
 /** Installs a catalog and forgets everything derived from it. Tests: use setCatalog in testing.ts. */
 export function replaceCatalog(list: readonly Video[]): void {
   videos = list
+  registerNameTokens(list.flatMap((v) => v.tags))
   byId = new Map(list.map((v) => [v.id, v]))
   memo = new Map()
 }

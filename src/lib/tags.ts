@@ -30,10 +30,52 @@ const GENERIC = new Set([
   'livestream',
 ])
 
-/** Housekeeping, brand, numeric and very short tags: never shown as topics or chips. */
+// People are tagged with a title ("Dr. Myra Oruga", "aProf. Benjamin Gonzales", "Juan dela Cruz Jr.").
+const HONORIFIC =
+  /^(dr|prof|aprof|asst\.? ?prof|assoc\.? ?prof|mr|ms|mrs|atty|engr|arch|ar|sir|ma'am|hon|dean|fr|sr|br|rev|pres|dir|director|chancellor|vice chancellor)\.?\s+\S/i
+const NAME_SUFFIX = /\s(jr|sr|ii|iii|iv)\.?$/i
+const INITIAL = /^[A-Z]\.?$/
+const PARTICLE = /^(de|dela|del|de la|la|los|las|van|von|da|di|du|san|santa|sta|sto)$/i
+const WORD = /^\p{Lu}[\p{L}'’-]+$/u
+
+// First and last names learned from the catalog's titled tags, so "Myra Oruga" is also a person.
+const nameTokens = new Set<string>()
+
+const nameParts = (tag: string) =>
+  tag
+    .replace(NAME_SUFFIX, '')
+    .split(/\s+/)
+    .filter((w) => w && !INITIAL.test(w) && !PARTICLE.test(w))
+
+/** Learns name tokens from titled tags; called whenever the catalog loads. */
+export function registerNameTokens(tags: Iterable<string>) {
+  nameTokens.clear()
+  for (const tag of tags) {
+    const t = tag.trim()
+    if (!HONORIFIC.test(t)) continue
+    for (const w of nameParts(t.replace(HONORIFIC, (m) => m.slice(-1))))
+      nameTokens.add(w.toLowerCase())
+  }
+}
+
+/** A person's name (speaker, lecturer): titled, suffixed, or made only of known name tokens. */
+export const isPersonTag = (tag: string) => {
+  const t = tag.trim()
+  if (HONORIFIC.test(t)) return true
+  const parts = nameParts(t)
+  if (parts.length < 2 || parts.length > 4) return false
+  // "Antolin Oreta III" is a person; "Region II" is not.
+  if (NAME_SUFFIX.test(t) && parts.every((w) => /^[\p{L}'’-]+$/u.test(w))) return true
+  if (!parts.every((w) => WORD.test(w))) return false
+  // "Firstname M. Lastname" with a middle initial, or every word a known first/last name.
+  if (/^\p{Lu}[\p{L}'’-]+\s\p{Lu}\.?\s\p{Lu}[\p{L}'’-]+$/u.test(t)) return true
+  return nameTokens.size > 0 && parts.every((w) => nameTokens.has(w.toLowerCase()))
+}
+
+/** Housekeeping, brand, numeric, very short and person-name tags: never shown as topics or chips. */
 export const isGenericTag = (tag: string) => {
   const key = tagKey(tag)
-  return key.length < 3 || /^\d+$/.test(key) || GENERIC.has(key)
+  return key.length < 3 || /^\d+$/.test(key) || GENERIC.has(key) || isPersonTag(tag)
 }
 
 // Faculties, offices, sponsors and people: fine as chips on a video, not as topics to browse by.
@@ -56,8 +98,7 @@ const ORG = new Set([
   'bandalaria',
 ])
 
-export const isOrgTag = (tag: string) =>
-  ORG.has(tagKey(tag)) || /^(dr|prof|atty|engr)\.?\s/i.test(tag.trim())
+export const isOrgTag = (tag: string) => ORG.has(tagKey(tag)) || isPersonTag(tag)
 
 /** Title-cases all-lowercase tags such as "open data"; mixed-case tags are left alone. */
 export const tidyTag = (tag: string) =>

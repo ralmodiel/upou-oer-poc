@@ -637,6 +637,66 @@
   }
 }
 
+/*
+  While the preview plays, the page under the stage waits: the article (and below lg Up next,
+  which sits under the stage there) keeps its space, so nothing moves, but shows nothing.
+  visibility: hidden also keeps its links out of Tab, arrow keys and screen readers. Keyed on the
+  reel's own markup, so the reel ending or being skipped (it unmounts) is what lets it in.
+*/
+.watch-page:has(.watch-stage .reel) .watch-stage-wrap ~ article {
+  visibility: hidden;
+  opacity: 0;
+}
+
+@media (width < 64rem) {
+  .watch-page:has(.watch-stage .reel) .watch-aside {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+
+/*
+  Then it comes up line by line, as a title sequence settles: each block rises a few pixels out
+  of a soft blur into focus, the title first, then the facts, the citation, the description and
+  tags (about 0.85 s in all, eased out, no overshoot). A page without a preview opens the same way.
+  With reduced motion it is simply there.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > * {
+    animation: watch-reveal 600ms var(--ease-out-soft, ease-out) 190ms backwards;
+  }
+
+  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > :first-child {
+    animation-delay: 0ms;
+  }
+
+  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-title {
+    animation-delay: 50ms;
+  }
+
+  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-meta {
+    animation-delay: 120ms;
+  }
+
+  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-about {
+    animation-delay: 260ms;
+  }
+}
+
+@media (width < 64rem) and (prefers-reduced-motion: no-preference) {
+  .watch-page:not(:has(.watch-stage .reel)) .watch-aside {
+    animation: watch-reveal 600ms var(--ease-out-soft, ease-out) 260ms backwards;
+  }
+}
+
+@keyframes watch-reveal {
+  from {
+    opacity: 0;
+    translate: 0 0.75rem;
+    filter: blur(6px);
+  }
+}
+
 /* Very long titles step down a size. */
 .watch-title[data-long] {
   font-size: clamp(1.375rem, 1rem + 1.4vw, 2.125rem);

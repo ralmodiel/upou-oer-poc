@@ -222,7 +222,8 @@ export default function YouTubePlayer({
         className={`absolute inset-0 size-full border-0 transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
       />
       {/* The key and, beside it while it has focus, the time and how far along (seen only). */}
-      <div className="watch-player-keys">
+      {/* Paused or ended: Up next's Now playing bars hold still (watch.css). */}
+      <div className="watch-player-keys" data-paused={state === 2 || state === 0 || undefined}>
         <button
           type="button"
           className="watch-player-key"

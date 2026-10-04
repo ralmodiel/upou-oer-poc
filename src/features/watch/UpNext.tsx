@@ -7,7 +7,7 @@ import {
   useState,
   type MouseEvent,
 } from 'react'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { prefersReducedMotion } from '../../components/hooks'
 import Thumbnail from '../../components/Thumbnail'
 import Button from '../../components/ui/Button'
@@ -16,9 +16,9 @@ import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
 import { lastInput } from '../../lib/pointer'
 import type { Video } from '../../types'
-import { NowPlayingIcon, RefreshIcon } from './icons'
+import { RefreshIcon } from './icons'
 import { withPlaylist } from './recommendations'
-import { markWatchSwap } from './useStageCentre'
+import { swapWatchPage } from './useStageCentre'
 import { useAutoplay, type UpNextList } from './useUpNext'
 import './watch.css'
 
@@ -45,6 +45,17 @@ const VIEWER_INPUT = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
 
 // Things the viewer does in the list that end the following of the row now playing (UpNext).
 const TAKE_OVER = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin'] as const
+
+/**
+ * A row other than the one now playing, chosen: the page changes in one view transition
+ * (swapWatchPage), unless motion is unwelcome. A click that opens a tab or window (a modifier key)
+ * is left to the browser, unmarked.
+ */
+function choose(e: MouseEvent, id: string, go: () => void) {
+  if (e.button || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
+  keepFocusOn = lastInput() === 'keyboard' ? id : null
+  if (swapWatchPage(go)) e.preventDefault()
+}
 
 /**
  * Scrolls the list (never the page) so the row now playing is in view, centred when it can be:
@@ -75,6 +86,7 @@ function centreNowPlaying(ol: HTMLElement, smooth = false, ifHidden = false): HT
  */
 export default function UpNext({ video, list }: { video: Video; list: UpNextList }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const focusFrom = useRef<number | null>(null)
   const [autoplay, setAutoplay] = useAutoplay()
   const switchId = useId()
@@ -212,8 +224,6 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
   }
 
   if (!items.length) return null
-  // Rows change the page in a view transition, unless motion is unwelcome.
-  const swaps = !prefersReducedMotion()
   const linkState = withPlaylist(location.state, list.asPlaylist())
   // The row now playing stays where it is; choosing it again goes nowhere.
   const stay = (e: MouseEvent) => e.preventDefault()
@@ -276,14 +286,15 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   to={`/watch/${v.id}`}
                   state={linkState}
                   aria-current={current || undefined}
-                  viewTransition={!current && swaps}
                   onClick={
                     current
                       ? stay
-                      : () => {
-                          keepFocusOn = lastInput() === 'keyboard' ? v.id : null
-                          markWatchSwap()
-                        }
+                      : (e) =>
+                          choose(
+                            e,
+                            v.id,
+                            () => void navigate(`/watch/${v.id}`, { state: linkState }),
+                          )
                   }
                   className="watch-next group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2 active:bg-surface-2"
                 >
@@ -297,7 +308,12 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   <span key={v.id} className="watch-next-text min-w-0 self-center">
                     {current ? (
                       <span className="flex items-center gap-1.5 text-xs/snug font-semibold text-forest">
-                        <NowPlayingIcon className="watch-eq size-3 shrink-0" />
+                        {/* Three level bars (watch.css). */}
+                        <span aria-hidden="true" className="watch-eq">
+                          <span />
+                          <span />
+                          <span />
+                        </span>
                         Now playing
                       </span>
                     ) : reason ? (

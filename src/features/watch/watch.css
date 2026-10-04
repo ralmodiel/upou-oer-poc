@@ -483,7 +483,7 @@
   plain with reduced motion. With focus inside (a keyboard choice kept on the next page) there is
   no hold.
 */
-.watch-upnext-frame:has(> .watch-upnext-list[data-entrance]:not([data-ready])) {
+.watch-upnext-frame:has(> .watch-upnext-list[data-entrance]:not([data-ready])):not(:focus-within) {
   opacity: 0;
 }
 
@@ -504,14 +504,33 @@
   }
 }
 
-/* The stage's poster fades in once loaded, over the stage's paper (YouTubePlayer). */
+/*
+  The stage's poster shows once loaded, over the stage's paper (YouTubePlayer), never half drawn.
+  Under the preview it shows at once (the reel covers it, and a fade would hold back the page's
+  largest paint); with no preview over it, it fades in.
+*/
 .watch-poster:not([data-loaded]) {
   opacity: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .watch-poster {
+  .watch-stage:not(:has(.reel)) .watch-poster {
     transition: opacity 500ms var(--ease-out-soft, ease-out);
+  }
+
+  /*
+    A preview with no clean image ends on its title card; the player's poster under it is the
+    video's least bad picture. Rather than cut to it, the card dissolves into it over the last
+    0.6 s, once that poster is in (else the cut stays, never a blank stage). From when the reel's
+    timeline mounts (its band), so it keeps time with the reel; held with it while the tab is
+    hidden. Skip still cuts at once.
+  */
+  .watch-stage:has(.watch-poster[data-loaded]) .reel[data-title-card]:has(> .reel-band) {
+    animation: reel-gone 600ms var(--ease-io) calc(var(--reel-ms) - 600ms) both;
+  }
+
+  .watch-stage .reel[data-title-card][data-paused] {
+    animation-play-state: paused;
   }
 }
 
@@ -548,26 +567,58 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-forest) 22%, transparent);
 }
 
-/* Its bars rise and fall like a level meter (still with reduced motion). */
+/*
+  Its three bars (12px, as the old 16-unit icon drawn at 12px) rise and fall like a level meter:
+  transform only, so the compositor runs it with no work on the main thread. Held while the video
+  is paused or ended (the player's key, YouTubePlayer), and still with reduced motion.
+*/
+.watch-eq {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 1.125px;
+  width: 0.75rem;
+  height: 0.75rem;
+  padding: 1.5px;
+}
+
+.watch-eq > span {
+  width: 2.25px;
+  height: 6px;
+  border-radius: 0.75px;
+  background: currentColor;
+  transform-origin: bottom;
+}
+
+.watch-eq > span:nth-child(2) {
+  height: 9px;
+}
+
+.watch-eq > span:nth-child(3) {
+  height: 4.5px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .watch-eq rect {
-    transform-box: fill-box;
-    transform-origin: bottom;
+  .watch-eq > span {
     animation: watch-eq 1.1s ease-in-out infinite alternate;
   }
 
-  .watch-eq rect:nth-child(2) {
+  .watch-eq > span:nth-child(2) {
     animation-delay: -0.45s;
   }
 
-  .watch-eq rect:nth-child(3) {
+  .watch-eq > span:nth-child(3) {
     animation-delay: -0.8s;
+  }
+
+  .watch-page:has(.watch-player-keys[data-paused]) .watch-eq > span {
+    animation-play-state: paused;
   }
 }
 
 @keyframes watch-eq {
   from {
-    scale: 1 0.45;
+    transform: scaleY(0.45);
   }
 }
 

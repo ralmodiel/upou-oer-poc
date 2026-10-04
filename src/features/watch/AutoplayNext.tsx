@@ -5,12 +5,10 @@ import Button from '../../components/ui/Button'
 import { formatDate } from '../../lib/format'
 import { isEditable, topDialog } from '../../lib/shortcuts'
 import type { Video } from '../../types'
-import { markWatchSwap } from './useStageCentre'
+import { swapWatchPage } from './useStageCentre'
 import './watch.css'
 
 export const AUTOPLAY_SECONDS = 5
-// The longest the swap to the next page holds the old one on screen.
-const SWAP_WAIT_MS = 1500
 
 interface Props {
   next: Video
@@ -30,25 +28,13 @@ interface Props {
 export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
   const [left, setLeft] = useState(AUTOPLAY_SECONDS)
   const rootRef = useRef<HTMLDivElement>(null)
-  // The next page comes in as one move, like a row chosen in Up next (markWatchSwap): the
-  // transition holds the old page until the new one has rendered its title (polled by timer: no
-  // animation frames run while a transition holds the page).
+  // Once: Play now and the countdown's end (or a double press) never go twice.
+  const fired = useRef(false)
+  // The next page comes in as one move, like a row chosen in Up next.
   const go = () => {
-    if (!markWatchSwap()) return onPlay()
-    document.startViewTransition(
-      () =>
-        new Promise<void>((resolve) => {
-          const start = performance.now()
-          onPlay()
-          const wait = () => {
-            const h1 = document.querySelector('.watch-title')
-            if (h1?.textContent === next.title || performance.now() - start > SWAP_WAIT_MS)
-              resolve()
-            else setTimeout(wait, 16)
-          }
-          wait()
-        }),
-    )
+    if (fired.current) return
+    fired.current = true
+    if (!swapWatchPage(onPlay)) onPlay()
   }
   const play = useEffectEvent(go)
   const cancel = useEffectEvent(onCancel)

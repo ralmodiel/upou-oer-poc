@@ -71,7 +71,7 @@ function shell(template, options, fallback, extra = []) {
     .replace(/\n[ \t]*<\/head>/, `\n${block}\n  </head>`)
     .replace(
       '<div id="root"></div>',
-      `<div id="root"><!--seo-fallback-->\n${fallback}\n<!--/seo-fallback--></div>`,
+      `<div id="root"><!--seo-fallback-->\n<div class="seo-fallback">\n${fallback}\n</div>\n<!--/seo-fallback--></div>`,
     )
 }
 

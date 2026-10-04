@@ -247,3 +247,44 @@
     max-width: 100%;
   }
 }
+
+/* Static page shell (tools/seo): a small loader stands in while the app boots, so the plain list
+   never flashes; still readable to crawlers, and shown after 4 s if scripts never replace it. */
+.seo-fallback {
+  opacity: 0;
+  animation: seo-reveal 0s 4s forwards;
+}
+#root:has(> .seo-fallback)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 3px solid var(--color-line);
+  border-top-color: var(--color-maroon);
+  animation:
+    seo-spin 0.8s linear infinite,
+    seo-hide 0s 4s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  #root:has(> .seo-fallback)::before {
+    animation: seo-hide 0s 4s forwards;
+  }
+}
+@keyframes seo-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+@keyframes seo-reveal {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes seo-hide {
+  to {
+    visibility: hidden;
+  }
+}

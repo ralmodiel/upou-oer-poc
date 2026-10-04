@@ -185,7 +185,7 @@ feature must be easy to find without instructions.
 - **Persistent, obvious navigation:** Browse · Collections · My List · Search are always visible
   (bottom tab bar on phones, top nav on larger screens), with the current section highlighted.
 - **A short "How it works" strip** on the home page for first-time visitors (dismissible,
-  remembered in `localStorage`): three cards — "Every video opens with a 10-second preview reel
+  remembered in `localStorage`): three cards — "Video opens with a 10-second preview reel
   (press Skip to jump in)", "Save titles to My List", "Browse by collection or search
   everything". Shown again from a "Help" link in the footer.
 - **Teach through empty states:** My List and Search explain what they do and

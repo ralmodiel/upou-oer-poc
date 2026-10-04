@@ -16,7 +16,7 @@ const STEPS = [
   {
     Icon: FilmIcon,
     tone: 'bg-maroon-soft text-maroon',
-    title: 'Every video opens with a 10-second preview',
+    title: 'Video opens with a 10-second preview',
     text: 'Press Skip to jump straight into the video.',
   },
   {

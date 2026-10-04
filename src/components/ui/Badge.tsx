@@ -22,7 +22,7 @@ export default function Badge({ children, tone = 'neutral', className = '', titl
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs leading-5 font-semibold whitespace-nowrap ${TONE[tone]} ${className}`}
+      className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs leading-5 font-semibold whitespace-nowrap ring-1 ring-current/12 ring-inset ${TONE[tone]} ${className}`}
     >
       {children}
     </span>

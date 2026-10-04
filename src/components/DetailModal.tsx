@@ -29,6 +29,7 @@ import Chip from './ui/Chip'
 import IconButton from './ui/IconButton'
 import { PRESSED, buttonClass } from './ui/button-styles'
 import './browse.css'
+import './pages.css'
 
 // Matches the data-closing transition in browse.css.
 const EXIT_MS = 200
@@ -177,7 +178,7 @@ function DetailDialog({ video }: { video: Video }) {
       }}
       className="fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10"
     >
-      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] md:rounded-card md:border md:border-line md:shadow-lift motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
+      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-lift motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
         <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />
         <IconButton
           label="Close"
@@ -205,7 +206,7 @@ function DetailDialog({ video }: { video: Video }) {
                 large
                 canonical
                 loading="eager"
-                className="md:rounded-card md:shadow-lift md:ring-1 md:ring-black/10"
+                className="ql-still"
               />
             </PlayLink>
           </div>
@@ -225,7 +226,7 @@ function DetailDialog({ video }: { video: Video }) {
           <div className="min-w-0 md:col-span-7 md:col-start-6 md:row-span-3 md:row-start-1 md:pr-8 lg:col-span-6 lg:col-start-7">
             <h2
               id={titleId}
-              className={`font-display leading-tight text-balance text-ink ${
+              className={`ql-title font-display leading-tight text-balance text-ink ${
                 long ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
               }`}
             >
@@ -270,7 +271,7 @@ function DetailDialog({ video }: { video: Video }) {
           <section
             ref={similarRef}
             aria-labelledby={`${titleId}-similar`}
-            className="border-t border-line p-5 md:px-8 md:py-7"
+            className="ql-more border-t border-line p-5 md:px-8 md:py-7"
           >
             <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
             <h3 id={`${titleId}-similar`} className="font-display text-xl text-ink sm:text-2xl">

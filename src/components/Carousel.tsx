@@ -64,7 +64,7 @@ function RowButton({
       hidden={hidden}
       data-spatial="skip"
       onClick={onClick}
-      className={`row-button row-${side} absolute z-30 hidden size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-pill border border-line bg-surface text-ink opacity-0 shadow-lift transition-[opacity,background-color,box-shadow,color,scale] duration-200 group-focus-within/row:opacity-100 group-hover/row:opacity-100 hover:bg-surface-2 motion-safe:active:scale-95 pointer-fine:grid`}
+      className={`row-button browse-glass row-${side} absolute z-30 hidden size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-pill border text-ink opacity-0 transition-[opacity,background-color,box-shadow,color,scale] duration-200 group-focus-within/row:opacity-100 group-hover/row:opacity-100 motion-safe:active:scale-95 pointer-fine:grid`}
     >
       <Icon className="size-5" />
     </button>
@@ -80,7 +80,9 @@ export function CarouselDots({ carousel }: { carousel: CarouselState }) {
       {Array.from({ length: pages }, (_, i) => (
         <span
           key={i}
-          className={`h-1.5 rounded-pill ${i === page ? 'w-4 bg-maroon' : 'w-1.5 bg-ink-3/40'}`}
+          className={`h-1.5 rounded-pill transition-colors duration-300 ${
+            i === page ? 'w-4 bg-maroon' : 'w-1.5 bg-ink-3/35'
+          }`}
         />
       ))}
     </span>

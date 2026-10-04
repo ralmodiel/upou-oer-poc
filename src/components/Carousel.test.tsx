@@ -70,9 +70,9 @@ describe('Collection rows', () => {
     const region = screen.getByRole('region', { name: 'Research' })
     // The first page and the card after it come first, and stay while the row is not used (no idle
     // render: rows scrolled past keep their first page); focus renders the rest.
-    expect(within(region).getAllByRole('article')).toHaveLength(5)
+    expect(within(region).getAllByRole('article')).toHaveLength(6)
     await act(() => new Promise((resolve) => setTimeout(resolve, 400)))
-    expect(within(region).getAllByRole('article')).toHaveLength(5)
+    expect(within(region).getAllByRole('article')).toHaveLength(6)
     fireEvent.focus(within(region).getAllByRole('link', { name: /^Play / })[0])
     expect(within(region).getAllByRole('article')).toHaveLength(16)
     const items = within(region).getAllByRole('listitem')
@@ -96,9 +96,9 @@ describe('Collection rows', () => {
     renderAt(<Section row={getRows(16)[0]} />)
     const region = screen.getByRole('region', { name: 'Research' })
     const dots = () => region.querySelectorAll('span[aria-hidden="true"].pointer-fine\\:flex > *')
-    // Five of the seventeen items are rendered, four to a page: still five pages, as once used.
+    // Six of the seventeen items are rendered, four to a page: still five pages, as once used.
     await layOut(region).scrollTo(0)
-    expect(within(region).getAllByRole('listitem')).toHaveLength(5)
+    expect(within(region).getAllByRole('listitem')).toHaveLength(6)
     expect(dots()).toHaveLength(5)
     fireEvent.pointerEnter(region.querySelector('.row')!)
     await layOut(region).scrollTo(0)

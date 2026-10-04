@@ -10,19 +10,11 @@ import Skeleton from './ui/Skeleton'
 export const TEXT_LINK = 'font-semibold text-maroon underline-offset-4 hover:underline'
 
 /**
- * A list item's focus outline (Also new, Recently viewed): on its image while its link has keyboard
- * focus, with the slight lift in scale cards have; the title's own outline would be cut by its line
- * clamp.
+ * A list item's focus outline (Recently viewed): on its image while its link has keyboard focus; the
+ * title's own outline would be cut by its line clamp. Lift and glow as on cards (browse.css .card-lift).
  */
 export const ITEM_FOCUS =
-  'group-has-[[data-card-link]:focus-visible]/item:outline-3 group-has-[[data-card-link]:focus-visible]/item:outline-offset-2 group-has-[[data-card-link]:focus-visible]/item:outline-focus motion-safe:group-has-[[data-card-link]:focus-visible]/item:scale-102'
-
-/** A list item's image on hover and press, as on cards: a 2px lift with the lift shadow. */
-export const ITEM_LIFT =
-  'transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/item:-translate-y-0.5 group-hover/item:shadow-lift group-active/item:translate-y-0 group-active/item:shadow-none motion-safe:group-active/item:scale-99 motion-reduce:transition-none'
-
-/** The hairline around every video image: dark on paper, light on dark paper (dark stills). */
-export const CARD_RING = 'ring-1 ring-black/5 dark:ring-white/10'
+  'group-has-[[data-card-link]:focus-visible]/item:outline-3 group-has-[[data-card-link]:focus-visible]/item:outline-offset-2 group-has-[[data-card-link]:focus-visible]/item:outline-focus'
 
 /**
  * Hover and keyboard-focus cue on a card's image (the card link already plays): a small round play
@@ -74,7 +66,11 @@ export function FactsLine({
     <p className={`text-sm/relaxed text-ink-2 ${className}`}>
       {factsOf(video).map((fact, i) => (
         <Fragment key={fact.label}>
-          {i > 0 && <span aria-hidden="true"> · </span>}
+          {i > 0 && (
+            <span aria-hidden="true" className="text-ink-3">
+              {' · '}
+            </span>
+          )}
           {fact.to ? (
             <Link
               to={fact.to}
@@ -163,7 +159,7 @@ export function SeeAllTile({ to, count, title, tone, tabIndex }: SeeAll & { tabI
       to={to}
       tabIndex={tabIndex}
       aria-label={`See all ${count.toLocaleString('en')} videos in ${title}`}
-      className="group/all relative block aspect-video overflow-hidden rounded-card border border-line bg-surface transition-[translate,scale,box-shadow] duration-200 ease-out-soft @container hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus active:translate-y-0 motion-safe:focus-visible:scale-102 motion-reduce:transition-none"
+      className="card-tile card-media group/all relative block aspect-video overflow-hidden rounded-card border border-line bg-linear-to-br from-surface to-surface-2/60 @container focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1.5 ${MARK[tone]}`} />
       <span className="flex size-full flex-col justify-end p-[7cqi]">

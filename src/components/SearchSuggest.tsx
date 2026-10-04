@@ -21,6 +21,7 @@ import {
   type Suggestion,
   type SuggestionKind,
 } from '../lib/suggest'
+import './pages.css'
 
 // Suggestions follow the typing after this pause.
 const PAUSE_MS = 100
@@ -186,7 +187,7 @@ export function useSearchSuggestions(
       role="listbox"
       aria-label="Suggestions"
       hidden={!shown}
-      className={`absolute top-full z-50 mt-1.5 max-h-[min(23rem,calc(100dvh-var(--header-h)-4.5rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-surface p-1.5 text-sm shadow-lift ${className}`}
+      className={`absolute top-full z-50 mt-1.5 max-h-[min(23rem,calc(100dvh-var(--header-h)-4.5rem))] overflow-y-auto overscroll-contain tv-suggest rounded-card border border-line bg-surface p-1.5 text-sm shadow-lift ${className}`}
     >
       {items.map((item, i) => (
         <li

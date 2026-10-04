@@ -24,16 +24,19 @@ export interface ChipProps {
 // Single line, sized to its label (so items in a scroll row keep their width), capped at the
 // container with an ellipsis for the rare over-long label.
 const BASE =
-  'inline-flex w-max max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border font-medium whitespace-nowrap transition-[background-color,color,border-color,translate] motion-safe:active:translate-y-px'
+  'inline-flex w-max max-w-full shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border font-medium whitespace-nowrap transition-[background-color,color,border-color,box-shadow,translate] duration-200 ease-out-soft motion-safe:active:translate-y-px'
 const SIZE = {
   md: 'h-10 px-4 text-sm',
   // Compact tags; still 40px tall on touch screens.
   sm: 'h-9 px-3 text-xs [@media(hover:none)]:h-10',
 }
-const OFF = 'border-line bg-surface text-ink-2 hover:border-ink-3 hover:bg-surface-2 hover:text-ink'
-// Selected: a solid maroon fill (UP maroon; the deep band maroon in dark). A brand dot keeps a ring.
+// At rest: a frosted pill (no blur: chips come in long rows). Hover lifts it a step.
+const OFF =
+  'border-glass-border bg-frost text-ink-2 shadow-elev-1 hover:border-ink-3 hover:bg-frost-2 hover:text-ink hover:shadow-elev-2'
+// Selected: the maroon fill with the primary button's sheen (UP maroon; the deep band maroon in
+// dark). A brand dot keeps a ring.
 const ON =
-  'border-action bg-action text-on-action [&_[data-dot]]:ring-1 [&_[data-dot]]:ring-on-action'
+  'border-action bg-action bg-(image:--gradient-action) text-on-action shadow-action [&_[data-dot]]:ring-1 [&_[data-dot]]:ring-on-action'
 
 const chipClass = (active: boolean, size: 'md' | 'sm', extra: string) =>
   `${BASE} ${SIZE[size]} ${active ? ON : OFF} ${extra}`.trim()

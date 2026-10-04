@@ -17,7 +17,7 @@ import AutoplayNext from '../features/watch/AutoplayNext'
 import UpNext from '../features/watch/UpNext'
 import { useAutoplay, useUpNext } from '../features/watch/useUpNext'
 import { withPlaylist, type Playlist } from '../features/watch/recommendations'
-import WatchBackdrop from '../features/watch/WatchBackdrop'
+import WatchBackdrop, { WatchAmbient } from '../features/watch/WatchBackdrop'
 import WatchDescription from '../features/watch/WatchDescription'
 import WatchMeta from '../features/watch/WatchMeta'
 import WatchSource from '../features/watch/WatchSource'
@@ -204,7 +204,13 @@ function Watch({ video }: { video: Video }) {
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
           <div className="lg:col-span-8">
             <div ref={backRow} className="flex min-h-14 items-center justify-between gap-3 py-2">
-              <Button variant="secondary" size="sm" icon={<BackIcon />} onClick={goBack}>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<BackIcon />}
+                onClick={goBack}
+                className="watch-back"
+              >
                 Back
               </Button>
               {keyboard && onStage ? <UpNextKeyHint /> : <EscHint />}
@@ -215,33 +221,37 @@ function Watch({ video }: { video: Video }) {
                 size="sm"
                 icon={<BackIcon />}
                 onClick={goBack}
-                className="watch-back-float md:hidden"
+                className="watch-back watch-back-float md:hidden"
               >
                 Back
               </Button>
             )}
 
-            <div
-              ref={stageRef}
-              tabIndex={-1}
-              role="region"
-              aria-label={phase === 'reel' ? 'Preview' : 'Video player'}
-              onPointerLeave={reclaimFocus}
-              onKeyDown={onStageKeyDown}
-              onFocus={() => setOnStage(true)}
-              onBlur={(e) => setOnStage(e.currentTarget.contains(e.relatedTarget))}
-              data-kbd={keyboard || undefined}
-              className="watch-stage relative aspect-video overflow-hidden bg-surface shadow-lift ring-1 ring-black/5 md:rounded-card"
-            >
-              <PlayerPoster video={video} />
-              {phase === 'reel' ? (
-                <PromoReel video={video} onComplete={startPlayer} />
-              ) : (
-                <YouTubePlayer video={video} onEnded={onEnded} />
-              )}
-              {queued && autoplay && (
-                <AutoplayNext next={queued.next} onPlay={playNext} onCancel={cancelNext} />
-              )}
+            {/* The stage over its own ambient light (a wide, neutral blur of its poster). */}
+            <div className="watch-stage-wrap">
+              <WatchAmbient video={video} />
+              <div
+                ref={stageRef}
+                tabIndex={-1}
+                role="region"
+                aria-label={phase === 'reel' ? 'Preview' : 'Video player'}
+                onPointerLeave={reclaimFocus}
+                onKeyDown={onStageKeyDown}
+                onFocus={() => setOnStage(true)}
+                onBlur={(e) => setOnStage(e.currentTarget.contains(e.relatedTarget))}
+                data-kbd={keyboard || undefined}
+                className="watch-stage relative aspect-video overflow-hidden bg-surface md:rounded-card"
+              >
+                <PlayerPoster video={video} />
+                {phase === 'reel' ? (
+                  <PromoReel video={video} onComplete={startPlayer} />
+                ) : (
+                  <YouTubePlayer video={video} onEnded={onEnded} />
+                )}
+                {queued && autoplay && (
+                  <AutoplayNext next={queued.next} onPlay={playNext} onCancel={cancelNext} />
+                )}
+              </div>
             </div>
 
             <article className="pt-5">

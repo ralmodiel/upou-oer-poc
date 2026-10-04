@@ -31,8 +31,8 @@ export const ADVANCE_MS = 7000
 export const HOVER_INTENT_MS = 150
 const TICK_MS = 250
 
-// Fades the blurred still into the page, fully by the bottom edge where the text sits.
-const SCRIM = 'bg-linear-to-b from-paper/70 via-paper/85 via-55% to-paper'
+// Fades the blurred still into the page, fully by the bottom edge (browse.css).
+const SCRIM = 'hero-scrim'
 
 // A round icon button below 640px.
 const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
@@ -228,7 +228,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
           data-hero-text=""
           className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start"
         >
-          <p className="eyebrow truncate">{video.category}</p>
+          <p className="eyebrow truncate tracking-[0.14em]">{video.category}</p>
           <h3
             title={video.title}
             className={`mt-2 min-h-[2lh] font-display text-balance text-ink ${
@@ -238,7 +238,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
             {video.title}
           </h3>
           <FactsLine video={video} className="hero-facts mt-3" passOver />
-          <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-ink-2">
+          <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-pretty text-ink-2">
             {video.description}
           </p>
           {/* One row at every width (More like this and Save as icons on phones): ↓ from Play
@@ -332,7 +332,7 @@ function MoreBelow() {
         type="button"
         data-spatial="skip"
         onClick={onClick}
-        className="more-below-pill pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink-2 shadow-lift transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="more-below-pill browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         More video resources below
         <ChevronDownIcon className="size-4" />

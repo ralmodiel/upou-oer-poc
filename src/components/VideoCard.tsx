@@ -6,7 +6,7 @@ import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { CardReasons } from './recs'
-import { CARD_RING, PlayBadge } from './browse-ui'
+import { PlayBadge } from './browse-ui'
 import { InfoIcon } from './icons'
 import { isNew } from './media'
 import { useCardPreview } from './preview'
@@ -20,10 +20,10 @@ export const ACTION =
   'inline-flex h-10 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon dark:aria-pressed:text-gold'
 
 // Instant 3px focus outline (maroon, gold in dark) on the thumbnail while the card link has keyboard
-// focus, readable from across a room, with a slight lift in scale (outline is not in the transition
-// list, unlike ring's box-shadow).
+// focus, readable from across a room (outline is not in the transition list). The lift, glow and
+// the picture's ease-in come from browse.css (.card-lift, .card-media).
 const FOCUS =
-  'group-has-[[data-card-link]:focus-visible]/card:outline-3 group-has-[[data-card-link]:focus-visible]/card:outline-focus group-has-[[data-card-link]:focus-visible]/card:outline-offset-2 motion-safe:group-has-[[data-card-link]:focus-visible]/card:scale-102'
+  'group-has-[[data-card-link]:focus-visible]/card:outline-3 group-has-[[data-card-link]:focus-visible]/card:outline-focus group-has-[[data-card-link]:focus-visible]/card:outline-offset-2'
 
 interface Props {
   video: Video
@@ -55,7 +55,7 @@ function VideoCard({
   // line has a fixed height (one-line eyebrow, two-line title; in a grid with reasons a two-line
   // reason slot, bottom-aligned), so cards in a row line up.
   return (
-    <article {...hostProps} className="group/card relative flex flex-col">
+    <article {...hostProps} className="card-lift group/card relative flex flex-col">
       {reasons ? (
         <p
           className="order-2 mt-3 flex min-h-[2lh] items-end text-xs font-semibold text-forest"
@@ -85,11 +85,7 @@ function VideoCard({
           {title}
         </PlayLink>
       </Heading>
-      <Thumbnail
-        video={video}
-        sizes={sizes}
-        className={`order-1 rounded-card ${CARD_RING} transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-active/card:translate-y-0 group-active/card:shadow-none motion-safe:group-active/card:scale-99 motion-reduce:transition-none ${FOCUS}`}
-      >
+      <Thumbnail video={video} sizes={sizes} className={`card-media order-1 rounded-card ${FOCUS}`}>
         {overlay}
         {/* Hidden while a preview runs. */}
         {!previewing && <PlayBadge />}
@@ -99,7 +95,9 @@ function VideoCard({
         {isNew(id) && (
           <>
             <span aria-hidden="true">·</span>
-            <Badge tone="gold">New</Badge>
+            <Badge tone="gold" className="card-new">
+              New
+            </Badge>
           </>
         )}
       </p>

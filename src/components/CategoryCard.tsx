@@ -6,6 +6,7 @@ import { useNear } from './browse-hooks'
 import { ChevronRightIcon } from './icons'
 import { imagesOf, thumbnailOf, zoomStyle } from './media'
 import { MARK, toneOf } from './tones'
+import './pages.css'
 
 // Covers below the first row load once they come within a quarter screen of the viewport.
 const NEAR = '25% 0px'
@@ -85,7 +86,7 @@ function Mosaic({ videos, load }: { videos: readonly Video[]; load: boolean }) {
   if (!main) return <div className="aspect-video bg-surface-2" />
   const layout = rest.length >= 2 ? 'grid-cols-3 grid-rows-2' : rest.length ? 'grid-cols-2' : ''
   return (
-    <div aria-hidden="true" className={`grid aspect-video gap-0.5 bg-surface ${layout}`}>
+    <div aria-hidden="true" className={`tv-cover grid aspect-video gap-0.5 bg-surface ${layout}`}>
       <Tile
         video={main}
         sizes={MAIN_SIZES}
@@ -113,7 +114,7 @@ function CategoryCard({ category, eager = true }: { category: Category; eager?: 
   return (
     <article
       ref={ref}
-      className="group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface transition-[translate,scale,box-shadow] duration-200 ease-out-soft hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 has-[a:focus-visible]:outline-3 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus motion-safe:has-[a:focus-visible]:scale-102 motion-reduce:transition-none"
+      className="tv-card group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface"
     >
       <span aria-hidden="true" className={`h-1.5 shrink-0 ${MARK[toneOf(slug)]}`} />
       <Mosaic videos={coverVideos(slug, 3)} load={near} />

@@ -24,7 +24,7 @@ export default function EmptyState({
       className={`mx-auto flex max-w-md flex-col items-center text-center ${compact ? 'py-8' : 'py-16 sm:py-24'} ${className}`}
     >
       {icon && (
-        <div className="mb-5 grid size-14 place-items-center rounded-pill bg-maroon-soft text-maroon [&_svg]:size-7">
+        <div className="mb-5 grid size-14 place-items-center rounded-pill bg-maroon-soft text-maroon shadow-elev-2 ring-1 ring-current/15 ring-inset [&_svg]:size-7">
           {icon}
         </div>
       )}

@@ -24,6 +24,7 @@ import { searchSeo, useSeo } from '../lib/seo'
 import { focusSearch } from '../lib/shortcuts'
 import { searchPath } from '../lib/suggest'
 import { isGenericTag, isOrgTag, POPULAR_SERIES, POPULAR_TOPICS, tagKey } from '../lib/tags'
+import '../components/pages.css'
 
 const PAGE_SIZE = 24
 // Filter chips shown before "All n collections" (about two rows on a laptop).
@@ -205,7 +206,7 @@ export default function SearchPage() {
         id={RESULTS_HEADING}
         tabIndex={-1}
         eyebrow="Search"
-        className="break-words"
+        className="tv-heading break-words"
         title={
           q ? (
             <>
@@ -315,7 +316,7 @@ export default function SearchPage() {
             </>
           ) : (
             <>
-              <EmptyState icon={<SearchIcon />} title="Nothing matched" compact>
+              <EmptyState icon={<SearchIcon />} title="Nothing matched" compact className="tv-spot">
                 <p>
                   Check the spelling, try fewer or broader words
                   {category ? (

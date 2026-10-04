@@ -681,3 +681,110 @@ The flatten/expand idea was dropped. The top of the home page now has a permanen
 - **Motion**: a View Transition, `html[data-hero-swap]`. The picture cross-fades in about 500 ms, while the text fades up out and settles back in. Pointer events pass through the transition layer. With reduced motion the swap is instant.
 - **Remote**: a card in the Featured row reveals the whole hero above it rather than centring the row. This uses `data-reveal-whole` in `lib/spatial.ts`. On screens under 56rem tall (laptops), the hero tightens so that hero and row fit together: two-line title and summary, no facts line, and the picture cut at its foot, never the text.
 - **Cue**: "More video resources below" shows from load until the footer comes into view (IntersectionObserver), and again after the footer leaves. It fades in once and nudges once. Each press scrolls the next row below the top one to the resting place, and from a keyboard it also focuses that row's first card. It steps aside while it would cover the card in focus, and it adds to `scroll-padding-bottom` while shown.
+
+## Round 8: a TV-app look, same layout
+
+The user asked for "a really beautiful TV app like disney plus, netflix, amazon prime" without changing the layout. Four owners worked paint only: every measured box stayed within 2 px at 1366x768, 1920x1080 and 390x844 (bounding-box baselines before and after). The rules still hold: no red or maroon tint over imagery, the strict frame rule, full keyboard and remote navigation, AA contrast, reduced motion.
+
+### Chrome and tokens
+
+- **Glass header.** It is always `bg-glass` (paper at 86%, near-black at 80% in dark) with `backdrop-blur-lg backdrop-saturate-150`. It keeps the same size, stripe and position. Once scrolled it gains `shadow-elev-2` and a glass hairline. The opacity is the floor at which ink-2 nav text keeps AA (4.67:1) over a black picture beneath.
+- **Glass tab bar.** It uses `bg-surface/92` with the same blur, so the ink-3 labels keep AA (4.62:1) over black. The active tab has a semibold label, a glowing top bar (`--color-glow-brand`) and a soft halo on its icon. The focus ring sits inside the tab (`-outline-offset-4`), because the bar is flush with the screen edge.
+- **Header search field.** It is part of the glass family: `bg-surface/90`, a glass hairline and `shadow-elev-1`, turning opaque on hover and focus. The proof-of-concept pill is frosted.
+- **Primary (Play).** It keeps the maroon fill and adds `--gradient-action`, a top sheen and a soft drop (`--shadow-action`). On hover and focus it brightens to 110% and lifts 2px (a transform, motion-safe only). On focus it adds a paper ring inside the outline and the glow outside it.
+- **Secondary.** It is now a frosted-glass pill: `bg-frost`, `border-glass-border`, `shadow-elev-1` and `backdrop-blur-md`, in ink rather than forest. On hover and focus it lifts to `bg-frost-2` and `shadow-elev-2`. Dark frost is dark enough that ink keeps AA (4.77:1) over a white picture. Icon buttons share the same variants.
+- **Ghost buttons.** They frost on hover (`bg-frost`, `shadow-elev-1`).
+- **One TV focus.** Every control keeps the 2px ring at 2px offset (maroon on paper, gold in dark) and gains a soft bloom (`0 0 18px 2px var(--color-glow)`). The bloom is neutral, a dark halo on paper and a light one in dark, so it never tints a picture; the ring carries the brand colour.
+  - The bloom is applied in the base layer to `a`, `button`, `input`, `select`, `textarea` and `summary`. It skips anything with an `outline-none` class (focus shown elsewhere), anything inside `article` (cards) and the reel.
+  - Bands re-colour the bloom to gold through `band-focus`.
+  - Components with their own box-shadow add `focus-visible:shadow-glow`.
+- **Dark theme.**
+  - Surfaces are deeper and warmer: paper `#141112`, surface `#1e1b1c`, surface-2 `#2a2627`, line `#3a3536`.
+  - ink-3 still clears AA on every surface (6.45:1 on paper, 5.14:1 on surface-2).
+  - The browser chrome colour should follow (see hand-offs).
+- **Light theme.** `--shadow-lift` is now two layers, a contact shadow plus a soft drop, and the elevation steps are `--shadow-elev-1..3`.
+- **Chips.**
+  - At rest they are frosted pills with `shadow-elev-1`. They have no blur, because they come in long rows.
+  - Selected chips take the primary's gradient and sheen.
+- **Badges.** They get a 12% currentColor inset hairline.
+- **Section headings.** The gold rule runs gold to amber with a faint gold glow, stronger in dark.
+- **Menus.** They use `bg-surface/95` with blur, a glass hairline and `shadow-elev-3`. Items frost on hover and focus, and the focus ring sits inside the item. The menu was 78% glass at first, which let the band's "How it works" button read through it; 95% fixed that.
+- **Skeleton.** It shows a slow sheen sweep (`animate-shimmer`) in place of the pulse. With reduced motion it shows no gradient and no animation.
+- **Selection and scrollbar.** The selection colour is maroon at 16% (gold at 30% in dark). The page scrollbar is themed by colour only: `scrollbar-width: thin` would shrink the Windows gutter from 15px to 10px and reflow the page (measured), so it is left out.
+- **PageBand and footer.** Both use `--gradient-band`: a light top-left corner and a deeper foot, on brand bands only (they hold no imagery).
+  - Gold bands skip it, because the darker foot would drop charcoal/90 text to 3.67:1 in dark.
+  - The band rule glows gold.
+  - The footer's bottom strip is 10% deeper.
+- **`.light-scope`.** Always-light surfaces opt into the light values of the depth, glass and action tokens. `--gradient-action` and `--shadow-glow` are re-declared there, so they resolve from the scope's colours rather than from `:root`.
+
+### Home and cards
+
+- **Cards, TV style** (`browse.css` `.card-lift` on the article, `.card-media` on its image box; VideoCard, Recently viewed, See all tile `.card-tile`): at rest a 1px hairline. Under the pointer or keyboard focus the box rises 2px, gains a soft neutral glow ring (ink-tinted in light, white in dark) and a two-layer elevation shadow, and the picture inside eases in to 1.05 (`transform`, so it composes with the bar-crop `scale`); the box itself never scales. A press settles it (120ms). The keyboard focus keeps its instant 3px outline (maroon, gold in dark). Reduced motion: no rise, no scale, no transitions; ring and shadow still mark the card.
+- **The preview reel scales with the picture** (`.card-preview` gets the same 1.05), so the still-to-reel cross-fade has no size jump. It fades in over 400ms and, after the end card, fades out over the last 350ms of END_HOLD_MS (`data-ending`) before it unmounts: the still returns by a cross-fade, never a pop.
+- **Streaming-row edges**: rows that scroll show the next (and, once paged on, the previous) card in the gutter, fading out under a mask (never a tint). The fade is driven by the track's own scroll timeline (`animation-timeline: scroll(self inline)` on registered `--row-fade-l/r`), so it switches off at each end and in rows that do not scroll; it spans the gutter beyond the 0.75rem an edge card's focus ring and lift need, so rings stay at full strength. Browsers without scroll timelines keep the old clip. Rows render six cards at first (FIRST_ITEMS), so the sixth peeks at rest from lg.
+- **Glass controls** (`.browse-glass`): the row arrows and "More video resources below" are small frosted circles or pills (translucent surface, light rim, 16px backdrop blur, soft shadow). Kept to small controls: backdrop blur is never put on big areas.
+- **Featured row's active card**: the gold outline (2px, 3px offset) gains a soft gold halo outside the picture; the countdown is a rounded gold line inset 10px from the picture's sides and 8px from its foot, on a faint light track, so it reads as a progress bar. Reduced motion hides the line and its track.
+- **Hero**: the scrim over the grey backdrop is paper only (`.hero-scrim`: the old top-to-bottom fade plus a soft vignette at the edges); the eyebrow tracks a little wider (0.14em); the title gets kerning and, in dark, a faint shadow lifting it off the backdrop; the facts line's separators drop to ink-3; the summary wraps with `text-wrap: pretty`.
+- **Family panels** (`.browse-panel`): How it works steps and the history-off note get a faint top light and a soft elevation over their hairline border. The "New" badge on cards gets a soft top sheen (`.card-new`); its ring comes from ui/Badge.
+- **Page dots**: inactive dots at ink-3/35, the active one maroon (gold in dark), colour eased over 300ms; no width animation (no layout shift).
+- **Class names**: the card classes are `card-*` / `browse-*`, not `tv-*`: pages.css (R8-4) owns a global `.tv-card` and the two collided in the first pass.
+
+### Watch page
+
+Paint only. Every measured box of the watch page stays within 2 px at 1366, 1920 and 390.
+
+- **Ambient light:** in dark mode, from md up, the stage sits over a wide blur of its own poster
+  (`WatchAmbient` in `WatchBackdrop.tsx`, `.watch-ambient`), as in a TV app's ambient mode. Like
+  YouTube's, it shows only in the dark theme. It is grey (`grayscale(1)`), so no still casts a colour
+  around the picture; a red frame gives no red glow. It sits 4% low, so little of it reaches the
+  Back row. It reuses the backdrop's quarter-size layer scaled 4×, so the blur runs on a small
+  layer. It fades in once loaded, and has no fade with reduced motion.
+- **Surroundings (dark):** a soft radial vignette over the backdrop's dark wash darkens the far
+  corners. The stage gets a 1px white/9% hairline and a deep, long drop shadow. In light mode the
+  stage has a hairline plus a two-step soft drop. The stage's shadow lives in `watch.css`; the
+  utility shadow and ring classes are gone.
+- **Stage cap:** `--stage-cap` now sits on `.watch-stage-wrap`, so the stage and its ambient layer
+  share it.
+- **Reel controls:** Unmute is a frosted pill: white at 72%, a lit top edge, a 10px backdrop blur
+  and a soft drop. Skip preview is a maroon pill with a slight top sheen. Both lift 1px on hover or
+  focus, with no lift under reduced motion. They stay in the band, never over the picture.
+- **Progress bars:** the reel's bar and the autoplay countdown have a rounded head and a
+  dark-to-brand gradient (maroon-2 to maroon; action to maroon).
+- **Play / Pause key:** a frosted pill over the video: paper at 84%, a lit edge and a 12px blur.
+  Its label is at least 7.8:1 over a black frame.
+- **Up next as a TV queue:**
+  - A focused or hovered row's thumbnail gets the gold frame, a soft drop and a lift (−2px,
+    scale 1.03). A focused row also takes the hover wash. None of this moves under reduced motion.
+  - The Now playing row adds a faint forest edge (inset, 22%). Its level-meter bars rise and fall
+    (`.watch-eq`), and stay still under reduced motion.
+  - Refresh turns 45° under the pointer. The Autoplay knob has a little depth, and the track has a
+    soft forest halo when on.
+  - The list's edge fades use eased stops (0.3 / 0.75 / 1) instead of a straight ramp.
+- **Around the stage:** Back's arrow nudges left on hover or focus. The phone's floating Back is
+  frosted glass. Saved adds a soft gold glow. Show more's chevron and the Source arrows lean the
+  way they go on hover. None of these move under reduced motion.
+- **Autoplay card:** a soft light falls across the paper from the picture's side, and the
+  thumbnail has a hairline and a deeper drop. The card now also sets the light values of R8-1's
+  button tokens (frost, glass border, elevation, glow, action gradient). Without them, Cancel
+  turned into a dark grey pill inside the always-light card in dark mode.
+- **Measured:**
+  - Contrast:
+    - Focused-row facts on the wash: 4.77:1 (light), 5.14:1 (dark).
+    - Breadcrumbs over the brightest ambient pixel: 8.1:1 (dark).
+    - Unmute label: 11.7:1. Player key label: 7.8:1 or better.
+  - Keyboard and remote walk identical to the baseline: → to Now playing, ↓, Enter (focus stays
+    on the new page's Now playing row), ← to the stage, ↓ to Unmute, → to Skip, Esc = Back.
+
+### Quick look and secondary pages
+
+- **One stylesheet:** `src/components/pages.css`, unlayered, imported by the components and pages that use it. Paint only: no rule changes a box size or position (layout guard: every measured box within 2 px at 1366, 1920 and 390).
+- **Modal backdrop:** the quick look, Privacy and Shortcuts dim the page to `rgb(14 13 14 / 0.62)` and soften it with `blur(8px) saturate(0.85)` (`html dialog[data-details]::backdrop`, `html dialog.tv-sheet::backdrop`; these out-rank the `backdrop:bg-overlay` utility). The fade in and out stays in browse.css.
+- **Floating panels** (`.ql-panel`, `.tv-sheet`): a deep soft shadow `0 40px 90px -30px rgb(0 0 0 / 0.6)` and a hairline edge (`--tv-panel-edge`: ink at 8% in light, white at 8% in dark) in place of the drawn line border. Phones: the quick look is full screen, so no shadow.
+- **Quick look picture** (`.ql-still`): no frame at rest. Its edges melt into the panel the way the home hero's `.hero-still` does: 7% side fades, a 7% top fade and a fade from 88% at the foot. Phones: only the foot fades. Under keyboard focus the mask comes off and the picture firms into a rounded card with a drop shadow, so the focus ring sits on a real edge. It still grows 1.08 (motion-safe).
+- **Quick look Close:** uses R8-1's frosted `secondary` IconButton (glass over the picture on phones). It has no override of its own, so it keeps R8-1's focus glow.
+- **More like this** (`.ql-more`) and **My List starter picks** (`.tv-hairline`): the hard top border becomes transparent. A hairline that fades out at both ends is painted in its place. The quick look tray also sinks a little, with a surface-2 wash fading out over 16rem.
+- **Collection cards** (`.tv-card`, `.tv-cover`): a soft neutral vignette over the cover (`radial-gradient(... transparent 55%, rgb(0 0 0 / 0.22))`, never a colour). Hover lifts the card 4 px with a deeper shadow. Focus lifts it 6 px and scales it 1.03, with the 3 px focus ring. Dark mode adds a gold bloom around the card (`--tv-glow`); light mode has none, so no maroon haze. The stills drift to 1.05 under hover or focus, using `transform`, which composes with their crop `scale`. Reduced motion: no lift, scale or drift; the ring stays.
+- **Search suggestions** (`.tv-suggest`): a glass panel, surface at 94% with `blur(18px) saturate(1.5)`, a hairline edge and a deep shadow. 94% keeps the 12px kind labels at 4.5:1 or better even when a black or white patch sits behind the blur (4.8:1 worst case in both themes). The active row gets an ink 9% wash, keeps the focus outline, and its kind label lightens to ink-2.
+- **Empty and not-found states:** `.tv-spot` gives an empty state (My List, Search "Nothing matched") a soft gold spotlight on the page surface. `.tv-spot-page` gives Not found (404 and a missing collection) a corner glow from the top left. Gold is mixed at 12% in light and 7% in dark (`--tv-spot`), so it never turns muddy on charcoal. Neither is ever over a picture.
+- **Shortcuts keys:** keycaps get a surface-to-surface-2 gradient and a 2 px inset base shadow.
+- **Type:** quick look title and search results heading at -0.01em tracking.

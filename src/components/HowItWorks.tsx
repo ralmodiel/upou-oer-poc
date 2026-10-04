@@ -106,7 +106,7 @@ export default function HowItWorks() {
           {STEPS.map(({ Icon, tone, title, text }, i) => (
             <li
               key={title}
-              className="flex gap-3 rounded-card border border-line bg-paper p-4 dark:bg-surface-2"
+              className="browse-panel flex gap-3 rounded-card border border-line bg-paper p-4 dark:bg-surface-2"
             >
               <span className={`grid size-10 shrink-0 place-items-center rounded-pill ${tone}`}>
                 <Icon className="size-5" />

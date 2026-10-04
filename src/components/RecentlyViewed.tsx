@@ -5,7 +5,7 @@ import { useCarousel } from './carousel-state'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { useCardPreview } from './preview'
-import { CARD_RING, ITEM_FOCUS, ITEM_LIFT, ManageLink, PlayBadge } from './browse-ui'
+import { ITEM_FOCUS, ManageLink, PlayBadge } from './browse-ui'
 import { useReturnRow } from './hooks'
 import SectionHeading from './ui/SectionHeading'
 
@@ -43,12 +43,8 @@ function RecentlyViewed({ videos }: { videos: readonly Video[] }) {
 function Item({ video }: { video: Video }) {
   const { hostProps, overlay, previewing } = useCardPreview(video)
   return (
-    <article {...hostProps} className="group/item relative">
-      <Thumbnail
-        video={video}
-        sizes="224px"
-        className={`rounded-card ${CARD_RING} ${ITEM_LIFT} ${ITEM_FOCUS}`}
-      >
+    <article {...hostProps} className="card-lift group/item relative">
+      <Thumbnail video={video} sizes="224px" className={`card-media rounded-card ${ITEM_FOCUS}`}>
         {overlay}
         {!previewing && <PlayBadge item />}
       </Thumbnail>

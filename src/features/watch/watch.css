@@ -101,24 +101,95 @@
   );
 }
 
-/* Dark paper takes more of the still, so it stays a quiet haze rather than a grey smudge. */
+/*
+  Dark paper takes more of the still, so it stays a quiet haze rather than a grey smudge; a soft
+  vignette deepens the far corners, as in a cinema, and leaves the light around the stage.
+*/
 [data-theme='dark'] .watch-backdrop::after {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--color-paper) 72%, transparent),
-    color-mix(in srgb, var(--color-paper) 84%, transparent) 50%,
-    var(--color-paper)
-  );
+  background:
+    radial-gradient(
+      ellipse 75% 85% at 35% 35%,
+      transparent 40%,
+      color-mix(in srgb, var(--color-paper) 70%, transparent)
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-paper) 72%, transparent),
+      color-mix(in srgb, var(--color-paper) 84%, transparent) 50%,
+      var(--color-paper)
+    );
 }
 
 /*
   The stage is centred and never outgrows the viewport on short screens (phones on their side);
   below md it also bleeds into the page gutters.
 */
-.watch-stage {
+.watch-stage-wrap {
   --stage-cap: calc((100dvh - 8rem) * 16 / 9);
+  position: relative;
+  isolation: isolate;
+}
+
+.watch-stage {
   width: min(100%, var(--stage-cap));
   margin-inline: auto;
+  /* A hairline edge and a long, soft drop: the screen floats a little off the page. */
+  box-shadow:
+    0 0 0 1px rgb(27 26 23 / 0.06),
+    0 10px 30px -12px rgb(27 26 23 / 0.25),
+    0 28px 60px -28px rgb(27 26 23 / 0.35);
+}
+
+[data-theme='dark'] .watch-stage {
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.09),
+    0 30px 70px -24px rgb(0 0 0 / 0.8);
+}
+
+/*
+  Ambient light, as in a TV app's ambient mode (dark theme only, as there): the poster, blurred
+  wide, glows out from under the stage (from md, where the stage is a card, not edge to edge). Laid out at a quarter size
+  and scaled up, like the backdrop, so the blur runs on a small layer. Grey, so no still casts a
+  colour (least of all red) around the picture; it sits a little low, clear of the Back row.
+*/
+.watch-ambient {
+  display: none;
+}
+
+@media (width >= 48rem) {
+  [data-theme='dark'] .watch-ambient {
+    position: absolute;
+    inset: 4% 0 -3%;
+    z-index: -1;
+    display: block;
+    width: min(100%, var(--stage-cap));
+    margin-inline: auto;
+    pointer-events: none;
+  }
+}
+
+.watch-ambient img {
+  --shift: calc((2 / (4 * var(--zoom, 1)) - 0.5) * 100%);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 25%;
+  object-fit: cover;
+  transform-origin: 0 0;
+  transform: scale(4) translate(var(--shift), var(--shift));
+  filter: blur(9px) grayscale(1) brightness(1.1);
+  opacity: 0;
+}
+
+.watch-ambient img[data-loaded] {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-ambient img {
+    transition: opacity 900ms var(--ease-out-soft, ease);
+  }
 }
 
 @media (width < 48rem) {
@@ -227,6 +298,29 @@
   }
 }
 
+/* Show more's chevron and the source links' arrow lean the way they go under the pointer. */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .watch-desc > button svg,
+  .watch-row a svg {
+    transition:
+      translate 0.2s var(--ease-out-soft, ease),
+      rotate 0.2s var(--ease-out-soft, ease),
+      opacity 0.2s;
+  }
+
+  .watch-desc > button:hover svg {
+    translate: 0 0.125rem;
+  }
+
+  .watch-desc > button[aria-expanded='true']:hover svg {
+    translate: 0 -0.125rem;
+  }
+
+  .watch-row a:hover svg {
+    translate: 0.125rem -0.125rem;
+  }
+}
+
 /* Topics and Source: a small label above its items on phones, beside them from 40rem. */
 .watch-row {
   display: grid;
@@ -330,11 +424,16 @@
 
 @supports (animation-timeline: scroll()) {
   .watch-upnext-list {
+    /* Eased stops, so a row melts into the edge rather than meeting a straight ramp. */
     mask-image: linear-gradient(
       to bottom,
       transparent,
+      rgb(0 0 0 / 0.3) calc(var(--upnext-top) * 0.35),
+      rgb(0 0 0 / 0.75) calc(var(--upnext-top) * 0.7),
       #000 var(--upnext-top),
       #000 calc(100% - var(--upnext-bottom)),
+      rgb(0 0 0 / 0.75) calc(100% - var(--upnext-bottom) * 0.7),
+      rgb(0 0 0 / 0.3) calc(100% - var(--upnext-bottom) * 0.35),
       transparent
     );
     animation:
@@ -374,9 +473,33 @@
   outline-offset: -3px;
 }
 
-/* The row now playing: a forest wash; its "Now playing" label names the state. */
+/* The row now playing: a forest wash with a faint forest edge; its "Now playing" label names it. */
 .watch-next[aria-current='true'] {
   background: var(--color-forest-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-forest) 22%, transparent);
+}
+
+/* Its bars rise and fall like a level meter (still with reduced motion). */
+@media (prefers-reduced-motion: no-preference) {
+  .watch-eq rect {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: watch-eq 1.1s ease-in-out infinite alternate;
+  }
+
+  .watch-eq rect:nth-child(2) {
+    animation-delay: -0.45s;
+  }
+
+  .watch-eq rect:nth-child(3) {
+    animation-delay: -0.8s;
+  }
+}
+
+@keyframes watch-eq {
+  from {
+    scale: 1 0.45;
+  }
 }
 
 @media (min-width: 40rem) {
@@ -405,19 +528,72 @@
   }
 }
 
+/*
+  TV focus: the focused (or hovered) row's thumbnail takes a gold frame and lifts a little off the
+  row on a soft shadow; the row takes the hover wash. No motion with reduced motion.
+*/
+.watch-next {
+  transition: background-color 0.25s var(--ease-out-soft, ease);
+}
+
+.watch-next:focus-visible:not([aria-current='true']) {
+  background: var(--color-surface-2);
+}
+
 .watch-next-thumb {
-  transition: box-shadow 0.2s;
+  transition:
+    box-shadow 0.25s var(--ease-out-soft, ease),
+    translate 0.25s var(--ease-out-soft, ease),
+    scale 0.25s var(--ease-out-soft, ease);
 }
 
 .watch-next:focus-visible .watch-next-thumb {
-  box-shadow: 0 0 0 2px var(--gold);
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 12px 22px -12px rgb(0 0 0 / 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-next:focus-visible .watch-next-thumb {
+    translate: 0 -2px;
+    scale: 1.03;
+  }
 }
 
 /* Pointers only: a tap would leave the frame on the row it opened. */
 @media (hover: hover) {
   .watch-next:hover .watch-next-thumb {
-    box-shadow: 0 0 0 2px var(--gold);
+    box-shadow:
+      0 0 0 2px var(--gold),
+      0 12px 22px -12px rgb(0 0 0 / 0.55);
   }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .watch-next:hover .watch-next-thumb {
+    translate: 0 -2px;
+    scale: 1.03;
+  }
+
+  /* Refresh turns a little under the pointer, a half turn when pressed (UpNext). */
+  .watch-refresh:hover svg {
+    rotate: -45deg;
+  }
+}
+
+/* The Autoplay switch: a knob with a little depth, a soft forest halo when on. */
+.watch-switch-knob {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+.watch-switch-track {
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+[aria-checked='true'] > .watch-switch-track {
+  box-shadow:
+    inset 0 1px 2px rgb(0 0 0 / 0.15),
+    0 0 0 3px color-mix(in srgb, var(--color-forest) 16%, transparent);
 }
 
 /* Saved to My List: a gold pill. */
@@ -425,6 +601,18 @@
   border-color: var(--gold);
   background: var(--gold);
   color: var(--on-gold);
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--gold) 70%, transparent);
+}
+
+/* Back: its arrow leads the way under the pointer or focus. */
+.watch-back svg {
+  transition: translate 0.2s var(--ease-out-soft, ease);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-back:is(:hover, :focus-visible) svg {
+    translate: -0.15rem 0;
+  }
 }
 
 /* Very long titles step down a size. */
@@ -542,7 +730,23 @@
   --color-on-action: #ffffff;
   --color-focus: #8d0c34;
   --shadow-lift: 0 10px 30px -12px rgb(27 26 23 / 0.25);
-  background: var(--color-paper);
+  /* The buttons' frost, depth and glow (index.css) in their light values too. */
+  --color-glass-border: rgb(55 54 55 / 0.1);
+  --color-frost: rgb(255 255 255 / 0.78);
+  --color-frost-2: rgb(255 255 255 / 0.96);
+  --color-glow: rgb(141 12 52 / 0.38);
+  --shadow-elev-1: 0 1px 2px rgb(27 26 23 / 0.06), 0 2px 8px -3px rgb(27 26 23 / 0.1);
+  --shadow-elev-2: 0 1px 3px rgb(27 26 23 / 0.06), 0 10px 24px -12px rgb(27 26 23 / 0.24);
+  --shadow-glow: 0 0 18px 2px var(--color-glow);
+  --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 10px 26px -12px rgb(27 26 23 / 0.55);
+  --gradient-action: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-action), white 14%),
+    var(--color-action) 60%,
+    color-mix(in oklab, var(--color-action), black 12%)
+  );
+  /* Paper with a soft light falling from the picture's side: a lit set rather than a flat page. */
+  background: radial-gradient(120% 100% at 25% 30%, #ffffff, var(--color-paper) 55%, #f3efec);
   color: var(--color-ink);
 }
 
@@ -564,7 +768,9 @@
 .watch-autoplay-thumb {
   grid-area: thumb;
   align-self: center;
-  box-shadow: var(--shadow-lift);
+  box-shadow:
+    0 0 0 1px rgb(27 26 23 / 0.06),
+    0 18px 40px -18px rgb(27 26 23 / 0.45);
 }
 
 .watch-autoplay-copy {
@@ -685,7 +891,8 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--color-maroon);
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(to right, var(--color-action), var(--color-maroon));
   transform-origin: left;
   animation: watch-countdown 5s linear both;
 }
@@ -742,11 +949,16 @@
   gap: 0.5rem;
   min-height: 2.5rem;
   padding: 0 1rem;
+  border: 1px solid rgb(255 255 255 / 0.7);
   border-radius: 999px;
-  background: #faf8f6;
+  /* Frosted glass over the video: light enough to hold its dark label at AA over any frame. */
+  background: rgb(250 248 246 / 0.84);
   color: #373637;
   font-weight: 600;
-  box-shadow: 0 6px 20px -10px rgb(27 26 23 / 0.5);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 10px 28px -12px rgb(27 26 23 / 0.6);
+  backdrop-filter: blur(12px) saturate(1.2);
   opacity: 0;
   pointer-events: none;
 }
@@ -762,6 +974,7 @@
   top: calc(var(--header-h, 3.5rem) + 0.5rem);
   left: var(--gutter, 1rem);
   z-index: 30;
-  background: var(--color-surface);
-  box-shadow: 0 6px 20px -10px rgb(27 26 23 / 0.45);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  box-shadow: 0 8px 24px -10px rgb(27 26 23 / 0.45);
+  backdrop-filter: blur(12px) saturate(1.2);
 }

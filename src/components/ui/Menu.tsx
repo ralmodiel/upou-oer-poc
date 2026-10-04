@@ -38,7 +38,7 @@ export interface MenuProps {
 }
 
 const ITEM =
-  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-checked:font-semibold aria-checked:text-maroon [&>svg]:size-4.5 [&>svg]:shrink-0'
+  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ink-2 transition-colors hover:bg-frost-2 hover:text-ink focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:-outline-offset-2 aria-checked:font-semibold aria-checked:text-maroon [&>svg]:size-4.5 [&>svg]:shrink-0'
 
 export default function Menu({
   label,
@@ -117,14 +117,14 @@ export default function Menu({
           role="menu"
           aria-label={label}
           onKeyDown={onKeyDown}
-          className="absolute top-full right-0 z-50 mt-1.5 min-w-60 rounded-card border border-line bg-surface p-1.5 text-sm shadow-lift motion-safe:transition-[opacity,translate] motion-safe:duration-150 motion-safe:starting:-translate-y-1 motion-safe:starting:opacity-0"
+          className="absolute top-full right-0 z-50 mt-1.5 min-w-60 rounded-card border border-glass-border bg-surface/95 p-1.5 text-sm shadow-elev-3 backdrop-blur-lg backdrop-saturate-150 motion-safe:transition-[opacity,translate] motion-safe:duration-150 motion-safe:starting:-translate-y-1 motion-safe:starting:opacity-0"
         >
           {sections.map((section, i) => (
             <div
               key={section.title ?? i}
               role="group"
               aria-label={section.title}
-              className={i > 0 ? 'mt-1 border-t border-line pt-1' : undefined}
+              className={i > 0 ? 'mt-1 border-t border-glass-border pt-1' : undefined}
             >
               {section.title && (
                 <p aria-hidden="true" className="eyebrow px-2.5 pt-2 pb-1">
@@ -148,7 +148,7 @@ export default function Menu({
                   <span className="flex-1">{item.label}</span>
                   {item.checked && <CheckIcon className="text-maroon" />}
                   {item.hint && (
-                    <kbd className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs font-semibold text-ink-3">
+                    <kbd className="rounded-md border border-glass-border bg-surface-2 px-1.5 py-0.5 font-sans text-xs font-semibold text-ink-3">
                       {item.hint}
                     </kbd>
                   )}

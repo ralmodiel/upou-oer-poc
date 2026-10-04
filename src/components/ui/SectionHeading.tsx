@@ -50,7 +50,10 @@ export default function SectionHeading({
     <div className={`flex flex-wrap items-end justify-between gap-x-6 gap-y-2 ${className}`}>
       <div className="min-w-0">
         {rule && (
-          <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
+          <span
+            aria-hidden="true"
+            className="mb-3 block h-1 w-10 rounded-pill bg-band-gold bg-linear-to-r from-band-gold to-amber shadow-[0_0_10px_-1px_var(--color-band-gold)] dark:shadow-[0_0_12px_0_var(--color-band-gold)]"
+          />
         )}
         {eyebrow && <p className="eyebrow mb-1.5">{eyebrow}</p>}
         <Tag
@@ -74,7 +77,7 @@ export default function SectionHeading({
             <Link
               to={seeAllTo}
               data-spatial="heading"
-              className="group inline-flex h-10 items-center gap-0.5 text-sm font-semibold text-maroon hover:text-maroon-2"
+              className="group inline-flex h-10 items-center gap-0.5 rounded-pill text-sm font-semibold text-maroon transition-colors hover:text-maroon-2"
             >
               {/* Visible text first, then the section name: repeated links stay distinct. */}
               {seeAllContext ? `${seeAll} ` : seeAll}

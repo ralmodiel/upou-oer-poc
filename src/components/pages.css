@@ -1,0 +1,200 @@
+/* Secondary pages and panels (quick look, collections, search suggestions, My List, Not found,
+   Privacy, Shortcuts): the TV-app finish. Paint only: nothing here moves or resizes a box. */
+
+/* Dark scheme hooks for the few values tokens can't carry (index.css: system dark unless the
+   page is set light, or set dark). */
+:root {
+  --tv-glow: transparent;
+  --tv-panel-edge: rgb(27 26 23 / 0.08);
+  --tv-spot: color-mix(in oklab, var(--color-gold) 12%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
+    --tv-panel-edge: rgb(255 255 255 / 0.08);
+    --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
+  }
+}
+:root[data-theme='dark'] {
+  --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
+  --tv-panel-edge: rgb(255 255 255 / 0.08);
+  --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
+}
+
+/* Modal panels (quick look, Privacy, Shortcuts): the page behind dims and softens. Out-ranks the
+   backdrop utility; the fade itself stays in browse.css. */
+html dialog[data-details]::backdrop,
+html dialog.tv-sheet::backdrop {
+  background-color: rgb(14 13 14 / 0.62);
+  backdrop-filter: blur(8px) saturate(0.85);
+}
+
+/* Floating panels: a deep, soft shadow and a hairline edge in place of the drawn border. */
+.tv-sheet,
+.ql-panel {
+  border-color: var(--tv-panel-edge);
+  box-shadow:
+    0 40px 90px -30px rgb(0 0 0 / 0.6),
+    0 0 0 1px var(--tv-panel-edge);
+}
+@media (width < 48rem) {
+  .ql-panel {
+    box-shadow: none;
+  }
+}
+/* Privacy's sticky title bar: glass while the list scrolls under it. */
+.tv-sheet-head {
+  background-color: color-mix(in oklab, var(--color-surface) 86%, transparent);
+  backdrop-filter: blur(12px);
+}
+.tv-sheet kbd {
+  background-image: linear-gradient(to bottom, var(--color-surface), var(--color-surface-2));
+  box-shadow:
+    inset 0 -2px 0 color-mix(in oklab, var(--color-ink) 14%, transparent),
+    0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+/* Quick look picture: no frame at rest, its edges melt into the panel (the home hero's
+   .hero-still idea). Under keyboard focus it firms into a rounded picture for the focus ring. */
+.ql-still {
+  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+}
+@media (width >= 48rem) {
+  .ql-still {
+    mask-image:
+      linear-gradient(to right, transparent, #000 7% 93%, transparent),
+      linear-gradient(to bottom, transparent, #000 7% 88%, transparent);
+    mask-composite: intersect;
+  }
+}
+:focus-visible > .ql-still {
+  mask-image: none;
+}
+@media (width >= 48rem) {
+  :focus-visible > .ql-still {
+    border-radius: var(--radius-card);
+    box-shadow: 0 24px 50px -18px rgb(0 0 0 / 0.55);
+  }
+}
+
+.ql-title {
+  letter-spacing: -0.01em;
+}
+
+/* More like this: a tray set into the panel, a fading hairline in place of the rule. */
+.ql-more,
+.tv-hairline {
+  border-top-color: transparent;
+  background:
+    linear-gradient(
+        to right,
+        transparent,
+        color-mix(in oklab, var(--color-ink) 16%, transparent) 12% 88%,
+        transparent
+      )
+      top / 100% 1px no-repeat,
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-surface-2) 70%, transparent),
+      transparent 16rem
+    );
+}
+.tv-hairline {
+  background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--color-ink) 16%, transparent) 10% 90%,
+      transparent
+    )
+    top / 100% 1px no-repeat;
+}
+
+/* Collection cards: a cinematic cover (a soft neutral vignette, never a colour) and a TV focus:
+   lifted, ringed and glowing. */
+.tv-card {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  transition:
+    translate 250ms var(--ease-out-soft),
+    scale 250ms var(--ease-out-soft),
+    box-shadow 250ms var(--ease-out-soft);
+}
+.tv-card:hover {
+  box-shadow: 0 20px 44px -18px rgb(0 0 0 / 0.45);
+}
+.tv-card:has(a:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  box-shadow:
+    0 24px 50px -16px rgb(0 0 0 / 0.5),
+    0 0 32px 4px var(--tv-glow);
+}
+.tv-cover {
+  position: relative;
+}
+.tv-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(130% 100% at 50% 35%, transparent 55%, rgb(0 0 0 / 0.22));
+  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.12);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tv-card:hover {
+    translate: 0 -4px;
+  }
+  .tv-card:has(a:focus-visible) {
+    translate: 0 -6px;
+    scale: 1.03;
+  }
+  .tv-card:active {
+    translate: 0 -1px;
+  }
+  /* The stills drift closer under hover or focus (transform composes with their crop scale). */
+  .tv-cover img {
+    transition:
+      opacity 300ms ease,
+      transform 600ms var(--ease-out-soft);
+  }
+  .tv-card:is(:hover, :has(a:focus-visible)) .tv-cover img {
+    transform: scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tv-card {
+    transition: none;
+  }
+}
+
+/* Search suggestions: a glass panel; the active row lifts out of it with the focus ring. */
+.tv-suggest {
+  border-color: var(--tv-panel-edge);
+  /* 94%: small labels keep 4.5:1 even over a black or white patch behind the blur. */
+  background-color: color-mix(in oklab, var(--color-surface) 94%, transparent);
+  backdrop-filter: blur(18px) saturate(1.5);
+  box-shadow:
+    0 28px 60px -20px rgb(0 0 0 / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+.tv-suggest [role='option'] {
+  transition: background-color 120ms ease;
+}
+.tv-suggest [role='option'][aria-selected='true'] {
+  background-color: color-mix(in oklab, var(--color-ink) 9%, transparent);
+}
+.tv-suggest [role='option'][aria-selected='true'] .eyebrow {
+  color: var(--color-ink-2);
+}
+
+/* Empty and not-found pages: a soft spotlight on the page surface (no picture under it). */
+.tv-spot {
+  background: radial-gradient(closest-side, var(--tv-spot), transparent);
+}
+.tv-spot-page {
+  background: radial-gradient(60rem 28rem at 0% 0%, var(--tv-spot), transparent 70%) no-repeat;
+}
+
+/* Search results heading: tighter display tracking. */
+.tv-heading h1 {
+  letter-spacing: -0.01em;
+}

@@ -4,16 +4,17 @@ export type ButtonSize = 'sm' | 'md' | 'lg'
 export type IconButtonSize = 'sm' | 'md'
 
 const BASE =
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-pill font-semibold whitespace-nowrap transition-[background-color,color,border-color,box-shadow,translate] select-none disabled:pointer-events-none disabled:opacity-50 motion-safe:active:translate-y-px'
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-pill font-semibold whitespace-nowrap transition-[background-color,color,border-color,box-shadow,translate,filter] duration-200 ease-out-soft select-none disabled:pointer-events-none disabled:opacity-50 motion-safe:active:translate-y-px'
 
-// Filled buttons (logo maroon, deep band maroon in dark) get a paper ring inside the focus outline,
-// so the outline never runs into the fill. Secondary buttons wear the forest outline.
+// Primary: the maroon fill with a top sheen and a soft drop; it lifts and brightens on hover and
+// focus, with a paper ring inside the focus outline (and the TV glow outside it). Secondary: a
+// frosted-glass pill that reads on the page and over pictures. Ghost: frosts on hover.
+// Lifts are transforms (no reflow) and only without reduced motion.
+const LIFT = 'motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5'
 const VARIANT: Record<ButtonVariant, string> = {
-  primary:
-    'bg-action text-on-action hover:bg-action-2 hover:shadow-lift focus-visible:ring-2 focus-visible:ring-paper',
-  secondary:
-    'border border-forest/55 bg-surface text-forest hover:border-forest hover:bg-forest-soft',
-  ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+  primary: `bg-action bg-(image:--gradient-action) text-on-action shadow-action hover:brightness-110 focus-visible:shadow-glow focus-visible:ring-2 focus-visible:ring-paper focus-visible:brightness-110 ${LIFT}`,
+  secondary: `border border-glass-border bg-frost text-ink shadow-elev-1 backdrop-blur-md hover:bg-frost-2 hover:shadow-elev-2 focus-visible:bg-frost-2 focus-visible:shadow-glow ${LIFT}`,
+  ghost: 'text-ink-2 hover:bg-frost hover:text-ink hover:shadow-elev-1',
 }
 
 // A pressed toggle (Saved): maroon on paper, gold in dark.

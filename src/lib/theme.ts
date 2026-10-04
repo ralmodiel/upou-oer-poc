@@ -7,7 +7,7 @@ export type ResolvedTheme = 'light' | 'dark'
 export const THEME_KEY = 'upou:theme'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 // Paper colour per theme, mirrored into <meta name="theme-color">.
-const CHROME_COLOR: Record<ResolvedTheme, string> = { light: '#faf8f6', dark: '#1a191a' }
+const CHROME_COLOR: Record<ResolvedTheme, string> = { light: '#faf8f6', dark: '#141112' }
 
 /** The three choices, in display order (controls add their own icons). */
 export const THEMES: { value: Theme; label: string }[] = [

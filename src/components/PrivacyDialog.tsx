@@ -10,6 +10,7 @@ import { historyAllowed, usePrefs, useWatchHistory, type Prefs } from '../lib/st
 import { CloseIcon } from './icons'
 import Button from './ui/Button'
 import IconButton from './ui/IconButton'
+import './pages.css'
 
 // A switch that does not apply (it needs watch history) stays focusable, so the remote and screen
 // readers still reach it and hear why, but shows off and ignores presses.
@@ -194,10 +195,10 @@ export default function PrivacyDialog() {
       aria-labelledby={titleId}
       onClick={onClick}
       onClose={onClose}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100%-2rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-surface p-0 text-ink shadow-lift outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
+      className="tv-sheet m-auto max-h-[calc(100dvh-2rem)] w-[min(36rem,calc(100%-2rem))] overflow-y-auto overscroll-contain rounded-card border border-line bg-surface p-0 text-ink shadow-lift outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
     >
       {/* The title and Close stay in view while the panel scrolls (phones). */}
-      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-surface px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
+      <div className="tv-sheet-head sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-surface px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
         <div>
           <p className="eyebrow">Privacy</p>
           <h2 id={titleId} className="mt-1 font-display text-2xl leading-tight">

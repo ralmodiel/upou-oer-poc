@@ -5,8 +5,8 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { prefersReducedMotion } from './hooks'
 
-/** Items a row renders at first: its first page and the card peeking after it. */
-export const FIRST_ITEMS = 5
+/** Items a row renders at first: its first page (five from lg) and the card peeking after it. */
+export const FIRST_ITEMS = 6
 
 interface RowState {
   /** At the first card, at the last one: the button that way hides. */

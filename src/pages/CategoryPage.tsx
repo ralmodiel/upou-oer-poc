@@ -16,6 +16,7 @@ import {
 } from '../data/catalog'
 import { collectionSeo, pageTitle, useSeo } from '../lib/seo'
 import { focusAndReveal } from '../lib/spatial'
+import '../components/pages.css'
 
 const PAGE_SIZE = 24
 const SORTS: { value: CategorySort; label: string }[] = [
@@ -67,6 +68,7 @@ export default function CategoryPage() {
   if (!category) {
     return (
       <NotFound
+        className="tv-spot-page"
         title="Collection not found"
         crumbs={[...crumbs, { label: 'Not found' }]}
         actions={[

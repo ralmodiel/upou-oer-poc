@@ -33,9 +33,9 @@ import ThemeToggle from './ThemeToggle'
 import Menu, { type MenuSection } from './ui/Menu'
 import { buttonClass, iconButtonClass } from './ui/button-styles'
 
-// Active section: a maroon underline on paper (gold in dark mode).
+// Active section: a maroon underline on paper (gold in dark mode) with a soft glow.
 const NAV_LINK =
-  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
+  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-frost hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:shadow-[0_0_10px_1px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
 
 // Saved ids that still exist in the catalog.
 function useSavedCount() {
@@ -48,7 +48,7 @@ function CountBadge({ count, className = '' }: { count: number; className?: stri
   return (
     <span
       aria-hidden="true"
-      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-action px-1.5 text-xs leading-none font-bold text-on-action tabular-nums dark:bg-band-gold dark:text-charcoal ${className}`}
+      className={`inline-grid h-5 min-w-5 place-items-center rounded-pill bg-action bg-(image:--gradient-action) px-1.5 text-xs leading-none font-bold text-on-action tabular-nums dark:bg-band-gold dark:bg-none dark:text-charcoal ${className}`}
     >
       {count}
     </span>
@@ -64,10 +64,9 @@ export default function Header() {
   return (
     <header
       // The UP tri-colour stripe runs along the top edge (inside the header's height).
-      className={`sticky top-0 z-40 border-b border-line transition-[background-color,box-shadow] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:brand-stripe ${
-        scrolled
-          ? 'bg-paper/85 shadow-[0_10px_24px_-20px_rgb(27_26_23/0.45)] backdrop-blur-md'
-          : 'bg-paper'
+      // Glass: translucent paper over a modest blur, so content scrolls softly beneath it.
+      className={`sticky top-0 z-40 border-b bg-glass backdrop-blur-lg backdrop-saturate-150 transition-[border-color,box-shadow] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:brand-stripe ${
+        scrolled ? 'border-glass-border shadow-elev-2' : 'border-line'
       }`}
     >
       <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) md:flex-nowrap lg:gap-x-3">
@@ -86,7 +85,7 @@ export default function Header() {
               role="note"
               title="Proof of concept"
               aria-label="Proof of concept"
-              className="rounded-pill border border-line bg-surface px-1 py-1 text-xs leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
+              className="rounded-pill border border-glass-border bg-frost px-1 py-1 text-xs leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
             >
               Proof of concept
             </span>
@@ -328,14 +327,14 @@ function SearchBox() {
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="h-10 w-full rounded-pill border border-line bg-surface pr-10 pl-10 text-sm text-ink transition-colors placeholder:text-ink-3 hover:border-ink-3 focus:border-focus [&::-webkit-search-cancel-button]:appearance-none"
+          className="h-10 w-full rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-elev-1 transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-ink-3 hover:bg-surface focus:border-focus focus:bg-surface focus-visible:shadow-glow [&::-webkit-search-cancel-button]:appearance-none"
         />
         {value && (
           <button
             type="button"
             aria-label="Clear search"
             onClick={clear}
-            className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 hover:bg-surface-2 hover:text-ink"
+            className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
           >
             <CloseIcon className="size-4" />
           </button>
@@ -346,9 +345,10 @@ function SearchBox() {
   )
 }
 
-// Active tab: maroon label and top bar on paper, gold in dark mode.
+// Active tab: maroon label and a glowing top bar on paper, gold in dark mode; its icon gets a soft
+// halo. The focus ring sits inside the bar (it is flush with the screen edge).
 const TAB =
-  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-[3px] after:rounded-b-full after:bg-maroon after:opacity-0 after:transition-opacity aria-[current=page]:after:opacity-100 dark:aria-[current=page]:text-band-gold dark:after:bg-band-gold'
+  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink focus-visible:-outline-offset-4 aria-[current=page]:font-semibold aria-[current=page]:text-maroon aria-[current=page]:[&_svg]:drop-shadow-[0_0_6px_var(--color-glow-brand)] after:absolute after:inset-x-6 after:top-0 after:h-[3px] after:rounded-b-full after:bg-maroon after:opacity-0 after:shadow-[0_0_12px_2px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:aria-[current=page]:text-band-gold dark:after:bg-band-gold'
 
 /** Phone navigation (< md): Browse · Collections · Search · My List, pinned to the bottom. */
 export function TabBar() {
@@ -356,7 +356,8 @@ export function TabBar() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+      // Glass like the header; surface at 92% so the ink-3 labels keep AA over a black picture.
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-glass-border bg-surface/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_28px_-18px_rgb(0_0_0/0.35)] backdrop-blur-lg backdrop-saturate-150 md:hidden"
     >
       <ul className="flex h-(--tabbar-h)">
         <li className="flex flex-1">

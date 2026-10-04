@@ -6,11 +6,11 @@ import { reelImages } from '../reel/stills'
 import './watch.css'
 
 /**
- * Full-bleed, blurred and dimmed still behind the player column, fading into the page. It is the
- * stage's poster (already loading, never a flagged frame); without one the paper stays. Black bars
- * baked into the still are zoomed out of the band, as on the poster, so no grey bands edge it.
+ * The stage's poster (already loading, never a flagged frame) as a quiet, neutral still: shown
+ * once loaded, falling back to the 320px thumbnail, and gone (paper) when neither loads. Black bars
+ * baked into the still are zoomed out, as on the poster, so no grey bands edge it.
  */
-export default function WatchBackdrop({ video }: { video: Video }) {
+function Still({ video, className }: { video: Video; className: string }) {
   const [images] = useState(() => reelImages(video))
   const [src, setSrc] = useState(images.poster ?? images.thumbnail)
   if (!src) return null
@@ -22,7 +22,7 @@ export default function WatchBackdrop({ video }: { video: Video }) {
     else fail()
   }
   return (
-    <div className="watch-backdrop" aria-hidden="true">
+    <div className={className} aria-hidden="true">
       <img
         src={src}
         alt=""
@@ -33,4 +33,14 @@ export default function WatchBackdrop({ video }: { video: Video }) {
       />
     </div>
   )
+}
+
+/** Full-bleed, blurred and dimmed still behind the player column, fading into the page. */
+export default function WatchBackdrop({ video }: { video: Video }) {
+  return <Still video={video} className="watch-backdrop" />
+}
+
+/** Ambient light around the stage: the same still, blurred wide and neutral (watch.css). */
+export function WatchAmbient({ video }: { video: Video }) {
+  return <Still video={video} className="watch-ambient" />
 }

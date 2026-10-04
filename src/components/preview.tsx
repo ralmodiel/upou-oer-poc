@@ -155,7 +155,12 @@ export function useCardPreview(video: Video) {
     'data-previewing': previewing ? '' : undefined,
   }
   const overlay = previewing ? (
-    <div aria-hidden="true" data-preview="" className="card-preview">
+    <div
+      aria-hidden="true"
+      data-preview=""
+      data-ending={phase === 'ending' ? '' : undefined}
+      className="card-preview"
+    >
       <Suspense fallback={null}>
         <PromoReel video={video} variant="preview" muted onComplete={onComplete} />
       </Suspense>

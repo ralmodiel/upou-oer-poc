@@ -23,7 +23,7 @@ export default function HistoryOff() {
     <div className="px-(--gutter) py-6">
       <div
         aria-live="polite"
-        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-line bg-surface px-4 py-3 text-sm text-ink-2"
+        className="browse-panel flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-line bg-surface px-4 py-3 text-sm text-ink-2"
       >
         {allowed ? (
           <p>Watch history is on. Videos you open will show up here.</p>

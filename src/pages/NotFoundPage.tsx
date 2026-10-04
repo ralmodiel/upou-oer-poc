@@ -1,4 +1,5 @@
 import NotFound from '../components/ui/NotFound'
+import '../components/pages.css'
 import { pageTitle, useSeo } from '../lib/seo'
 
 export default function NotFoundPage() {
@@ -8,7 +9,7 @@ export default function NotFoundPage() {
     noindex: true,
   })
   return (
-    <NotFound eyebrow="Error 404" title="Page not found">
+    <NotFound className="tv-spot-page" eyebrow="Error 404" title="Page not found">
       There is nothing at this address. The link may be old or mistyped.
     </NotFound>
   )

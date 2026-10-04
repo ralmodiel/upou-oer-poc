@@ -42,7 +42,7 @@ export default function Footer() {
   const help = useHelp()
 
   return (
-    <footer className="mt-16 bg-band-maroon text-sm text-on-band band-focus">
+    <footer className="mt-16 bg-band-maroon bg-(image:--gradient-band) text-sm text-on-band shadow-[inset_0_1px_0_rgb(255_255_255/0.08)] band-focus">
       <div className="grid gap-10 px-(--gutter) py-12 md:grid-cols-3 md:gap-8">
         <section aria-labelledby="footer-about">
           <h2 id="footer-about" className={HEADING}>
@@ -110,7 +110,7 @@ export default function Footer() {
           </ul>
         </section>
       </div>
-      <div className="flex flex-col gap-2 border-t border-on-band/15 px-(--gutter) py-5 text-xs text-on-band/75 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-t border-on-band/15 bg-black/10 px-(--gutter) py-5 text-xs text-on-band/75 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-display text-lg leading-none text-on-band">
           UPOU <span className="text-band-gold">OER</span>
         </p>

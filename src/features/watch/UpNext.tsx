@@ -92,7 +92,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
               onClick={onRefresh}
               aria-label="Refresh Up next"
               title="Refresh Up next"
-              className="group -ml-4 inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-pill text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+              className="watch-refresh group -ml-4 inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-pill text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <RefreshIcon className="size-5 transition-transform duration-500 ease-out group-active:-rotate-180 motion-reduce:transition-none" />
             </button>
@@ -112,9 +112,9 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
           >
             <span
               aria-hidden="true"
-              className="relative h-6 w-11 rounded-pill border-2 border-ink-3 bg-surface transition-colors group-aria-checked:border-forest group-aria-checked:bg-forest motion-reduce:transition-none"
+              className="watch-switch-track relative h-6 w-11 rounded-pill border-2 border-ink-3 bg-surface transition-colors group-aria-checked:border-forest group-aria-checked:bg-forest motion-reduce:transition-none"
             >
-              <span className="absolute top-0.5 left-0.5 size-4 rounded-full bg-ink-3 transition-[translate,background-color] group-aria-checked:translate-x-5 group-aria-checked:bg-on-accent motion-reduce:transition-none" />
+              <span className="watch-switch-knob absolute top-0.5 left-0.5 size-4 rounded-full bg-ink-3 transition-[translate,background-color] group-aria-checked:translate-x-5 group-aria-checked:bg-on-accent motion-reduce:transition-none" />
             </span>
           </button>
         </span>
@@ -155,7 +155,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   <span key={v.id} className="watch-next-text min-w-0 self-center">
                     {current ? (
                       <span className="flex items-center gap-1.5 text-xs/snug font-semibold text-forest">
-                        <NowPlayingIcon className="size-3 shrink-0" />
+                        <NowPlayingIcon className="watch-eq size-3 shrink-0" />
                         Now playing
                       </span>
                     ) : reason ? (

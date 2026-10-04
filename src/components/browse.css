@@ -152,6 +152,49 @@ html:has(dialog[data-details][open]) {
 .row-track::-webkit-scrollbar {
   display: none;
 }
+/* Streaming-row edges: where the row has more that way, the gutter shows the next (or previous)
+   card fading out, a mask and no tint; at its ends, and in rows that do not scroll, no fade. Driven
+   by the track's own scroll position (no script). Browsers without scroll timelines keep the clip. */
+@property --row-fade-l {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --row-fade-r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@supports (animation-timeline: scroll()) {
+  .row-track:not(.row-still) {
+    clip-path: none;
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--row-fade-l),
+      #000 calc(100% - var(--row-fade-r)),
+      transparent
+    );
+    animation: row-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+  /* The fade spans the gutter beyond the room an edge card's focus ring and lift need. */
+  @keyframes row-edges {
+    0% {
+      --row-fade-l: 0px;
+      --row-fade-r: calc(var(--row-bleed) - 0.75rem);
+    }
+    2%,
+    98% {
+      --row-fade-l: calc(var(--row-bleed) - 0.75rem);
+      --row-fade-r: calc(var(--row-bleed) - 0.75rem);
+    }
+    100% {
+      --row-fade-l: calc(var(--row-bleed) - 0.75rem);
+      --row-fade-r: 0px;
+    }
+  }
+}
 /* Skeleton rows never scroll (nor become a Tab stop as an empty scroller). */
 .row-track.row-still {
   overflow: hidden;
@@ -169,6 +212,20 @@ html:has(dialog[data-details][open]) {
    in view as a quiet outline, a hint that the row moves on, and come in full (surface, shadow, ink)
    while the row is hovered or holds focus. Narrower, they would cover the cards' edges: hidden until
    then (Carousel). */
+/* Small glass controls (the row buttons, "More video resources below"): a frosted, translucent
+   surface with a light rim. Kept small: backdrop blur is costly over big areas. */
+.browse-glass {
+  border-color: var(--glass-rim);
+  background-color: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+@media (hover: hover) {
+  .browse-glass:hover {
+    background-color: var(--glass-fill-strong);
+  }
+}
 @media (width >= 80rem) and (hover: hover) and (pointer: fine) {
   .row-button {
     opacity: 1;
@@ -178,13 +235,133 @@ html:has(dialog[data-details][open]) {
   }
   .row:hover > .row-button,
   .row:focus-within > .row-button {
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow-lift);
+    background-color: var(--glass-fill);
+    box-shadow: var(--glass-shadow);
     color: var(--color-ink);
   }
   .row > .row-button:hover {
-    background-color: var(--color-surface-2);
+    background-color: var(--glass-fill-strong);
   }
+}
+
+/* The shared TV focus glow (index.css --shadow-glow) on the glass controls, which set their own
+   shadow. */
+.browse-glass:focus-visible,
+.row > .row-button:focus-visible {
+  box-shadow: var(--glass-shadow), var(--shadow-glow);
+}
+
+/* Local tokens for the home and the cards (hand-off: index.css). Glass: a translucent surface with
+   a light rim. Cards: a hairline at rest; lifted, a soft neutral glow ring and an elevation shadow. */
+:root {
+  --glass-fill: rgb(255 255 255 / 0.8);
+  --glass-fill-strong: rgb(255 255 255 / 0.9);
+  --glass-rim: rgb(255 255 255 / 0.7);
+  --glass-shadow: 0 0 0 1px rgb(27 26 23 / 0.08), 0 8px 24px -8px rgb(27 26 23 / 0.3);
+  --card-hairline: 0 0 0 1px rgb(0 0 0 / 0.06);
+  --card-glow: 0 0 0 1px rgb(55 54 55 / 0.14), 0 0 0 5px rgb(55 54 55 / 0.06);
+  --card-elev: 0 22px 40px -18px rgb(27 26 23 / 0.5), 0 8px 16px -10px rgb(27 26 23 / 0.25);
+  --ease-tv: cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-theme='dark'] {
+  --glass-fill: rgb(36 35 37 / 0.62);
+  --glass-fill-strong: rgb(52 51 54 / 0.82);
+  --glass-rim: rgb(255 255 255 / 0.14);
+  --glass-shadow: 0 0 0 1px rgb(0 0 0 / 0.3), 0 10px 28px -8px rgb(0 0 0 / 0.7);
+  --card-hairline: 0 0 0 1px rgb(255 255 255 / 0.1);
+  --card-glow:
+    0 0 0 1px rgb(255 255 255 / 0.4), 0 0 0 5px rgb(255 255 255 / 0.08),
+    0 0 32px -4px rgb(255 255 255 / 0.12);
+  --card-elev: 0 24px 44px -16px rgb(0 0 0 / 0.85), 0 8px 18px -8px rgb(0 0 0 / 0.6);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --glass-fill: rgb(36 35 37 / 0.62);
+    --glass-fill-strong: rgb(52 51 54 / 0.82);
+    --glass-rim: rgb(255 255 255 / 0.14);
+    --glass-shadow: 0 0 0 1px rgb(0 0 0 / 0.3), 0 10px 28px -8px rgb(0 0 0 / 0.7);
+    --card-hairline: 0 0 0 1px rgb(255 255 255 / 0.1);
+    --card-glow:
+      0 0 0 1px rgb(255 255 255 / 0.4), 0 0 0 5px rgb(255 255 255 / 0.08),
+      0 0 32px -4px rgb(255 255 255 / 0.12);
+    --card-elev: 0 24px 44px -16px rgb(0 0 0 / 0.85), 0 8px 18px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Cards, TV style (VideoCard, Recently viewed, See all): under the pointer or keyboard focus the
+   picture eases in a little inside its box (the box keeps its size), the box rises 2px, and the
+   glow ring and elevation shadow come in; a press settles it. The keyboard focus also keeps its
+   instant 3px outline (VideoCard). Reduced motion: nothing moves or scales; ring and shadow stay. */
+.card-media {
+  box-shadow: var(--card-hairline);
+  transition:
+    translate 350ms var(--ease-tv),
+    box-shadow 350ms var(--ease-tv);
+}
+.card-media > :is(img, .card-preview) {
+  transition:
+    opacity 300ms ease,
+    transform 600ms var(--ease-tv);
+}
+.card-lift:has([data-card-link]:focus-visible) .card-media,
+.card-tile:focus-visible {
+  box-shadow: var(--card-glow), var(--card-elev), var(--shadow-glow);
+}
+@media (hover: hover) {
+  .card-lift:hover .card-media,
+  .card-tile:hover {
+    box-shadow: var(--card-glow), var(--card-elev);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card-lift:has([data-card-link]:focus-visible) .card-media,
+  .card-tile:focus-visible {
+    translate: 0 -2px;
+  }
+  .card-lift:has([data-card-link]:focus-visible) .card-media > :is(img, .card-preview) {
+    transform: scale(1.05);
+  }
+  @media (hover: hover) {
+    .card-lift:hover .card-media,
+    .card-tile:hover {
+      translate: 0 -2px;
+    }
+    .card-lift:hover .card-media > :is(img, .card-preview) {
+      transform: scale(1.05);
+    }
+  }
+  .card-lift:active .card-media,
+  .card-tile:active {
+    translate: 0 0;
+    box-shadow: var(--card-hairline);
+    transition-duration: 120ms;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-media,
+  .card-media > :is(img, .card-preview) {
+    transition: none;
+  }
+}
+/* Panels in the card family (How it works steps, the history-off note): a faint top light and a
+   soft elevation over their hairline border. */
+.browse-panel {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 70%);
+  box-shadow: 0 12px 28px -20px rgb(27 26 23 / 0.4);
+}
+[data-theme='dark'] .browse-panel {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 70%);
+  box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.75);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .browse-panel {
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.04), transparent 70%);
+    box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.75);
+  }
+}
+/* "New" on a card: its gold pill (ui/Badge) gets a soft top sheen. */
+.card-new {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0) 65%);
 }
 
 /* How it works, brought into view by Help or the intro chip: a gold outline that fades. */
@@ -212,10 +389,19 @@ html:has(dialog[data-details][open]) {
 }
 @media (prefers-reduced-motion: no-preference) {
   .card-preview {
-    animation: card-preview-in 250ms var(--ease-out-soft) both;
+    animation: card-preview-in 400ms var(--ease-out-soft) both;
+  }
+  /* The end card gives way to the still before the reel unmounts (END_HOLD_MS in preview.tsx). */
+  .card-preview[data-ending] {
+    animation: card-preview-out 350ms ease-in 650ms both;
   }
   @keyframes card-preview-in {
     from {
+      opacity: 0;
+    }
+  }
+  @keyframes card-preview-out {
+    to {
       opacity: 0;
     }
   }
@@ -291,6 +477,32 @@ html[data-hero-swap]::view-transition-new(hero-text) {
       linear-gradient(to bottom, transparent, #000 5% 75%, transparent);
   }
 }
+/* The hero's scrim over its grey backdrop: the still fades into the page, fully by the foot where
+   the row sits, with a soft vignette round the edges for depth. Paper only, never a colour. */
+.hero-scrim {
+  --veil: color-mix(in oklab, var(--color-paper) 70%, transparent);
+  background:
+    radial-gradient(120% 95% at 30% 35%, transparent 45%, var(--veil)),
+    linear-gradient(
+      to bottom,
+      var(--veil),
+      color-mix(in oklab, var(--color-paper) 85%, transparent) 55%,
+      var(--color-paper)
+    );
+}
+/* The hero's details: display title with a faint lift off the backdrop in dark, calm facts. */
+[data-hero-text] h3 {
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+[data-theme='dark'] [data-hero-text] h3 {
+  text-shadow: 0 2px 24px rgb(0 0 0 / 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) [data-hero-text] h3 {
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.35);
+  }
+}
 /* Also new, under the Featured row, keeps the home row rhythm a touch tighter. */
 [data-featured-block] > section {
   padding-block: 1.25rem 1.5rem;
@@ -327,18 +539,34 @@ html[data-hero-swap]::view-transition-new(hero-text) {
   outline: 2px solid var(--color-band-gold);
   outline-offset: 3px;
 }
+/* A soft gold halo outside the ring (the picture stays as it is). */
+[data-row='featured'] > li[data-active]:not(:has(:focus-visible)) article {
+  --card-hairline: 0 0 0 1px rgb(0 0 0 / 0.06), 0 0 28px -6px rgb(252 181 27 / 0.55);
+}
+/* The count: a rounded gold line inset along the picture's foot, on a faint light track. */
+[data-row='featured'] > li[data-active] article > .aspect-video::before,
 [data-row='featured'] > li[data-active] article > .aspect-video::after {
   content: '';
   position: absolute;
-  inset: auto 0 0;
+  inset: auto 0.625rem 0.5rem;
   z-index: 2;
   height: 3px;
-  background: var(--color-band-gold);
+  border-radius: 999px;
+  pointer-events: none;
+}
+[data-row='featured'] > li[data-active] article > .aspect-video::before {
+  background: rgb(255 255 255 / 0.45);
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.15);
+}
+[data-row='featured'] > li[data-active] article > .aspect-video::after {
+  background: linear-gradient(90deg, var(--color-band-gold), #ffd36e);
+  box-shadow: 0 0 6px rgb(252 181 27 / 0.6);
   transform-origin: left;
   transform: scaleX(var(--advance, 0));
   transition: transform 250ms linear;
 }
 @media (prefers-reduced-motion: reduce) {
+  [data-row='featured'] > li[data-active] article > .aspect-video::before,
   [data-row='featured'] > li[data-active] article > .aspect-video::after {
     display: none;
   }

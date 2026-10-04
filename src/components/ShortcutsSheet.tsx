@@ -4,6 +4,7 @@ import { useId, useRef, type MouseEvent } from 'react'
 import { OPEN_SHORTCUTS_EVENT, useAppEvent } from '../lib/shortcuts'
 import { CloseIcon } from './icons'
 import IconButton from './ui/IconButton'
+import './pages.css'
 
 const KEYS: { keys: string[]; text: string }[] = [
   { keys: ['←', '→', '↑', '↓'], text: 'Move the highlight to the nearest card or control' },
@@ -42,7 +43,7 @@ export default function ShortcutsSheet() {
       tabIndex={-1}
       aria-labelledby={titleId}
       onClick={onClick}
-      className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-card border border-line bg-surface p-0 text-ink shadow-lift outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
+      className="tv-sheet m-auto w-[min(28rem,calc(100%-2rem))] rounded-card border border-line bg-surface p-0 text-ink shadow-lift outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
     >
       <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">

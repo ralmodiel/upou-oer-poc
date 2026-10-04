@@ -8,6 +8,7 @@ import SectionHeading from '../components/ui/SectionHeading'
 import { getLatest, getVideo, hasCleanPoster } from '../data/catalog'
 import { myListSeo, useSeo } from '../lib/seo'
 import { useMyList } from '../lib/storage'
+import '../components/pages.css'
 
 /** Starting picks under an empty list: one line of cards at every width (browse.css). */
 const PICKS = 5
@@ -64,6 +65,7 @@ export default function MyListPage() {
           icon={<BookmarkIcon />}
           title="Nothing saved yet"
           compact={starter}
+          className="tv-spot"
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <LinkButton to="/collections">Browse collections</LinkButton>
@@ -92,7 +94,7 @@ function StarterPicks({ below }: { below: boolean }) {
   return (
     <section
       aria-labelledby={headingId}
-      className={`starter-picks ${below ? 'mt-12 sm:mt-16' : 'mt-4'} border-t border-line pt-8 sm:pt-10`}
+      className={`starter-picks ${below ? 'mt-12 sm:mt-16' : 'mt-4'} tv-hairline border-t border-line pt-8 sm:pt-10`}
     >
       <SectionHeading id={headingId} title="Start with the newest" />
       <div className="mt-5">

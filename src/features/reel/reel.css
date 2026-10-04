@@ -253,6 +253,183 @@
   animation: reel-hide 1ms linear var(--o) forwards;
 }
 
+/*
+  ---------- Title card: the picture of a video with no clean image ----------
+  The TitleTile look (the collection's band, a short rule, the title in the display serif) with
+  its collection, channel and date, in pinned light-theme band colours. A gold glow and a fine dot
+  grain drift slowly behind the type, which drifts the other way (parallax); a soft light sweeps
+  across once; the type rises in. Never flat (glow, grain and type), never dark (the glow lifts the
+  maroon), and never an image.
+*/
+.reel-card {
+  --card: #7b1113;
+  --card-ink: var(--light);
+  --card-rule: var(--gold);
+  --glow: var(--gold);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  container-type: size;
+  background: var(--card);
+  color: var(--card-ink);
+}
+
+.reel-card[data-tone='forest'] {
+  --card: #014421;
+}
+
+.reel-card[data-tone='gold'] {
+  --card: var(--gold);
+  --card-ink: var(--ink);
+  --card-rule: var(--ink);
+  --glow: var(--light);
+}
+
+.reel-card::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 0.09) 0.6px, transparent 1.1px) 0 0 / 5px 5px,
+    radial-gradient(
+      58% 78% at 82% 14%,
+      color-mix(in srgb, var(--glow) 78%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      70% 90% at 4% 108%,
+      color-mix(in srgb, var(--light) 24%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(200deg, color-mix(in srgb, var(--light) 16%, transparent), transparent 60%);
+  animation: reel-card-drift var(--reel-ms) cubic-bezier(0.3, 0, 0.4, 1) both;
+}
+
+/* The light sweep: once, soon after the type is in. */
+.reel-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(255 255 255 / 0.16) 46%,
+    rgb(255 255 255 / 0.3) 50%,
+    rgb(255 255 255 / 0.16) 54%,
+    transparent 70%
+  );
+  transform: translate3d(-101%, 0, 0);
+  animation: reel-card-sweep 2600ms var(--ease-io) 1200ms both;
+}
+
+.reel-card-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 7cqh 7cqw;
+  animation: reel-card-parallax var(--reel-ms) linear both;
+}
+
+.reel-card-copy > * {
+  max-width: min(100%, 34em);
+  animation: reel-card-rise 1000ms var(--ease) var(--k) both;
+}
+
+.reel-card-rule {
+  --k: 200ms;
+  width: min(12cqw, 7rem);
+  height: clamp(2px, 0.6cqh, 6px);
+  margin-bottom: 4.5cqh;
+  border-radius: 999px;
+  background: var(--card-rule);
+}
+
+.reel-card-kicker {
+  --k: 340ms;
+  max-width: 100%;
+  margin-bottom: 2.4cqh;
+  overflow: hidden;
+  font-size: clamp(0.5rem, min(1.6cqw, 4cqh), 1.25rem);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.reel-card-title {
+  --k: 480ms;
+  display: -webkit-box;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  font-family: var(--serif);
+  font-size: clamp(0.8rem, calc(min(8cqw, 15cqh) * var(--title-scale)), 7rem);
+  line-height: 1.06;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.reel-card-meta {
+  --k: 760ms;
+  max-width: 100%;
+  margin-top: 2.6cqh;
+  overflow: hidden;
+  font-size: clamp(0.5rem, min(1.7cqw, 4.2cqh), 1.3rem);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* Small cards: the title and one line under it. */
+@container (max-width: 260px) {
+  .reel-card-kicker {
+    display: none;
+  }
+}
+
+/*
+  The end card and the loading ground hold still: no drift, no sweep; loading shows no type yet.
+  On the end card the type keeps above the band, which holds the end card's own title.
+*/
+.reel-end-art .reel-card {
+  animation: reel-push calc(var(--reel-ms) - var(--tend)) linear var(--tend) both;
+}
+
+.reel-end-art .reel-card-copy {
+  bottom: var(--band);
+}
+
+:is(.reel-end-art, .reel-loading) .reel-card::before,
+:is(.reel-end-art, .reel-loading) :is(.reel-card-copy, .reel-card-copy > *) {
+  animation: none;
+}
+
+:is(.reel-end-art, .reel-loading) .reel-card::after {
+  display: none;
+}
+
+.reel-loading .reel-card-copy {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel-card::before,
+  .reel-card::after,
+  .reel-card-copy,
+  .reel-card-copy > *,
+  .reel-end-art .reel-card {
+    animation: none !important;
+  }
+}
+
 .reel-progress,
 .reel-copy,
 .reel-ident,
@@ -354,8 +531,11 @@
   color: var(--accent-text);
 }
 
-/* One still has no cuts to keep time: its highlighted word takes its colour on the second beat. */
-.reel[data-single] .reel-word.is-hot {
+/*
+  One still (or a title card) has no cuts to keep time: its highlighted word takes its colour on
+  the second beat.
+*/
+.reel:is([data-single], [data-title-card]) .reel-word.is-hot {
   animation: reel-hot 700ms var(--ease) calc(var(--t2) - var(--lead)) both;
 }
 
@@ -490,8 +670,8 @@
   animation: reel-fade-in 600ms var(--ease) calc(var(--t1) + 400ms) both;
 }
 
-/* One still, one move: no shot count. */
-.reel[data-template][data-single] .reel-index {
+/* One still, one move (or a title card): no shot count. */
+.reel[data-template]:is([data-single], [data-title-card]) .reel-index {
   display: none;
 }
 
@@ -1554,6 +1734,38 @@
   }
   to {
     transform: scaleX(1);
+  }
+}
+
+@keyframes reel-card-drift {
+  from {
+    transform: translate3d(calc(var(--drift) * -2cqw), 1.2cqh, 0) scale(1);
+  }
+  to {
+    transform: translate3d(calc(var(--drift) * 2cqw), -1.2cqh, 0) scale(1.07);
+  }
+}
+
+@keyframes reel-card-parallax {
+  from {
+    translate: calc(var(--drift) * 0.9cqw) 0;
+  }
+  to {
+    translate: calc(var(--drift) * -0.9cqw) 0;
+  }
+}
+
+@keyframes reel-card-sweep {
+  to {
+    transform: translate3d(101%, 0, 0);
+  }
+}
+
+@keyframes reel-card-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--motion) * 0.8em), 0);
+    filter: blur(calc(var(--fx) * 6px));
   }
 }
 

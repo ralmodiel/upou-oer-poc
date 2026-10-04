@@ -645,13 +645,18 @@ describe('WatchPage', () => {
     expect(srcs('.reel-end-art img')).toEqual([poster])
     expect(srcs('.watch-backdrop img')).toEqual([poster])
 
-    // Every candidate flagged: no reel and no backdrop; the player waits on paper over the video's
-    // least bad picture, as on its card, never on a colour tile or a dark box.
+    // Every candidate flagged: the reel plays as a type-only title card (no image in it) and there
+    // is no backdrop; under it the player waits on paper over the video's least bad picture, as on
+    // its card, never on a colour tile or a dark box.
     setFrameFlags({ [testVideo.youtubeId]: 0b1111 })
     try {
       const other = renderAt([`/watch/${testVideo.id}`])
       await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
-      expect(other.container.querySelector('.reel, .watch-backdrop img')).toBeNull()
+      const reel = other.container.querySelector('.watch-stage .reel')
+      expect(reel).toHaveAttribute('data-title-card')
+      expect(reel?.querySelector('img')).toBeNull()
+      expect(reel?.querySelector('.reel-card-title')).toHaveTextContent(testVideo.title)
+      expect(other.container.querySelector('.watch-backdrop img')).toBeNull()
       const stage = other.container.querySelector('.watch-stage')
       expect(stage?.querySelector('[data-title-tile]')).toBeNull()
       const picture = thumbnailOf(getVideo(testVideo.id)!, true)

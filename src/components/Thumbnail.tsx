@@ -1,7 +1,7 @@
 import type { ImgHTMLAttributes, ReactNode, SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { slugOfCategory, thumbnailOf, zoomStyle } from './media'
-import { BAND, toneOf, type Tone } from './tones'
+import { thumbnailOf, tileToneOf, zoomStyle } from './media'
+import { BAND } from './tones'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
@@ -17,14 +17,6 @@ const retryOrFail = (img: HTMLImageElement, fallback: string) => {
   img.dataset.failed = ''
 }
 
-// Title tiles use the collection's band colour; charcoal would read as a dark box among stills.
-const TILE_TONE: Record<Tone, Tone> = {
-  maroon: 'maroon',
-  forest: 'forest',
-  gold: 'gold',
-  charcoal: 'maroon',
-}
-
 /**
  * Stand-in for a video with no usable image (every still flagged): its title in the display serif
  * on the collection's brand band under a short rule, like the reel's type-only cards; never a blank
@@ -32,7 +24,7 @@ const TILE_TONE: Record<Tone, Tone> = {
  * already.
  */
 export function TitleTile({ video, className = '' }: { video: Video; className?: string }) {
-  const band = BAND[TILE_TONE[toneOf(slugOfCategory(video.category))]]
+  const band = BAND[tileToneOf(video)]
   return (
     <div
       aria-hidden="true"

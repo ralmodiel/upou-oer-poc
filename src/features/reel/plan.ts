@@ -336,8 +336,16 @@ export function buildReelPlan(video: Video): ReelPlan {
   // Framing has its own sequence, so the rest of the plan stays as it was.
   const frameRand = seededRandom(`${seed}:framing`)
   const cardRand = seededRandom(`${seed}:card`)
-  // Face-safe stills only, best first (none: no shots, and callers skip the reel).
-  const stills: Still[] = reelImages(video).stills
+  // Face-safe stills only, best first. With none, the clean poster or card image (if any) stands
+  // in as one still; with no clean image at all there are no shots and the reel plays as a
+  // type-only title card (PromoReel).
+  const safe = reelImages(video)
+  const lone = safe.poster ?? safe.thumbnail
+  const stills: Still[] = safe.stills.length
+    ? safe.stills
+    : lone
+      ? [{ src: lone, small: safe.thumbnail ?? lone }]
+      : []
   const sources = stills.length ? SHOT_AT.map((_, i) => stills[i % stills.length]) : []
   const frames = sources.map((s) => s.src)
   // One still three times would stutter: it gets a single slow move under the whole montage.
@@ -355,7 +363,7 @@ export function buildReelPlan(video: Video): ReelPlan {
   const rootHz = pick(rand, NOTES)
   const category = video.category.trim()
 
-  const lowRes = !frames.some((src) => /maxres/.test(src))
+  const lowRes = frames.length > 0 && !frames.some((src) => /maxres/.test(src))
   // Repeats crop tighter; the split panel is half the stage, so it can go deeper.
   const tighter = lowRes ? 0.05 : template === 'split' ? 0.24 : 0.16
   const moves: Move[] = []

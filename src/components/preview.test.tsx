@@ -19,7 +19,7 @@ vi.mock('../features/reel/PromoReel', () => ({
 
 setCatalog(fixtureVideos)
 
-// Previews need stills; the third video has none and keeps its thumbnail.
+// The fourth video has no stills (its reel plays as a title card).
 const still = (n: number) => `https://i.ytimg.com/vi/abcdefghijk/maxres${n}.jpg`
 const withStills = fixtureVideos
   .slice(0, 4)
@@ -56,20 +56,21 @@ const previewIn = (i: number) => cardLink(i).closest('article')!.querySelector('
 describe('card previews', () => {
   beforeEach(() => mediaQueries(false))
 
-  it('never starts for a video whose every still is flagged (it would play on type alone)', () => {
-    // Fixture videos share one YouTube id: flag the stills of a copy with its own.
+  it('starts for every video, stills or not (the reel falls back to a clean image or a title card)', () => {
+    // Fixture videos share one YouTube id: flag every image of a copy with its own.
     const flagged = { ...withStills[0], youtubeId: 'flaggedAll1' }
-    setFrameFlags({ [flagged.youtubeId]: 0b1110 })
+    setFrameFlags({ [flagged.youtubeId]: 0b1111 })
     try {
       const router = createMemoryRouter([
-        { path: '/', element: <VideoGrid videos={[flagged, withStills[1]]} /> },
+        { path: '/', element: <VideoGrid videos={[flagged, withStills[3]]} /> },
         { path: '/watch/:id', element: <p>Player</p> },
       ])
       render(<RouterProvider router={router} />)
       act(() => cardLink(0).focus())
-      expect(previews()).toHaveLength(0)
+      expect(previewIn(0)).not.toBeNull()
       act(() => cardLink(1).focus())
       expect(previews()).toHaveLength(1)
+      expect(previewIn(1)).not.toBeNull()
     } finally {
       setFrameFlags({})
     }
@@ -143,12 +144,6 @@ describe('card previews', () => {
     } finally {
       vi.useRealTimers()
     }
-  })
-
-  it('never starts for a video without stills', () => {
-    renderGrid()
-    act(() => cardLink(3).focus())
-    expect(previews()).toHaveLength(0)
   })
 
   it('never starts with reduced motion', () => {

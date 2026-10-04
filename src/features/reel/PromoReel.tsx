@@ -8,8 +8,9 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
-import { zoomStyle } from '../../components/media'
+import { tileToneOf, zoomStyle } from '../../components/media'
 import { cropZoomOf } from '../../data/frameFlags'
+import { formatDate } from '../../lib/format'
 import { usePersistentState } from '../../lib/storage'
 import type { Video } from '../../types'
 import { createReelAudio, type ReelAudio } from './audio'
@@ -55,10 +56,10 @@ export interface PromoReelProps {
 
 /** Ten-second preview generated from the video's data; calls `onComplete` once when done or skipped. */
 
-// The card image previews open on, never a flagged frame.
+// The card image previews open on, never a flagged frame (none: the title card's own ground).
 const coverOf = (video: Video) => {
   const safe = reelImages(video)
-  return safe.thumbnail ?? safe.poster ?? video.thumbnail
+  return safe.thumbnail ?? safe.poster
 }
 
 // Black bars baked into a still are zoomed out of the frame, as on its card and the player poster.
@@ -87,8 +88,8 @@ export default function PromoReel({
   const doneRef = useRef(false)
   const stills = loaded?.key === video.id ? loaded : null
   const started = stills !== null
-  // No face-safe still (callers skip the reel then): nothing to show, so it ends at once.
-  const empty = plan.shots.length === 0
+  // No clean image at all: the reel plays as a type-only title card on the collection's band.
+  const titleCard = plan.shots.length === 0
 
   const complete = () => {
     if (doneRef.current) return
@@ -99,13 +100,9 @@ export default function PromoReel({
   const onTimeUp = useEffectEvent(complete)
   const soundWanted = useEffectEvent(() => soundOn)
 
-  useEffect(() => {
-    if (empty) onTimeUp()
-  }, [empty])
-
   // Sound is set up while the stills decode: starting an AudioContext can stall the main thread.
   useEffect(() => {
-    if (silent || empty) return
+    if (silent) return
     const audio = createReelAudio(plan.rootHz, () => clockRef.current?.elapsed() ?? 0)
     audioRef.current = audio
     audio.setMuted(!soundWanted())
@@ -113,29 +110,27 @@ export default function PromoReel({
       audio.dispose()
       audioRef.current = null
     }
-  }, [plan, silent, empty])
+  }, [plan, silent])
 
   // Decode the stills (capped) before the clock starts; failures fall back to the backdrop or a gradient.
+  // A title card has none: it waits for the web fonts alone (settleImages, same cap).
   useEffect(() => {
-    if (!plan.shots.length) return
     const controller = new AbortController()
     const small = preview && (rootRef.current?.clientWidth ?? 0) <= CARD_STAGE_PX
     const shots = plan.shots.map((s) => (small ? s.small : s.src))
     // Face-safe images only (frame-flags): the card image for small previews, else the shared poster.
     const safe = reelImages(video)
-    const backdrop =
-      (small ? (safe.thumbnail ?? safe.poster) : safe.poster) ?? shots[0] ?? video.thumbnail
-    void settleImages([backdrop, ...shots], DECODE_CAP_MS, controller.signal).then(
-      ([backdropOk, ...shotOk]) => {
-        if (controller.signal.aborted) return
-        const fallback = backdropOk ? backdrop : null
-        setLoaded({
-          key: video.id,
-          shots: shots.map((src, i) => (shotOk[i] ? src : fallback)),
-          backdrop: fallback ?? shots.find((_, i) => shotOk[i]) ?? null,
-        })
-      },
-    )
+    const backdrop = (small ? (safe.thumbnail ?? safe.poster) : safe.poster) ?? shots[0]
+    const images = backdrop ? [backdrop, ...shots] : []
+    void settleImages(images, DECODE_CAP_MS, controller.signal).then(([backdropOk, ...shotOk]) => {
+      if (controller.signal.aborted) return
+      const fallback = backdropOk && backdrop ? backdrop : null
+      setLoaded({
+        key: video.id,
+        shots: shots.map((src, i) => (shotOk[i] ? src : fallback)),
+        backdrop: fallback ?? shots.find((_, i) => shotOk[i]) ?? null,
+      })
+    })
     return () => controller.abort()
   }, [video, plan, preview])
 
@@ -191,7 +186,7 @@ export default function PromoReel({
     audioRef.current?.setMuted(!soundOn)
   }, [soundOn])
 
-  if (empty) return null
+  const cover = coverOf(video)
 
   return (
     <div
@@ -209,14 +204,19 @@ export default function PromoReel({
       data-unit={plan.unit}
       data-single={plan.single || undefined}
       data-slides={plan.slides || undefined}
+      data-title-card={titleCard || undefined}
       data-lowres={(plan.lowRes && !preview) || undefined}
       style={style}
     >
       {stills ? (
-        <Timeline plan={plan} stills={stills} preview={preview} />
+        <Timeline plan={plan} stills={stills} preview={preview} video={video} />
       ) : (
         <div className="reel-loading" role={preview ? undefined : 'status'}>
-          <img src={coverOf(video)} alt="" draggable={false} style={cropOf(coverOf(video))} />
+          {cover ? (
+            <img src={cover} alt="" draggable={false} style={cropOf(cover)} />
+          ) : (
+            <TitleCard video={video} plan={plan} />
+          )}
           {!preview && <span className="sr-only">Loading preview</span>}
         </div>
       )}
@@ -247,11 +247,33 @@ interface TimelineProps {
   plan: ReelPlan
   stills: Stills
   preview: boolean
+  video: Video
+}
+
+/**
+ * The picture of a video with no clean image: its title in the display serif on the collection's
+ * brand band (the TitleTile look), with the collection, channel and date, over a gold glow and a
+ * fine grain that drift slowly; a soft light sweeps across once and the type rises in (reel.css).
+ * Never an image, so never a flagged frame.
+ */
+function TitleCard({ video, plan }: { video: Video; plan: ReelPlan }) {
+  const meta = [video.channel, formatDate(video.publishedAt)].filter(Boolean).join(' · ')
+  return (
+    <div className="reel-card" data-tone={tileToneOf(video)} aria-hidden="true">
+      <div className="reel-card-copy">
+        <span className="reel-card-rule" />
+        {video.category && <p className="reel-card-kicker">{video.category}</p>}
+        <p className="reel-card-title">{plan.title}</p>
+        {meta && <p className="reel-card-meta">{meta}</p>}
+      </div>
+    </div>
+  )
 }
 
 // Static once mounted: the CSS timeline runs without React re-rendering it. The montage is
 // decorative for assistive tech; the end card carries the one readable summary.
-const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps) {
+const Timeline = memo(function Timeline({ plan, stills, preview, video }: TimelineProps) {
+  const titleCard = plan.shots.length === 0
   return (
     <>
       {/* A blurred copy of the shot on screen: beside slides, which show whole, and under the band. */}
@@ -271,6 +293,7 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
         )}
       </div>
       <div className="reel-stage" aria-hidden="true">
+        {titleCard && <TitleCard video={video} plan={plan} />}
         {plan.shots.map((shot, i) => (
           <div
             key={i}
@@ -384,8 +407,10 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       <div className="reel-end">
         <div className="reel-end-poster" aria-hidden="true">
           <div className="reel-end-art">
-            {stills.backdrop && (
+            {stills.backdrop ? (
               <img src={stills.backdrop} alt="" draggable={false} style={cropOf(stills.backdrop)} />
+            ) : (
+              titleCard && <TitleCard video={video} plan={plan} />
             )}
           </div>
         </div>

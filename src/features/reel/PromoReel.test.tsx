@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { setFrameCrops } from '../../data/frameFlags'
+import { setFrameCrops, setFrameFlags } from '../../data/frameFlags'
 import PromoReel, { REEL_MS } from './PromoReel'
 import { buildReelPlan, REEL_TITLE_MAX } from './plan'
 import { DECODE_CAP_MS } from './preload'
@@ -36,6 +36,61 @@ describe('PromoReel', () => {
     expect(onComplete).not.toHaveBeenCalled()
     await act(() => vi.advanceTimersByTimeAsync(1))
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('plays a type-only title card, never an image, for a video with no clean image', async () => {
+    vi.useFakeTimers()
+    setFrameFlags({ [testVideo.youtubeId]: 0b1111 })
+    try {
+      expect(buildReelPlan(testVideo).shots).toEqual([])
+      const onComplete = vi.fn()
+      const { container } = render(<PromoReel video={testVideo} onComplete={onComplete} />)
+      const reel = container.querySelector('.reel')!
+      expect(reel).toHaveAttribute('data-title-card')
+      // While the fonts settle: the card's ground, not the (flagged) thumbnail.
+      expect(screen.getByRole('status')).toHaveTextContent('Loading preview')
+      expect(reel.querySelector('.reel-loading .reel-card')).not.toBeNull()
+
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      const card = reel.querySelector('.reel-stage .reel-card')!
+      expect(card).toHaveAttribute('data-tone')
+      expect(card.querySelector('.reel-card-title')).toHaveTextContent(testVideo.title)
+      expect(card.querySelector('.reel-card-kicker')).toHaveTextContent(testVideo.category)
+      expect(card.querySelector('.reel-card-meta')).toHaveTextContent(/UP Open University · .*2025/)
+      // The end card hands over on the same title card; nothing in the reel is an image.
+      expect(reel.querySelector('.reel-end-art .reel-card')).not.toBeNull()
+      expect(reel.querySelector('img')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Skip preview' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Unmute' })).toBeInTheDocument()
+
+      await act(() => vi.advanceTimersByTimeAsync(REEL_MS - 1))
+      expect(onComplete).not.toHaveBeenCalled()
+      await act(() => vi.advanceTimersByTimeAsync(1))
+      expect(onComplete).toHaveBeenCalledTimes(1)
+    } finally {
+      setFrameFlags({})
+    }
+  })
+
+  it('plays on the clean poster alone when every still is flagged', async () => {
+    vi.useFakeTimers()
+    // Stills 1-3 flagged, the original (candidate 0) clean.
+    setFrameFlags({ [testVideo.youtubeId]: 0b1110 })
+    try {
+      const plan = buildReelPlan(testVideo)
+      expect(plan.shots.map((s) => s.src)).toEqual([testVideo.backdrop])
+      expect(plan.single).toBe(true)
+      const { container } = render(
+        <PromoReel video={testVideo} variant="preview" onComplete={() => {}} />,
+      )
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      expect(container.querySelector('[data-title-card]')).toBeNull()
+      const srcs = [...container.querySelectorAll('img')].map((i) => i.getAttribute('src'))
+      expect(srcs.length).toBeGreaterThan(0)
+      expect(srcs.every((src) => /(maxres|mq)default\.jpg$/.test(src ?? ''))).toBe(true)
+    } finally {
+      setFrameFlags({})
+    }
   })
 
   it('skips immediately and only once', async () => {

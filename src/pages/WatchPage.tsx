@@ -9,7 +9,6 @@ import { toneOf } from '../components/tones'
 import { getCategoryByName, getVideo } from '../data/catalog'
 import YouTubePlayer, { PlayerPoster } from '../features/player/YouTubePlayer'
 import PromoReel from '../features/reel/PromoReel'
-import { reelImages } from '../features/reel/stills'
 import EscHint, { UpNextKeyHint } from '../features/watch/EscHint'
 import { BackIcon } from '../features/watch/icons'
 import { useInputModality } from '../features/watch/modality'
@@ -44,9 +43,8 @@ export default function WatchPage() {
 }
 
 function Watch({ video }: { video: Video }) {
-  // No face-safe still to show: skip the reel rather than play a blank or dark stage.
-  const [hasReel] = useState(() => reelImages(video).stills.length > 0)
-  const [phase, setPhase] = useState<'reel' | 'player'>(hasReel ? 'reel' : 'player')
+  // Every video opens on its reel (with no clean image, a type-only title card).
+  const [phase, setPhase] = useState<'reel' | 'player'>('reel')
   const goBack = useGoBack()
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
@@ -142,11 +140,6 @@ function Watch({ video }: { video: Video }) {
     setPhase('player')
     record(video.id)
   }
-
-  // Without a reel the player starts at once, so the visit counts now.
-  useEffect(() => {
-    if (!hasReel) record(video.id)
-  }, [hasReel, record, video.id])
 
   // Autoplay: the row after this one in the list (the first row when this page is not one of
   // them); at the end of the list the next picks are added first, as More… would.

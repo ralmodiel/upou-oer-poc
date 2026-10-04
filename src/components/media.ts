@@ -4,9 +4,22 @@ import { thumbnailSetOf } from '../data/expand'
 import { cropZoomOf, flaggedMaskOf } from '../data/frameFlags'
 import { slotImages, widthOf, type SlotImages } from '../data/images'
 import type { Video } from '../types'
+import { toneOf, type Tone } from './tones'
 
 /** Route slug of a category name (names that collide after slugifying get a suffix). */
 export const slugOfCategory = (name: string) => getCategoryByName(name)?.slug ?? ''
+
+// Title tiles and title-card reels use the collection's band colour; charcoal would read as a dark
+// box among stills.
+const TILE_TONE: Record<Tone, Tone> = {
+  maroon: 'maroon',
+  forest: 'forest',
+  gold: 'gold',
+  charcoal: 'maroon',
+}
+
+/** The band tone of a video's title tile and title-card reel: its collection's, never charcoal. */
+export const tileToneOf = (video: Video): Tone => TILE_TONE[toneOf(slugOfCategory(video.category))]
 
 export { widthOf }
 export type { SlotImages }

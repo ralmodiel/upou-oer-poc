@@ -2,13 +2,11 @@ import {
   Suspense,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type FocusEvent,
   type PointerEvent,
 } from 'react'
-import { reelImages } from '../features/reel/stills'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
@@ -88,14 +86,12 @@ export function useCardPreview(video: Video) {
     setPhase('idle')
   }, [id])
 
-  // Without usable stills (none, or every one flagged) a video keeps its static image: its reel
-  // would play on type alone, on a dark stage.
-  const hasStills = useMemo(() => reelImages(video).stills.length > 0, [video])
+  // Every video previews: one with no clean image plays the reel's type-only title card.
   const start = useCallback(() => {
-    if (prefersReducedMotion() || done.current || !hasStills) return
+    if (prefersReducedMotion() || done.current) return
     claim(id, stop)
     setPhase((p) => (p === 'idle' ? 'playing' : p))
-  }, [id, stop, hasStills])
+  }, [id, stop])
 
   useEffect(prefetchReelWhenIdle, [])
 

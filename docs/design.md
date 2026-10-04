@@ -871,3 +871,11 @@ boxes that moved sit below CITE's new "How to cite" section, and they moved beca
 - **Category page:** a soft gold spotlight spills from the band over the sort toolbar and grid (`.page-stage`: a 64×22rem ellipse at top centre, `--tv-spot`, page surface only, behind the cards). The sort switch is glass like the search chips (`glass-border`, frost, `shadow-elev-1`). The missing-collection page keeps the R8 corner glow.
 - **"Showing N of M" and Load more (Category and Search):** a fading hairline (max 40rem, centred) sits halfway up the 40 px gap above (`.page-more::before`). The count is a quiet pill drawn outside its own box (`.page-count::before`, ink 6%, inset -4/-12 px), so nothing moves. Ink-3 on the pill: 4.7:1 light, 5.7:1 dark.
 - **Class names:** new globals are prefixed `page-` (`page-glass`, `page-row`, `page-row-cover`, `page-stage`, `page-more`, `page-count`, `--page-sheen`). None appear in any other stylesheet.
+
+## Previews for every video
+
+Every video now previews, on the watch page and as a card preview (the user: "make sure all videos have previews"). This supersedes the earlier rule that a video without a clean still gets no reel or preview.
+
+- **One clean image** (stills all flagged, but a clean poster or thumbnail): `plan.ts` uses it as the reel's single still, so the single-still reel plays and its end card matches the player poster. 75 videos.
+- **No clean image at all**: a type-only title card (`PromoReel`, `[data-title-card]`). It uses the collection's band colour (pinned light values, as TitleTile), with a short gold rule, the collection, the title in the display serif, and "channel · date". A gold glow and fine grain drift slowly behind the type, the type drifts the other way, a soft light sweeps once, and the type rises in. It shows no image anywhere, so the frame rule cannot be broken. Reduced motion shows a still card. 532 videos.
+- The gate's frame-rule probe accepts a title-card reel whose end card holds no image.

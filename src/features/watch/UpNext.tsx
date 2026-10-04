@@ -71,21 +71,22 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
 
   return (
     <section className="watch-upnext">
-      <SectionHeading title="Up next" id="up-next-heading">
-        <span className="flex items-center gap-2 text-sm font-medium text-ink-2">
+      {/* The actions take the rest of the row: refresh beside the title, Autoplay at the end. */}
+      <SectionHeading title="Up next" id="up-next-heading" className="[&>:last-child]:flex-1">
+        <span className="flex flex-1 items-center gap-2 text-sm font-medium text-ink-2">
           {list.refresh && (
             <button
               type="button"
               onClick={onRefresh}
               aria-label="Refresh Up next"
               title="Refresh Up next"
-              className="group inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-pill text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+              className="group -ml-4 inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-pill text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <RefreshIcon className="size-5 transition-transform duration-500 ease-out group-active:-rotate-180 motion-reduce:transition-none" />
             </button>
           )}
           {/* Names the switch; hidden itself, so screen readers do not read it twice. */}
-          <span id={switchId} aria-hidden="true">
+          <span id={switchId} aria-hidden="true" className="ml-auto">
             Autoplay
           </span>
           {/* The privacy panel's switch: an outlined track off, a forest track on. */}

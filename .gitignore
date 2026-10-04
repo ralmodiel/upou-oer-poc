@@ -16,3 +16,6 @@ tmp/
 
 # Claude Code session state (locks, local settings) stays on this machine
 .claude/
+
+# Playwright MCP session logs
+.playwright-mcp/

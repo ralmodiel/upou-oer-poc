@@ -42,6 +42,9 @@ export interface UpNextList {
   asPlaylist: () => Playlist
   /** Adds the next picks to the end (on a playlist page, kept in history state); returns them. */
   append: () => UpNextItem[]
+  /** Swaps the rows for picks for this video not shown yet (back to the first ones once none are
+   * left), leaving a playlist behind; null while the recommender's index builds. */
+  refresh: (() => void) | null
   /** Works out the next picks in idle time, ahead of a likely More… (pointer or focus on it). */
   prefetch: () => void
   listRef: RefObject<HTMLOListElement | null>
@@ -66,7 +69,9 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   const listRef = useRef<HTMLOListElement>(null)
   const [picked] = useState(profile)
   const [playlist] = useState(() => playlistIn(location.state, video.id))
-  const origin = (playlist && getVideo(playlist.from)) || video
+  // After a refresh the rows are this video's own picks, even on a playlist page.
+  const [own, setOwn] = useState(false)
+  const origin = (!own && playlist && getVideo(playlist.from)) || video
   const [ready, setReady] = useState(isRecommenderReady)
   const [rows, setRows] = useState<Rows>(() =>
     playlist
@@ -122,7 +127,7 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   }
   const [left, setLeft] = useState(true)
   const more = ready && rows.final ? left : null
-  const from = playlist?.from ?? video.id
+  const from = (!own && playlist?.from) || video.id
   const asPlaylist = (items = rows.items): Playlist => ({
     from,
     ids: items.map((i) => i.video.id),
@@ -136,11 +141,31 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
     if (!added.length) return []
     const items = [...rows.items, ...added]
     setRows({ items, final: true })
-    if (playlist) {
+    if (playlist && !own) {
       const state = withPlaylist(location.state, asPlaylist(items))
       void navigate(location, { replace: true, state, preventScrollReset: true })
     }
     return added
+  }
+
+  // Every row shown since the page opened, so a refresh brings new ones until the picks run out.
+  const seen = useRef<UpNextItem[]>([])
+  const refresh = () => {
+    seen.current = [...seen.current, ...rows.items]
+    let picks = moreUpNext(video, video, seen.current, picked, MORE)
+    if (picks.length < MORE) {
+      seen.current = []
+      picks = upNextFor(video, picked)
+    }
+    if (playlist && !own) {
+      // The playlist is left behind: Back to this entry recomputes rather than restoring it.
+      setOwn(true)
+      const state = { ...(location.state as object), playlist: undefined }
+      void navigate(location, { replace: true, state, preventScrollReset: true })
+    }
+    next.current = null
+    setLeft(true)
+    setRows({ items: picks, final: true })
   }
 
   const scheduled = useRef<(() => void) | undefined>(undefined)
@@ -157,9 +182,10 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   return {
     items: rows.items,
     more,
-    playlist,
+    playlist: own ? null : playlist,
     asPlaylist: () => asPlaylist(),
     append,
+    refresh: ready && rows.final ? refresh : null,
     prefetch,
     listRef,
   }

@@ -586,6 +586,23 @@ describe('WatchPage', () => {
       })
     })
 
+    it('Refresh swaps in picks not shown yet, and has works from a playlist page too', async () => {
+      const { router } = renderAt([`/watch/${testVideo.id}`])
+      const first = hrefs()
+      await act(() => fireEvent.click(screen.getByRole('button', { name: 'Refresh Up next' })))
+      expect(rowsOf()).toHaveLength(8)
+      expect(hrefs().some((h) => first.includes(h))).toBe(false)
+      expect(hrefs()).not.toContain(`/watch/${testVideo.id}`)
+      // On a playlist page: picks for the video now playing, and the playlist is left behind.
+      await act(() => fireEvent.click(rowsOf()[0]))
+      const now = router.state.location.pathname
+      await act(() => fireEvent.click(screen.getByRole('button', { name: 'Refresh Up next' })))
+      expect(rowsOf()).toHaveLength(8)
+      expect(hrefs()).not.toContain(now)
+      expect(screen.queryByText('Now playing')).not.toBeInTheDocument()
+      expect(playlistOf(router.state.location.state)).toBeUndefined()
+    })
+
     it('ignores a playlist that does not list the video, as on a deep link', () => {
       renderAt([
         { pathname: `/watch/${testVideo.id}`, state: { playlist: { from: 'x', ids: ['pick-1'] } } },

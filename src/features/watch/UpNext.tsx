@@ -7,7 +7,7 @@ import SectionHeading from '../../components/ui/SectionHeading'
 import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
 import type { Video } from '../../types'
-import { NowPlayingIcon } from './icons'
+import { NowPlayingIcon, RefreshIcon } from './icons'
 import { withPlaylist } from './recommendations'
 import { useAutoplay, type UpNextList } from './useUpNext'
 import './watch.css'
@@ -58,6 +58,12 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     focusFrom.current = list.append().length ? before : before - 1
   }
 
+  // New picks start at the top of the list; focus stays on the button.
+  const onRefresh = () => {
+    list.refresh?.()
+    listRef.current?.scrollTo?.({ top: 0 })
+  }
+
   if (!items.length) return null
   const linkState = withPlaylist(location.state, list.asPlaylist())
   // The row now playing stays where it is; choosing it again goes nowhere.
@@ -67,6 +73,17 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     <section className="watch-upnext">
       <SectionHeading title="Up next" id="up-next-heading">
         <span className="flex items-center gap-2 text-sm font-medium text-ink-2">
+          {list.refresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              aria-label="Refresh Up next"
+              title="Refresh Up next"
+              className="group inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-pill text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              <RefreshIcon className="size-5 transition-transform duration-500 ease-out group-active:-rotate-180 motion-reduce:transition-none" />
+            </button>
+          )}
           {/* Names the switch; hidden itself, so screen readers do not read it twice. */}
           <span id={switchId} aria-hidden="true">
             Autoplay

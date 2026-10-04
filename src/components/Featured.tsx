@@ -83,7 +83,11 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
         document.querySelector('.card-preview') ||
         document.querySelector('dialog[open]')
       waited = busy ? 0 : waited + TICK_MS
-      el.style.setProperty('--advance', String(waited / ADVANCE_MS))
+      // On the active card only: on the zone it restyled the hero and the whole row every tick.
+      el.querySelector<HTMLElement>('[data-row="featured"] > li[data-active]')?.style.setProperty(
+        '--advance',
+        String(waited / ADVANCE_MS),
+      )
       if (waited < ADVANCE_MS) return
       waited = 0
       swapHero(() => setIndex((i) => (i + 1) % count))
@@ -102,7 +106,10 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
     shown.current = index
     const el = zone.current
     const items = el?.querySelectorAll<HTMLElement>('[data-row="featured"] > li') ?? []
-    items.forEach((li, i) => li.toggleAttribute('data-active', i === index))
+    items.forEach((li, i) => {
+      li.toggleAttribute('data-active', i === index)
+      li.style.removeProperty('--advance')
+    })
     const li = items[index]
     const track = li?.closest<HTMLElement>('[data-spatial="track"]')
     if (!li || !track || hovered.current || el?.contains(document.activeElement)) return
@@ -170,14 +177,28 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
 
 /**
  * Shows the hero's next video: the picture and the text cross-fade (browse.css,
- * html[data-hero-swap]) where View Transitions run and motion is welcome; elsewhere at once.
+ * html[data-hero-swap]) where View Transitions run and motion is welcome; elsewhere at once. The
+ * text is a new copy per video (Hero), so a control in focus there (a pointer resting on a card
+ * while Play holds focus) takes focus again in the new copy: the same button, counted from the end.
  */
 let swapping: ViewTransition | null = null
+let refocusing = false
+const HERO_CONTROLS = '[data-hero-text] :is(a, button)'
 function swapHero(apply: () => void) {
-  if (!document.startViewTransition || prefersReducedMotion() || document.hidden) return apply()
+  const before = [...document.querySelectorAll(HERO_CONTROLS)]
+  const fromEnd = before.length - before.indexOf(document.activeElement as Element)
+  const show = () => {
+    flushSync(apply)
+    if (fromEnd > before.length) return
+    const after = [...document.querySelectorAll<HTMLElement>(HERO_CONTROLS)]
+    refocusing = true
+    after[Math.max(0, after.length - fromEnd)]?.focus({ preventScroll: true })
+    refocusing = false
+  }
+  if (!document.startViewTransition || prefersReducedMotion() || document.hidden) return show()
   const root = document.documentElement
   root.dataset.heroSwap = ''
-  const transition = document.startViewTransition(() => flushSync(apply))
+  const transition = document.startViewTransition(show)
   swapping = transition
   void transition.finished.finally(() => {
     if (swapping === transition) delete root.dataset.heroSwap
@@ -193,7 +214,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
   const preview = useCardPreview(video)
   const long = video.title.length > LONG_TITLE
   const onFocus = () => {
-    if (lastInput() !== 'pointer') preview.start()
+    if (lastInput() !== 'pointer' && !refocusing) preview.start()
   }
   const onBlur = (e: FocusEvent<HTMLElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) preview.stop()
@@ -234,7 +255,9 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
             </Thumbnail>
           </PlayLink>
         </div>
+        {/* A new copy per video: text that changes in place would shift (CLS). */}
         <div
+          key={video.id}
           data-hero-text=""
           className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start"
         >

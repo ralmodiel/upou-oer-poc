@@ -7,6 +7,7 @@ import {
   type FocusEvent,
   type PointerEvent,
 } from 'react'
+import { prefetchWatch } from '../features/reel/preload'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
@@ -41,7 +42,8 @@ function release(id: string) {
 }
 
 // The reel chunk (shared with the watch page), fetched once: when the browser is first idle after a
-// card mounts, or at the first hover or focus on a card, so a preview never waits on the network.
+// card mounts (with the watch page's), or at the first hover or focus on a card, so a preview never
+// waits on the network.
 let reelRequested = false
 let idleScheduled = false
 function prefetchReel() {
@@ -54,7 +56,10 @@ function prefetchReel() {
 function prefetchReelWhenIdle() {
   if (idleScheduled || reelRequested) return
   idleScheduled = true
-  onIdle(prefetchReel, 4000)
+  onIdle(() => {
+    prefetchReel()
+    prefetchWatch()
+  }, 4000)
 }
 
 /** Stops whichever preview is playing (dialogs opening, for instance). */

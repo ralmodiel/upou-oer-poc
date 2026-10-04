@@ -61,11 +61,22 @@ export function settleImages(
   })
 }
 
+let watchRequested = false
+/**
+ * The watch page's chunk, once. Cards ask when the browser is first idle (preview.tsx): its
+ * stylesheet restyles the whole page as it lands, which must not happen as a hover preview starts.
+ */
+export function prefetchWatch() {
+  if (watchRequested) return
+  watchRequested = true
+  import('../../pages/WatchPage').catch(() => (watchRequested = false))
+}
+
 /** Warms the watch chunk and reel images before the user presses Play. */
 export function preloadReel(video: Video) {
   if (warmed.has(video.id)) return
   warmed.add(video.id)
-  import('../../pages/WatchPage').catch(() => {})
+  prefetchWatch()
   // The stills and the poster the watch stage ends on (flagged ones never load).
   const { poster, stills } = reelImages(video)
   for (const src of new Set([poster, ...stills.map((s) => s.src)])) if (src) void decodeImage(src)

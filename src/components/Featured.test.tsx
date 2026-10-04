@@ -134,6 +134,16 @@ describe('Featured hero and row', () => {
     expect(heroPlays()).toBe(href(0))
   })
 
+  it('keeps focus on the hero control in focus when a resting pointer shows another video', () => {
+    const { container } = renderHome()
+    screen.getByRole('link', { name: 'Play' }).focus()
+    fireEvent.pointerEnter(container.querySelector('[data-featured-zone]')!)
+    fireEvent.pointerOver(cardLink(2))
+    wait(HOVER_INTENT_MS)
+    expect(heroPlays()).toBe(href(2))
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Play' }))
+  })
+
   it('drops a pick when the pointer sweeps on before the intent delay', () => {
     renderHome()
     fireEvent.pointerOver(cardLink(1))

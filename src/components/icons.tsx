@@ -138,14 +138,6 @@ export const ShareIcon = (props: IconProps) => (
   </Icon>
 )
 
-export const MoreIcon = (props: IconProps) => (
-  <Icon {...props} stroke="none">
-    <circle cx="5" cy="12" r="1.9" fill="currentColor" />
-    <circle cx="12" cy="12" r="1.9" fill="currentColor" />
-    <circle cx="19" cy="12" r="1.9" fill="currentColor" />
-  </Icon>
-)
-
 export const HelpIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="12" cy="12" r="9" />

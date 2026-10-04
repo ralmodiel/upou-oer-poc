@@ -1,22 +1,14 @@
 /* Secondary pages and panels (quick look, collections, search suggestions, My List, Not found,
    Privacy, Shortcuts): the TV-app finish. Paint only: nothing here moves or resizes a box. */
 
-/* Dark scheme hooks for the few values tokens can't carry (index.css: system dark unless the
-   page is set light, or set dark). */
+/* Dark scheme hooks for the few values tokens can't carry. html[data-theme] is always set before
+   anything renders (main.tsx), so no system-dark mirror is needed here. */
 :root {
   --tv-glow: transparent;
   /* Collection card focus: the browse cards' neutral glow in light, the gold bloom in dark. */
   --tv-card-glow: var(--shadow-glow);
   --page-sheen: transparent;
   --tv-spot: color-mix(in oklab, var(--color-gold) 12%, transparent);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
-    --tv-card-glow: 0 0 32px 4px var(--tv-glow);
-    --page-sheen: rgb(255 255 255 / 0.035);
-    --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
-  }
 }
 :root[data-theme='dark'] {
   --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);

@@ -280,7 +280,6 @@ export default function BrowsePage() {
       <GridHint />
       <Intro />
       <Featured videos={featured} alsoNew={alsoNew} />
-      <HowItWorks />
       {/* Every third section is a tinted band (browse.css). */}
       <div className="home-bands">
         {prefs.recommendations && (
@@ -317,7 +316,8 @@ export default function BrowsePage() {
         {shownRows.map((row) => (
           <Section key={row.id} row={row} eager={restoring} />
         ))}
-        {/* The subject index closes the feed: mid-page, a wall of chips read as its end. */}
+        {/* The guide and the subject index close the feed: mid-page, either read as its end. */}
+        <HowItWorks />
         <CollectionChips />
         <MoreCollections shown={shownRows.length} />
       </div>

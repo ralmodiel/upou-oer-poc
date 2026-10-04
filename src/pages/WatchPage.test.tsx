@@ -191,7 +191,7 @@ describe('WatchPage', () => {
     expect(text).toHaveAttribute('data-folded')
   })
 
-  it('lays out breadcrumbs, meta, tags and eight "Up next" videos', () => {
+  it('lays out breadcrumbs, meta, tags and the video now playing over eight "Up next" picks', () => {
     renderAt([`/watch/${testVideo.id}`])
     const slug = `/collections/${slugifyCategory(testVideo.category)}`
 
@@ -234,8 +234,11 @@ describe('WatchPage', () => {
     )
 
     const upNext = within(screen.getByRole('list', { name: 'Up next' })).getAllByRole('link')
-    expect(upNext).toHaveLength(8)
-    expect(upNext.map((a) => a.getAttribute('href'))).not.toContain(`/watch/${testVideo.id}`)
+    expect(upNext).toHaveLength(9)
+    expect(upNext[0]).toHaveAttribute('aria-current', 'true')
+    expect(upNext.slice(1).map((a) => a.getAttribute('href'))).not.toContain(
+      `/watch/${testVideo.id}`,
+    )
     expect(screen.getByRole('link', { name: /More in Technology and Teaching/ })).toHaveAttribute(
       'href',
       slug,
@@ -246,8 +249,8 @@ describe('WatchPage', () => {
     renderAt([`/watch/${testVideo.id}`])
     const list = screen.getByRole('list', { name: 'Up next' })
     const rows = within(list).getAllByRole('link')
-    // Stand-ins: the collection eyebrow, no reasons yet.
-    expect(rows).toHaveLength(8)
+    // Stand-ins under the video now playing: the collection eyebrow, no reasons yet.
+    expect(rows).toHaveLength(9)
     expect(list.querySelectorAll('.eyebrow')).toHaveLength(8)
     expect(screen.getByRole('button', { name: 'Loading…' })).toHaveAttribute(
       'aria-disabled',
@@ -255,19 +258,21 @@ describe('WatchPage', () => {
     )
 
     // Focus on the list holds the swap; it happens once focus leaves, in the same rows.
-    act(() => rows[0].focus())
+    act(() => rows[1].focus())
     await act(() => warmRecommenderAsync())
-    expect(document.activeElement).toBe(rows[0])
+    expect(document.activeElement).toBe(rows[1])
     expect(list.querySelectorAll('.eyebrow')).toHaveLength(8)
-    act(() => rows[0].blur())
+    act(() => rows[1].blur())
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
     const after = within(list).getAllByRole('link')
     after.forEach((row, i) => expect(row).toBe(rows[i]))
     expect(list.querySelectorAll('.eyebrow')).toHaveLength(0)
-    expect(after.map((a) => a.getAttribute('href'))).not.toContain(`/watch/${testVideo.id}`)
+    expect(after.slice(1).map((a) => a.getAttribute('href'))).not.toContain(
+      `/watch/${testVideo.id}`,
+    )
     // Nine look-alikes, eight shown: one more to add, then More… goes.
     fireEvent.click(screen.getByRole('button', { name: 'More…' }))
-    expect(within(list).getAllByRole('link')).toHaveLength(9)
+    expect(within(list).getAllByRole('link')).toHaveLength(10)
     expect(screen.queryByRole('button', { name: /More…|Loading…/ })).not.toBeInTheDocument()
   })
 
@@ -289,9 +294,9 @@ describe('WatchPage', () => {
     warmRecommender()
     renderAt([`/watch/${testVideo.id}`])
     const list = screen.getByRole('list', { name: 'Up next' })
-    expect(within(list).getAllByRole('link')).toHaveLength(8)
+    expect(within(list).getAllByRole('link')).toHaveLength(9)
     expect(list.querySelectorAll('.eyebrow')).toHaveLength(0)
-    expect(list.querySelector('[aria-current]')).toBeNull()
+    expect(list.querySelector('[aria-current]')).toHaveAttribute('href', `/watch/${testVideo.id}`)
     expect(screen.getByRole('button', { name: 'More…' })).not.toHaveAttribute('aria-disabled')
   })
 
@@ -350,7 +355,7 @@ describe('WatchPage', () => {
       expect(router.state.location.pathname).toBe('/watch/pick-1')
       expect(playlistOf(router.state.location.state)).toEqual({
         from: testVideo.id,
-        ids: ['pick-0', 'pick-1', 'pick-2'],
+        ids: [testVideo.id, 'pick-0', 'pick-1', 'pick-2'],
       })
     })
 
@@ -447,13 +452,13 @@ describe('WatchPage', () => {
       const frame = await toPlayer('pick-1')
       await send(frame, ended)
       const rows = within(screen.getByRole('list', { name: 'Up next' })).getAllByRole('link')
-      expect(rows).toHaveLength(10)
-      const next = rows[2].getAttribute('href')
+      expect(rows).toHaveLength(11)
+      const next = rows[3].getAttribute('href')
       await act(() => vi.advanceTimersByTimeAsync(5100))
       expect(router.state.location.pathname).toBe(next)
       const { ids } = playlistOf(router.state.location.state) as { ids: string[] }
-      expect(ids.slice(0, 2)).toEqual(['pick-0', 'pick-1'])
-      expect(ids).toHaveLength(10)
+      expect(ids.slice(0, 3)).toEqual([testVideo.id, 'pick-0', 'pick-1'])
+      expect(ids).toHaveLength(11)
     })
 
     it('Enter on the player enters its Play / Pause key, which drives the embed', async () => {
@@ -513,7 +518,7 @@ describe('WatchPage', () => {
       expect(post.mock.calls.every((call) => (call as unknown[])[1] === PLAYER)).toBe(true)
     })
 
-    it('without a playlist goes to the first row, keeping the list as shown', async () => {
+    it('without a playlist goes to the first pick, keeping the list as shown', async () => {
       const { router } = renderAt([`/watch/${testVideo.id}`])
       const shown = within(screen.getByRole('list', { name: 'Up next' }))
         .getAllByRole('link')
@@ -524,7 +529,8 @@ describe('WatchPage', () => {
       fireEvent.load(frame)
       await send(frame, ended)
       await act(() => vi.advanceTimersByTimeAsync(5100))
-      expect(router.state.location.pathname).toBe(`/watch/${shown[0]}`)
+      expect(shown[0]).toBe(testVideo.id)
+      expect(router.state.location.pathname).toBe(`/watch/${shown[1]}`)
       expect(playlistOf(router.state.location.state)).toEqual({ from: testVideo.id, ids: shown })
     })
   })
@@ -571,35 +577,36 @@ describe('WatchPage', () => {
 
     it('More… appends the next eight in order, focuses the first and keeps them in history', async () => {
       const { router } = renderAt([`/watch/${testVideo.id}`])
-      await act(() => fireEvent.click(rowsOf()[0]))
+      await act(() => fireEvent.click(rowsOf()[1]))
       const shown = hrefs()
       await act(() => fireEvent.click(screen.getByRole('button', { name: 'More…' })))
       const rows = rowsOf()
-      expect(rows).toHaveLength(16)
-      expect(hrefs().slice(0, 8)).toEqual(shown)
-      expect(new Set(hrefs()).size).toBe(16)
-      expect(hrefs()).not.toContain(`/watch/${testVideo.id}`)
-      expect(rows[8]).toHaveFocus()
+      expect(rows).toHaveLength(17)
+      expect(hrefs().slice(0, 9)).toEqual(shown)
+      expect(new Set(hrefs()).size).toBe(17)
+      expect(hrefs()[0]).toBe(`/watch/${testVideo.id}`)
+      expect(rows[9]).toHaveFocus()
       expect(playlistOf(router.state.location.state)).toEqual({
         from: testVideo.id,
         ids: hrefs().map((h) => h?.replace('/watch/', '')),
       })
     })
 
-    it('Refresh swaps in picks not shown yet, and has works from a playlist page too', async () => {
+    it('Refresh swaps in picks not shown yet, also from a playlist page', async () => {
       const { router } = renderAt([`/watch/${testVideo.id}`])
-      const first = hrefs()
+      const first = hrefs().slice(1)
       await act(() => fireEvent.click(screen.getByRole('button', { name: 'Refresh Up next' })))
-      expect(rowsOf()).toHaveLength(8)
+      expect(rowsOf()).toHaveLength(9)
+      expect(hrefs()[0]).toBe(`/watch/${testVideo.id}`)
       expect(hrefs().some((h) => first.includes(h))).toBe(false)
-      expect(hrefs()).not.toContain(`/watch/${testVideo.id}`)
       // On a playlist page: picks for the video now playing, and the playlist is left behind.
-      await act(() => fireEvent.click(rowsOf()[0]))
+      await act(() => fireEvent.click(rowsOf()[1]))
       const now = router.state.location.pathname
       await act(() => fireEvent.click(screen.getByRole('button', { name: 'Refresh Up next' })))
-      expect(rowsOf()).toHaveLength(8)
-      expect(hrefs()).not.toContain(now)
-      expect(screen.queryByText('Now playing')).not.toBeInTheDocument()
+      expect(rowsOf()).toHaveLength(9)
+      expect(hrefs()[0]).toBe(now)
+      expect(hrefs().slice(1)).not.toContain(now)
+      expect(rowsOf()[0]).toHaveTextContent('Now playing')
       expect(playlistOf(router.state.location.state)).toBeUndefined()
     })
 
@@ -607,10 +614,8 @@ describe('WatchPage', () => {
       renderAt([
         { pathname: `/watch/${testVideo.id}`, state: { playlist: { from: 'x', ids: ['pick-1'] } } },
       ])
-      expect(rowsOf()).toHaveLength(8)
-      expect(
-        screen.getByRole('list', { name: 'Up next' }).querySelector('[aria-current]'),
-      ).toBeNull()
+      expect(rowsOf()).toHaveLength(9)
+      expect(rowsOf()[0]).toHaveAttribute('aria-current', 'true')
     })
   })
 

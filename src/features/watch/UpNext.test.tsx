@@ -41,7 +41,7 @@ describe('Up next More…', () => {
     vi.useFakeTimers()
     renderWatch()
     // Not while the page renders: that is a larger recommender run than the list's own.
-    expect(rows()).toHaveLength(8)
+    expect(rows()).toHaveLength(9)
     expect(moreUpNext).not.toHaveBeenCalled()
 
     const more = screen.getByRole('button', { name: 'More…' })
@@ -52,21 +52,21 @@ describe('Up next More…', () => {
 
     // The click uses what idle time worked out.
     fireEvent.click(more)
-    expect(rows()).toHaveLength(16)
+    expect(rows()).toHaveLength(17)
     expect(moreUpNext).toHaveBeenCalledTimes(1)
-    expect(rows()[8]).toHaveFocus()
+    expect(rows()[9]).toHaveFocus()
   })
 
   it('with nothing left to add, More… goes and the last row keeps focus in the list', () => {
     setCatalog([testVideo, ...lookalikes(8)])
     warmRecommender()
     renderWatch()
-    expect(rows()).toHaveLength(8)
+    expect(rows()).toHaveLength(9)
     const more = screen.getByRole('button', { name: 'More…' })
     act(() => more.focus())
     fireEvent.click(more)
-    expect(rows()).toHaveLength(8)
+    expect(rows()).toHaveLength(9)
     expect(screen.queryByRole('button', { name: 'More…' })).not.toBeInTheDocument()
-    expect(rows()[7]).toHaveFocus()
+    expect(rows()[8]).toHaveFocus()
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { onIdle } from '../../components/browse-hooks'
 import { getVideo } from '../../data/catalog'
@@ -16,6 +16,8 @@ import {
   type Playlist,
   type UpNextItem,
 } from './recommendations'
+
+const without = (ids: readonly string[], id: string) => ids.filter((x) => x !== id)
 
 // Rows More… adds at a time.
 const MORE = 8
@@ -75,7 +77,7 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   const [ready, setReady] = useState(isRecommenderReady)
   const [rows, setRows] = useState<Rows>(() =>
     playlist
-      ? { items: playlistRows(playlist.ids, origin, picked), final: true }
+      ? { items: playlistRows(without(playlist.ids, playlist.from), origin, picked), final: true }
       : isRecommenderReady()
         ? { items: upNextFor(video, picked), final: true }
         : { items: upNextPlaceholder(video), final: false },
@@ -128,9 +130,11 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   const [left, setLeft] = useState(true)
   const more = ready && rows.final ? left : null
   const from = (!own && playlist?.from) || video.id
+  // The video the picks are for heads the list: "Now playing" on its own page.
+  const shown = useMemo(() => [{ video: origin, reason: '' }, ...rows.items], [origin, rows.items])
   const asPlaylist = (items = rows.items): Playlist => ({
     from,
-    ids: items.map((i) => i.video.id),
+    ids: [origin.id, ...items.map((i) => i.video.id)],
   })
 
   const append = () => {
@@ -180,7 +184,7 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
   useEffect(() => () => scheduled.current?.(), [])
 
   return {
-    items: rows.items,
+    items: shown,
     more,
     playlist: own ? null : playlist,
     asPlaylist: () => asPlaylist(),

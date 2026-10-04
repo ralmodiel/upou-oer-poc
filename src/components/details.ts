@@ -28,14 +28,15 @@ export const wasOpenedInApp = (state: unknown) =>
 
 /**
  * How far the dialog must scroll for the details' title and the facts line under it to show, with
- * a 16px margin: 0 while they are in view, and never so far that the title leaves the top.
+ * `air` below them (16px; more where a floating pill covers the foot of the view): 0 while they are
+ * in view, and never so far that the title leaves the top.
  */
-export function detailsShortfall(view: Element, details: Element): number {
+export function detailsShortfall(view: Element, details: Element, air = 16): number {
   const title = details.firstElementChild
   if (!title) return 0
   const box = view.getBoundingClientRect()
   const top = title.getBoundingClientRect().top - box.top
   const bottom = (title.nextElementSibling ?? title).getBoundingClientRect().bottom - box.top
-  const short = bottom + 16 - box.height
+  const short = bottom + air - box.height
   return short > 0 ? Math.max(0, Math.min(short, top - 16)) : 0
 }

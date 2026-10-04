@@ -64,7 +64,7 @@ function findSpot(spot: Spot): HTMLElement | null {
   if (!main) return null
   if (spot.row === null) {
     const outside = Array.from(main.querySelectorAll<HTMLElement>(CONTROLS)).filter(
-      (el) => !el.closest('[data-row]'),
+      (el) => !el.closest('[data-row], [aria-hidden="true"]'),
     )
     const same = outside.find((el) => signatureOf(el) === spot.sig)
     return same ?? (spot.entry ? main.querySelector<HTMLElement>('[data-spatial="entry"]') : null)

@@ -561,7 +561,7 @@ html:has(dialog[data-details][open]) {
 
 /* Home top (Featured.tsx). The hero's next video: its picture cross-fades and its text gives way
    and settles in, on a calm ease with no overshoot. The page stays usable meanwhile (pointer events
-   pass the transition's layer). */
+   pass the transition's layer, and the root is not captured). */
 html[data-hero-swap] [data-hero-media] {
   view-transition-name: hero-media;
 }
@@ -570,6 +570,12 @@ html[data-hero-swap] [data-hero-text] {
 }
 html[data-hero-swap]::view-transition {
   pointer-events: none;
+}
+/* Only the hero's picture and text take part: with the root captured too (the UA's
+   view-transition-name: root), every click during the 500ms swap hit the transition's layer and was
+   lost, a featured card just rested on included. */
+html[data-hero-swap] {
+  view-transition-name: none;
 }
 html[data-hero-swap]::view-transition-group(*),
 html[data-hero-swap]::view-transition-old(*),

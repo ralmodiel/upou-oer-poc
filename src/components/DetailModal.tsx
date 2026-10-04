@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { getVideo } from '../data/catalog'
-import { citeOf } from '../data/cites'
 import WatchCite from '../features/watch/WatchCite'
 import { useProfile } from '../lib/history'
 import { lastInput } from '../lib/pointer'
@@ -39,6 +38,8 @@ import './pages.css'
 // Matches the data-closing transition in browse.css.
 const EXIT_MS = 200
 const SIMILAR = 6
+// The foot of the view the More like this pill floats in (scroll-pb-24).
+const PILL_ZONE = 96
 // Soft glow of the video's still behind the image column, gone by the time the text starts.
 const SCRIM = 'bg-linear-to-b from-surface/40 via-surface/80 via-60% to-surface'
 
@@ -102,8 +103,9 @@ function DetailDialog({ video }: { video: Video }) {
   // still, grown: Enter plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by
   // surprise. Opened from the home hero's Details (#details), focus starts on the details instead,
   // still at the top: the dialog scrolls only when the title is off screen once the citation above
-  // it (phones) is in, and then just far enough to show the title and its facts line.
-  useEffect(() => {
+  // it (phones) is in, and then just far enough to show the title and its facts line, clear of the
+  // More like this pill. Before paint, so a title swapped in never shows at the old scroll position.
+  useLayoutEffect(() => {
     stopPreview()
     const el = dialog.current
     el?.scrollTo({ top: 0 })
@@ -113,15 +115,19 @@ function DetailDialog({ video }: { video: Video }) {
       return
     }
     details.focus({ preventScroll: true })
-    let live = true
-    void citeOf(video).then(() =>
-      requestAnimationFrame(() => {
-        if (live) el.scrollBy({ top: detailsShortfall(el, details) })
-      }),
-    )
-    return () => {
-      live = false
-    }
+    const cite = citeRef.current
+    if (!cite) return
+    // The citation renders on its own once cites.json is in (the first open of a visit): measure
+    // once it has a height, not when its data resolves (it may not have rendered yet).
+    const observer = new ResizeObserver(() => {
+      if (!cite.offsetHeight) return
+      observer.disconnect()
+      const view = el.getBoundingClientRect()
+      const pillZone = (similarHeading.current?.getBoundingClientRect().top ?? 0) > view.bottom
+      el.scrollBy({ top: detailsShortfall(el, details, pillZone ? PILL_ZONE : 16) })
+    })
+    observer.observe(cite)
+    return () => observer.disconnect()
   }, [video, hash])
 
   // The floating More like this pill: shown while its heading is below the dialog's view (long

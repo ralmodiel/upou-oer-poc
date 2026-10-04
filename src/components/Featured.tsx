@@ -1,5 +1,6 @@
 import { memo, useEffect, useId, useRef, useState, type FocusEvent, type MouseEvent } from 'react'
 import { flushSync } from 'react-dom'
+import { useLocation, useNavigationType } from 'react-router'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
@@ -30,6 +31,9 @@ export const ADVANCE_MS = 7000
 /** A pointer rests this long on a featured card before the hero shows it (no flicker when sweeping). */
 export const HOVER_INTENT_MS = 150
 const TICK_MS = 250
+// The hero's video on each page of this visit, by location key: Back returns to the one left from
+// (its Play keeps focus on the same video, and a restored card needs no swap).
+const heroAt = new Map<string, number>()
 
 // Fades the blurred still into the page, fully by the bottom edge (browse.css).
 const SCRIM = 'hero-scrim'
@@ -53,12 +57,17 @@ function Featured(props: Props) {
  * active card shows the count as a thin line.
  */
 function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
-  const [index, setIndex] = useState(start)
+  const { key } = useLocation()
+  const popped = useNavigationType() === 'POP'
+  const count = videos.length
+  const [index, setIndex] = useState(() =>
+    Math.min(popped ? (heroAt.get(key) ?? start) : start, count - 1),
+  )
+  useEffect(() => void heroAt.set(key, index), [key, index])
   const shown = useRef(index)
   const zone = useRef<HTMLDivElement>(null)
   const hovered = useRef(false)
   const intent = useRef({ timer: 0, to: -1 })
-  const count = videos.length
 
   useEffect(() => {
     let waited = 0

@@ -185,6 +185,23 @@ describe('useReturnFocus', () => {
     )
   })
 
+  it('skips a decorative duplicate of the control (the hero picture before its Play)', async () => {
+    const router = routerFor(
+      <>
+        <Link to="/watch/lead" tabIndex={-1} aria-hidden="true">
+          Picture
+        </Link>
+        <Link to="/watch/lead" data-spatial="entry">
+          Play
+        </Link>
+      </>,
+    )
+    render(<RouterProvider router={router} />)
+    await userEvent.click(screen.getByRole('link', { name: 'Play' }))
+    await act(() => router.navigate(-1))
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Play' })).toHaveFocus())
+  })
+
   it('returns to the same row and place, never to a copy of the video elsewhere', async () => {
     // Watching "a" moves it to Recently viewed, and its collection row moves on to "c".
     let watched = false

@@ -11,19 +11,24 @@ const featured = fixtureVideos.slice(0, 3)
 const alsoNew = fixtureVideos.slice(3, 6)
 
 function renderHome() {
-  const router = createMemoryRouter([
-    {
-      path: '/',
-      element: (
-        <main>
-          <Featured videos={featured} alsoNew={alsoNew} />
-          <section aria-label="Below" className="lazy-section" />
-          <footer />
-        </main>
-      ),
-    },
-    { path: '/watch/:id', element: <p>Player</p> },
-  ])
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/',
+        element: (
+          <main>
+            <Featured videos={featured} alsoNew={alsoNew} />
+            <section aria-label="Below" className="lazy-section" />
+            <footer />
+          </main>
+        ),
+      },
+      { path: '/watch/:id', element: <p>Player</p> },
+      // A fresh history entry per test: the hero remembers its video per entry (Back), and a memory
+      // router's first entry always has the key "default".
+    ],
+    { initialEntries: ['/watch/start', '/'], initialIndex: 1 },
+  )
   return { ...render(<RouterProvider router={router} />), router }
 }
 
@@ -146,6 +151,17 @@ describe('Featured hero and row', () => {
     act(() => cardLink(2).focus())
     wait(0)
     expect(heroPlays()).toBe(href(2))
+  })
+
+  it('comes Back on the video it was left from, not the first', async () => {
+    const { router } = renderHome()
+    act(() => cardLink(2).focus())
+    wait(0)
+    fireEvent.click(screen.getByRole('link', { name: 'Play' }))
+    expect(router.state.location.pathname).toBe(href(2))
+    await act(() => router.navigate(-1))
+    expect(heroPlays()).toBe(href(2))
+    expect(card(2)).toHaveAttribute('data-active')
   })
 
   it('plays a card when it is clicked, as cards do elsewhere', () => {

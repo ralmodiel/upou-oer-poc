@@ -123,7 +123,13 @@ function CategoryCard({ category, eager = true }: { category: Category; eager?: 
           title={name}
           className="line-clamp-2 font-display text-2xl leading-tight text-ink transition-colors group-hover/cat:text-maroon"
         >
-          <Link to={`/collections/${slug}`} className="outline-none after:absolute after:inset-0">
+          {/* A card's stretched link (data-card-link): the remote reveals the whole card, centred,
+              not just this title (it left the count and newest titles below the fold). */}
+          <Link
+            to={`/collections/${slug}`}
+            data-card-link=""
+            className="outline-none after:absolute after:inset-0"
+          >
             {name}
           </Link>
         </h2>

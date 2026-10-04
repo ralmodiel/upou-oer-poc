@@ -119,6 +119,17 @@ describe('frame flags', () => {
     expect(lowRes.frames.map(name)).toEqual(['x.jpg', 'x.jpg', 'x.jpg'])
   })
 
+  it('never shows a source image resized below 640px (the site logo) as the picture', () => {
+    setFrameFlags({ abcdefghijk: pack({ mask: 0b1110, rank: [0, 1, 2, 3] }) })
+    const logo = 'https://oer.upou.edu.ph/wp-content/uploads/2026/03/UPOU-Networks-1-200x143.png'
+    const v = expandRecord({ ...rec, b: logo })
+    expect([v.backdrop, v.poster!, ...v.frames].map(name)).toEqual(Array(5).fill('hqdefault.jpg'))
+    expect(name(expandRecord({ ...rec, m: 0, b: logo }).backdrop)).toBe('hqdefault.jpg')
+    // A large featured image stays, its size suffix included.
+    const big = 'https://oer.upou.edu.ph/wp-content/uploads/x-1280x720.jpg'
+    expect(expandRecord({ ...rec, m: 0, b: big }).backdrop).toBe(big)
+  })
+
   it('decodes every field of a packed value', () => {
     const all = pack({ mask: 15, fallback: 2, pairs: 0b101, slides: 0b0100, rank: [2, 0, 3, 1] })
     setFrameFlags({ abcdefghijk: all, partial: pack({ mask: 0b0111, fallback: 3 }) })

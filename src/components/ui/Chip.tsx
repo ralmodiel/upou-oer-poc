@@ -34,7 +34,7 @@ const SIZE = {
 // the row arrows: a fuller fill, a light rim and a soft drop, lifted 2px (motion-safe); focus adds
 // the TV glow.
 const OFF =
-  'border-glass-border bg-frost text-ink-2 shadow-(--shadow-elev-1) hover:border-rim hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:border-rim focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5'
+  'border-glass-border bg-frost text-ink-2 shadow-(--shadow-elev-1) hover:border-rim hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:border-rim focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] md:motion-safe:hover:-translate-y-0.5 md:motion-safe:focus-visible:-translate-y-0.5'
 // Selected: the maroon fill with the primary button's sheen (UP maroon; the deep band maroon in
 // dark). A brand dot keeps a ring.
 const ON =

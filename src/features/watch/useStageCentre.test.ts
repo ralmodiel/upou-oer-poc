@@ -41,4 +41,19 @@ describe('markWatchSwap', () => {
     vi.advanceTimersByTime(1500)
     expect(document.documentElement).not.toHaveAttribute('data-watch-swap')
   })
+
+  it('marks it "far" when the stage is scrolled out of sight, so it does not fly in', () => {
+    Object.defineProperty(document, 'startViewTransition', { value: vi.fn(), configurable: true })
+    const wrap = document.body.appendChild(document.createElement('div'))
+    wrap.className = 'watch-stage-wrap'
+    const at = (top: number) =>
+      vi.spyOn(wrap, 'getBoundingClientRect').mockReturnValue({ top, bottom: top + 219 } as DOMRect)
+    at(-900)
+    markWatchSwap()
+    expect(document.documentElement.dataset.watchSwap).toBe('far')
+    at(274)
+    markWatchSwap()
+    expect(document.documentElement.dataset.watchSwap).toBe('')
+    wrap.remove()
+  })
 })

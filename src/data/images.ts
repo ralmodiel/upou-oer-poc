@@ -141,6 +141,13 @@ export type VideoImages = Pick<
 const at = <T>(list: readonly T[], turn: number) =>
   list[((turn % list.length) + list.length) % list.length]
 
+// A source image WordPress resized below 640px wide ("…-200x143.png"): the site's logo standing in
+// for a missing featured image, never the video's picture. It may also have stood in for a missing
+// default still, so YouTube's 480px thumbnail (always served) takes its place.
+const RESIZED = /-(\d+)x\d+\.\w+$/
+const sourceImage = (b: string | undefined) =>
+  b && !(Number(RESIZED.exec(b)?.[1]) < 640) ? b : undefined
+
 /**
  * The image fields of a video. Candidates are the YouTube thumbnail and its three stills (small
  * and large share an index). Flagged ones (a face not smiling, eyes closed, a dark or blank still)
@@ -154,6 +161,7 @@ export function videoImages(
   turn = 0,
 ): VideoImages {
   const hiRes = r.m !== 0
+  const source = sourceImage(r.b)
   // Without 1280px stills, the 640px "sd" ones (4:3 letterboxed; object-fit: cover crops the bars)
   // still beat the 320px thumbnails when enlarged; `s: 0` marks videos that lack those too, and
   // `q: 0` videos without any stills, where only the thumbnail exists.
@@ -161,7 +169,7 @@ export function videoImages(
   const frames = r.q === 0 ? [] : [1, 2, 3]
   const small = [image(r.y, 'mqdefault'), ...frames.map((n) => image(r.y, `mq${n}`))]
   const large = [
-    r.b ?? image(r.y, `${size}default`),
+    source ?? image(r.y, r.b ? 'hqdefault' : `${size}default`),
     ...frames.map((n) => image(r.y, `${size}${n}`)),
   ]
   const mask = maskOf(flags)
@@ -196,7 +204,7 @@ export function videoImages(
     // The canonical image first (hero slots and lists use it), then the reel shots, small.
     thumbnails: [small[lead], ...shots.map((i) => small[i])],
     // A source-site image (og:image) beats the 640px stills for big slots when it leads.
-    backdrop: !hiRes && r.b && lead === 0 ? r.b : large[pick],
+    backdrop: !hiRes && source && lead === 0 ? source : large[pick],
     poster: large[lead],
     frames: shots.map((i) => large[i]),
     ...(slides.includes(true) && { slides }),

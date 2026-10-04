@@ -251,7 +251,7 @@ function DetailDialog({ video }: { video: Video }) {
         if (pressedBackdrop.current && e.target === e.currentTarget) close()
       }}
       // While the pill shows, focus and anchor scrolls stop short of it.
-      className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10 ${showPill ? 'scroll-pb-24' : ''}`}
+      className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10 ${showPill ? 'scroll-pb-24' : 'scroll-pb-4'}`}
     >
       <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-(--shadow-lift) motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
         <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />

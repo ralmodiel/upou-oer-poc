@@ -325,9 +325,14 @@
   }
 }
 
-/* Topics and Source: a small label above its items on phones, beside them from 40rem. */
+/*
+  Topics and Source: a small label above its items on phones, beside them from 40rem. The column
+  may shrink below its items' widest one, so a long topic truncates in its chip rather than
+  widening the page.
+*/
 .watch-row {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
 }
 
@@ -1212,12 +1217,14 @@
   the stage, so the stage is never empty. The header and tab bar, and Up next from lg, stay as they
   are (the new ones in place at once, Now playing moved). The new page's text is already hidden
   under its preview, so nothing flashes. Only without reduced motion (UpNext sets the mark then).
+  With the stage scrolled out of sight (data-watch-swap="far": a phone, down at Up next) nothing
+  glides: the old page fades out over the new one, its preview already in place.
 */
-html[data-watch-swap] .watch-stage-wrap {
+html[data-watch-swap=''] .watch-stage-wrap {
   view-transition-name: watch-stage;
 }
 
-html[data-watch-swap] div:has(> .watch-back:not(.watch-back-float)) {
+html[data-watch-swap=''] div:has(> .watch-back:not(.watch-back-float)) {
   view-transition-name: watch-back;
 }
 
@@ -1235,7 +1242,9 @@ html[data-watch-swap] nav[aria-label='Primary'] {
   }
 }
 
+/* Over the new page, which is there at once: else its paper covers the old text from the start. */
 html[data-watch-swap]::view-transition-old(root) {
+  z-index: 1;
   animation: watch-swap-out 400ms ease both;
 }
 

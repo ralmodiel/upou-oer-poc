@@ -48,13 +48,17 @@ let swapTimer: ReturnType<typeof setTimeout> | undefined
 
 /**
  * Marks a page change made from the watch page (a row, autoplay) for its view transition
- * (watch.css): the text fades out as the stage glides to the preview place. False, with no mark,
- * under reduced motion or without view transitions, where the page simply changes.
+ * (watch.css): the text fades out as the stage glides to the preview place. With the stage
+ * scrolled out of sight (a phone, down at Up next) it is marked "far": the stage does not fly in
+ * from off screen, the page cross-fades to the new preview instead. False, with no mark, under
+ * reduced motion or without view transitions, where the page simply changes.
  */
 export function markWatchSwap(): boolean {
   if (prefersReducedMotion() || !('startViewTransition' in document)) return false
   const root = document.documentElement
-  root.dataset.watchSwap = ''
+  const stage = document.querySelector('.watch-stage-wrap')?.getBoundingClientRect()
+  const top = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0
+  root.dataset.watchSwap = stage && (stage.bottom <= top || stage.top >= innerHeight) ? 'far' : ''
   clearTimeout(swapTimer)
   swapTimer = setTimeout(() => delete root.dataset.watchSwap, 1500)
   return true

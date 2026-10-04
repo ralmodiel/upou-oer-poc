@@ -18,6 +18,7 @@ import UpNext from '../features/watch/UpNext'
 import { useAutoplay, useUpNext } from '../features/watch/useUpNext'
 import { withPlaylist, type Playlist } from '../features/watch/recommendations'
 import WatchBackdrop, { WatchAmbient } from '../features/watch/WatchBackdrop'
+import WatchCite from '../features/watch/WatchCite'
 import WatchDescription from '../features/watch/WatchDescription'
 import WatchMeta from '../features/watch/WatchMeta'
 import WatchSource from '../features/watch/WatchSource'
@@ -263,6 +264,8 @@ function Watch({ video }: { video: Video }) {
                 {video.title}
               </h1>
               <WatchMeta video={video} category={category} />
+              {/* How to cite comes first and whole, above the folded description: it matters. */}
+              <WatchCite video={video} className="mt-6" />
               {/* Under a gold rule: the description (most source pages have none), then the
                   topics and the source links, each beside a small label. */}
               <div className="watch-about">

@@ -1,0 +1,137 @@
+import { useEffect, useId, useRef, useState } from 'react'
+import { CheckIcon } from '../../components/icons'
+import Button from '../../components/ui/Button'
+import SectionHeading from '../../components/ui/SectionHeading'
+import { citeOf, peekCite, type Citation } from '../../data/cites'
+import type { Video } from '../../types'
+
+type Level = 'h2' | 'h3'
+interface Props {
+  video: Video
+  /** h2 on the watch page, h3 in the quick look (under its h2 title). */
+  as?: Level
+  className?: string
+}
+const COPIED_MS = 2000
+// URLs in the citation become links; a closing full stop or bracket stays text
+const URL_RE = /(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)\]'"])/
+
+/**
+ * How to cite the video, always shown in full (never folded, clamped or hidden): the source
+ * page's own citation, or one generated from the video's details with a quiet note saying so, as
+ * selectable text with its link, and a Copy citation button.
+ */
+export default function WatchCite({ video, as = 'h2', className = '' }: Props) {
+  const [loaded, setLoaded] = useState<{ id: string; citation: Citation }>()
+  useEffect(() => {
+    let live = true
+    void citeOf(video).then((citation) => {
+      if (live) setLoaded({ id: video.id, citation })
+    })
+    return () => {
+      live = false
+    }
+  }, [video])
+  // Once cites.json is in, the next video's citation shows on its first paint (no shift); before
+  // that the section waits for it, so a crawled citation never flashes a generated one first.
+  const citation = peekCite(video) ?? (loaded?.id === video.id ? loaded.citation : undefined)
+  // keyed, so the next video starts with a fresh Copy button
+  return citation ? (
+    <CitationBox key={video.id} citation={citation} as={as} className={className} />
+  ) : null
+}
+
+function CitationBox({
+  citation: { text: cite, generated },
+  as,
+  className,
+}: {
+  citation: Citation
+  as: Level
+  className: string
+}) {
+  const headingId = useId()
+  const textRef = useRef<HTMLParagraphElement>(null)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const [state, setState] = useState<'idle' | 'copied' | 'manual'>('idle')
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  const copy = async () => {
+    clearTimeout(timer.current)
+    try {
+      await navigator.clipboard.writeText(cite)
+      setState('copied')
+      timer.current = setTimeout(() => setState('idle'), COPIED_MS)
+    } catch {
+      // No clipboard (an insecure page, a denied permission): select the text to copy by hand.
+      if (textRef.current) window.getSelection()?.selectAllChildren(textRef.current)
+      setState('manual')
+    }
+  }
+
+  const copied = state === 'copied'
+  return (
+    <section
+      aria-labelledby={headingId}
+      className={`max-w-2xl rounded-card border border-glass-border bg-surface p-4 shadow-elev-1 sm:p-5 ${className}`}
+    >
+      <SectionHeading as={as} id={headingId} title="How to cite" rule={false} />
+      <p
+        ref={textRef}
+        className="mt-3 text-base leading-relaxed wrap-anywhere whitespace-pre-line text-ink-2 select-text"
+      >
+        {cite.split(URL_RE).map((part, i) =>
+          i % 2 ? (
+            // No hidden "new tab" words inside: they would be copied with a selected citation.
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${part} (opens in a new tab)`}
+              className="font-semibold text-maroon underline underline-offset-4 hover:text-maroon-2"
+            >
+              {part}
+            </a>
+          ) : (
+            part
+          ),
+        )}
+      </p>
+      {generated && <p className="mt-2 text-xs text-ink-3">Generated from this video's details</p>}
+      {/* Under the text, so ↓ on a remote runs title, citation link, Copy, then the description. */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={copied ? <CheckIcon /> : <CopyIcon />}
+          onClick={() => void copy()}
+          className={copied ? 'border-forest text-forest' : ''}
+        >
+          {copied ? 'Copied' : 'Copy citation'}
+        </Button>
+        {/* Always in the tree (empty, it has no width), so screen readers hear what it says. */}
+        <span role="status" className="text-sm text-ink-2">
+          {copied && <span className="sr-only">Citation copied to clipboard</span>}
+          {state === 'manual' && 'Selected: press Ctrl+C (⌘C on a Mac) to copy it.'}
+        </span>
+      </div>
+    </section>
+  )
+}
+
+const CopyIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5" />
+  </svg>
+)

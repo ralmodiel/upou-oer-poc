@@ -4,12 +4,17 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { getVideo } from '../data/catalog'
+import { citeOf } from '../data/cites'
+import WatchCite from '../features/watch/WatchCite'
 import { useProfile } from '../lib/history'
+import { lastInput } from '../lib/pointer'
 import { topicTags } from '../lib/tags'
 import { watchUrl } from '../lib/youtube'
 import type { Video } from '../types'
@@ -20,9 +25,9 @@ import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { useFrozen } from './browse-hooks'
 import { FactsLine, LONG_TITLE, TEXT_LINK } from './browse-ui'
-import { DetailsContext, MORE_LIKE_THIS, wasOpenedInApp } from './details'
+import { AT_DETAILS, DetailsContext, wasOpenedInApp } from './details'
 import { prefersReducedMotion, useDocumentTitle } from './hooks'
-import { CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
+import { ChevronDownIcon, CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
 import { stopPreview } from './preview'
 import { CardReasons, moreLikeThis, reasonsFor } from './recs'
 import Chip from './ui/Chip'
@@ -60,6 +65,9 @@ function DetailDialog({ video }: { video: Video }) {
   const navigate = useNavigate()
   const { search, hash, state } = useLocation()
   const similarRef = useRef<HTMLElement>(null)
+  const similarHeading = useRef<HTMLHeadingElement>(null)
+  const detailsRef = useRef<HTMLDivElement>(null)
+  const citeRef = useRef<HTMLDivElement>(null)
 
   const base = useMemo(() => {
     const params = new URLSearchParams(search)
@@ -92,17 +100,64 @@ function DetailDialog({ video }: { video: Video }) {
 
   // Each title (the first and any similar one swapped in) starts on its still, grown: Enter
   // plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by surprise. Opened
-  // from More like this (the home hero, which shows the details already), on the first of those.
+  // from the home hero's Details (#details), on the details, with the title and the citation
+  // below the picture brought into view together once the citation is in.
   useEffect(() => {
     stopPreview()
-    const more = hash === MORE_LIKE_THIS ? similarRef.current : null
-    if (more) more.scrollIntoView?.({ block: 'start' })
-    else dialog.current?.scrollTo({ top: 0 })
-    const start = more
-      ? more.querySelector<HTMLElement>('[data-card-link]')
-      : dialog.current?.querySelector<HTMLElement>('[data-autofocus]')
-    start?.focus({ preventScroll: true })
-  }, [video.id, hash])
+    const el = dialog.current
+    el?.scrollTo({ top: 0 })
+    const details = hash === AT_DETAILS ? detailsRef.current : null
+    if (!el || !details) {
+      el?.querySelector<HTMLElement>('[data-autofocus]')?.focus({ preventScroll: true })
+      return
+    }
+    details.focus({ preventScroll: true })
+    let live = true
+    void citeOf(video).then(() =>
+      requestAnimationFrame(() => {
+        if (!live) return
+        const tops = [details, citeRef.current].map((n) => n?.getBoundingClientRect().top ?? 1e9)
+        el.scrollBy({ top: Math.min(...tops) - el.getBoundingClientRect().top - 16 })
+      }),
+    )
+    return () => {
+      live = false
+    }
+  }, [video, hash])
+
+  // The floating More like this pill: shown while its heading is below the dialog's view (long
+  // details push it down), gone once the heading is in view or scrolled past.
+  const hasSimilar = similar.length > 0
+  const [similarBelow, setSimilarBelow] = useState(false)
+  useEffect(() => {
+    const heading = similarHeading.current
+    const root = dialog.current
+    if (!heading || !root) return
+    const observer = new IntersectionObserver(
+      ([entry]) =>
+        setSimilarBelow(
+          !entry.isIntersecting && entry.boundingClientRect.top > (entry.rootBounds?.top ?? 0),
+        ),
+      { root },
+    )
+    observer.observe(heading)
+    return () => observer.disconnect()
+  }, [hasSimilar])
+  const showPill = hasSimilar && similarBelow
+
+  // Scrolls More like this to the top of the view; from a keyboard or remote, onto its first card.
+  const toSimilar = (e: MouseEvent<HTMLButtonElement>) => {
+    const section = similarRef.current
+    if (!section) return
+    section.scrollIntoView?.({
+      block: 'start',
+      behavior: prefersReducedMotion() ? 'instant' : 'smooth',
+    })
+    // The pill goes once the row is in view: its focus moves on, never out to the page.
+    if (e.detail === 0 || lastInput() === 'keyboard')
+      section.querySelector<HTMLElement>('[data-card-link]')?.focus({ preventScroll: true })
+    else dialog.current?.focus({ preventScroll: true })
+  }
 
   useDocumentTitle(`${video.title} · UPOU OER`)
 
@@ -176,7 +231,8 @@ function DetailDialog({ video }: { video: Video }) {
       onClick={(e) => {
         if (pressedBackdrop.current && e.target === e.currentTarget) close()
       }}
-      className="fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10"
+      // While the pill shows, focus and anchor scrolls stop short of it.
+      className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10 ${showPill ? 'scroll-pb-24' : ''}`}
     >
       <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-lift motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
         <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />
@@ -188,11 +244,13 @@ function DetailDialog({ video }: { video: Video }) {
           className="absolute top-3 right-3 z-10 md:top-4 md:right-4"
         />
 
-        <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 md:grid-rows-[auto_auto_1fr] md:gap-y-7 md:p-8 lg:gap-x-10">
+        {/* From md the picture column (picture, Play / Save, How to cite, links) sits beside the
+            details; wider than them from lg, so the picture is large. */}
+        <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 md:grid-rows-[auto_auto_auto_1fr] md:gap-y-7 md:p-8 lg:gap-x-10">
           {/* The still plays too, and grows while focused or hovered (TV style) into the gutters
               around it, so nothing else moves. The wrapper scales: a focused link drops its
               transition (index.css). Phones: full bleed, no growth. */}
-          <div className="-mx-5 -mt-5 min-w-0 md:col-span-5 md:col-start-1 md:row-start-1 md:m-0 md:motion-safe:transition-[scale] md:motion-safe:duration-300 md:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:has-[a:focus]:scale-108 lg:col-span-6">
+          <div className="-mx-5 -mt-5 min-w-0 md:col-span-6 md:col-start-1 md:row-start-1 md:m-0 md:motion-safe:transition-[scale] md:motion-safe:duration-300 md:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:has-[a:focus]:scale-108 lg:col-span-7">
             <PlayLink
               video={video}
               aria-label={`Play ${video.title}`}
@@ -202,7 +260,7 @@ function DetailDialog({ video }: { video: Video }) {
             >
               <Thumbnail
                 video={video}
-                sizes="(min-width: 64rem) 470px, (min-width: 48rem) 260px, 100vw"
+                sizes="(min-width: 64rem) 545px, (min-width: 48rem) 440px, 100vw"
                 large
                 canonical
                 loading="eager"
@@ -211,7 +269,7 @@ function DetailDialog({ video }: { video: Video }) {
             </PlayLink>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 md:col-span-5 md:col-start-1 md:row-start-2 lg:col-span-6">
+          <div className="flex flex-wrap items-center gap-3 md:col-span-6 md:col-start-1 md:row-start-2 lg:col-span-7">
             <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
               <PlayIcon />
               Play
@@ -223,7 +281,29 @@ function DetailDialog({ video }: { video: Video }) {
             />
           </div>
 
-          <div className="min-w-0 md:col-span-7 md:col-start-6 md:row-span-3 md:row-start-1 md:pr-8 lg:col-span-6 lg:col-start-7">
+          {/* How to cite, right below the picture and its buttons: always whole, never folded. */}
+          <div
+            ref={citeRef}
+            className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7"
+          >
+            <WatchCite video={video} as="h3" />
+          </div>
+
+          <div
+            ref={detailsRef}
+            role="group"
+            aria-labelledby={titleId}
+            tabIndex={-1}
+            // Focused (#details), ↓ steps into the details rather than across to the picture.
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget || e.key !== 'ArrowDown') return
+              const first = e.currentTarget.querySelector<HTMLElement>('a[href], button')
+              if (!first) return
+              e.preventDefault()
+              first.focus()
+            }}
+            className="min-w-0 rounded-card outline-offset-8 focus-visible:shadow-glow md:col-span-6 md:col-start-7 md:row-span-4 md:row-start-1 md:pr-8 lg:col-span-5 lg:col-start-8"
+          >
             <h2
               id={titleId}
               className={`ql-title font-display leading-tight text-balance text-ink ${
@@ -261,7 +341,7 @@ function DetailDialog({ video }: { video: Video }) {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-5 md:col-start-1 md:row-start-3 md:self-start lg:col-span-6">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-6 md:col-start-1 md:row-start-4 md:self-start lg:col-span-7">
             <ExternalLink href={watchUrl(video.youtubeId)}>Watch on YouTube</ExternalLink>
             {sourceUrl && <ExternalLink href={sourceUrl}>View on oer.upou.edu.ph</ExternalLink>}
           </div>
@@ -274,7 +354,11 @@ function DetailDialog({ video }: { video: Video }) {
             className="ql-more border-t border-line p-5 md:px-8 md:py-7"
           >
             <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
-            <h3 id={`${titleId}-similar`} className="font-display text-xl text-ink sm:text-2xl">
+            <h3
+              ref={similarHeading}
+              id={`${titleId}-similar`}
+              className="font-display text-xl text-ink sm:text-2xl"
+            >
               More like this
             </h3>
             <div className="mt-4">
@@ -287,6 +371,22 @@ function DetailDialog({ video }: { video: Video }) {
           </section>
         )}
       </div>
+
+      {/* At the foot of the view, above the content, in the glass of the home's "More video
+          resources below". Fixed, not sticky: focusing it must not scroll the dialog (that would
+          bring the row into view and take the pill, and its focus, away). */}
+      {showPill && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={toSimilar}
+            className="browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:transition-[opacity,background-color] motion-safe:duration-300 motion-safe:starting:opacity-0"
+          >
+            More like this
+            <ChevronDownIcon className="size-4" />
+          </button>
+        </div>
+      )}
     </dialog>
   )
 }

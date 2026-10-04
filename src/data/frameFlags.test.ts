@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { hashString } from '../lib/seed'
 import type { CatalogRecord } from '../types'
 import { expandRecord, setLoadSeed } from './expand'
+import crops from './frame-crops.json'
 import {
   beautifulMaskOf,
   cropZoomOf,
@@ -235,5 +236,18 @@ describe('frame flags', () => {
     expect(cropZoomOf('https://i.ytimg.com/vi/zzzzzzzzzzz/mqdefault.jpg')).toBe(1)
     expect(cropZoomOf('https://i.ytimg.com/vi/texttexttex/mqdefault.jpg')).toBe(1)
     expect(cropZoomOf('https://oer.upou.edu.ph/wp-content/uploads/still.jpg')).toBe(1)
+  })
+
+  it('ships zooms for windowboxed stills, a logo in the top bar or not', () => {
+    // CppxYB312XU: a 16:9 picture letterboxed in 4:3, pillarboxed in YouTube's 16:9 stills, with
+    // YouTube's "Google" mark in the top bar; every size of every candidate loses the frame.
+    setFrameCrops(crops)
+    for (const name of ['mqdefault', 'maxresdefault', 'hqdefault', 'mq1', 'sd2', 'maxres3']) {
+      const zoom = cropZoomOf(`https://i.ytimg.com/vi/CppxYB312XU/${name}.jpg`)
+      expect(zoom).toBeGreaterThan(1.34)
+      expect(zoom).toBeLessThan(1.36)
+    }
+    // Every shipped value is one zoomFrom accepts: a malformed one would silently lose its crop.
+    for (const zoom of Object.values(crops).flat(2)) expect(zoom >= 1 && zoom < 2).toBe(true)
   })
 })

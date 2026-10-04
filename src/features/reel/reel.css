@@ -1045,6 +1045,14 @@
   .reel[data-variant='preview'] :is(.reel-band, .reel-copy, .reel-end-copy) {
     display: none;
   }
+
+  /* One still: a livelier move that keeps its faces or text in view (plan.ts cardMoveVars). */
+  .reel[data-variant='preview'][data-single] .reel-kb {
+    --ko: var(--pko);
+    --ks1: var(--pks1);
+    --kx1: var(--pkx1);
+    --ky1: var(--pky1);
+  }
 }
 
 /* ---------- Small stages (phones, cards): a deeper band, fewer, larger things ---------- */

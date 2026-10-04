@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { setFrameCrops, setFrameFlags } from '../../data/frameFlags'
 import { buildReelPlan, clampTitle, hookFrom, toLines, topicsOf } from './plan'
 import { testVideo } from './testing'
 
@@ -151,6 +152,84 @@ describe('buildReelPlan', () => {
     expect(v['--ks0']).toBe(1.02)
     expect(+v['--ks1']).toBeGreaterThanOrEqual(1.12)
     expect(+v['--ks1']).toBeLessThanOrEqual(1.22)
+  })
+
+  describe('card previews of one still', () => {
+    afterEach(() => (setFrameFlags({}), setFrameCrops({})))
+    // A keep box in 16ths of the frame (frame-flags bits 25-41: x0, y0, x1 - 1, y1 - 1).
+    const keep = ([x0, y0, x1, y1]: number[]) =>
+      (1 + 2 * (x0 | (y0 << 4) | ((x1 - 1) << 8) | ((y1 - 1) << 12))) * 2 ** 25
+    const planOf = (id: string, frame: string, box?: number[]) => {
+      if (box) setFrameFlags({ [id]: keep(box) })
+      return buildReelPlan({ ...testVideo, youtubeId: id, frames: Array(3).fill(still(frame)) })
+    }
+    // Where [a, b] lands at scale s about origin o, shifted by t (fractions of the frame).
+    const land = (a: number, b: number, o: number, s: number, t: number) => [
+      o + (a - o) * s + t,
+      o + (b - o) * s + t,
+    ]
+
+    it('pushes in further about the faces, keeping them and the edges in view', () => {
+      const box = [9, 2, 13, 7]
+      const ids = 'abcdefghijkl'.split('').map((c) => c.repeat(11))
+      for (const id of ids) {
+        const v = vars(planOf(id, 'maxres2', box).shots[0].style)
+        const s = +v['--pks1']
+        expect(s).toBeGreaterThanOrEqual(1.18)
+        expect(s).toBeLessThanOrEqual(1.26)
+        expect(v['--pky1']).toBe('0%')
+        const [ox, oy] = v['--pko'].split(' ').map((p) => parseFloat(p) / 100)
+        const t = parseFloat(v['--pkx1']) / 100
+        const [a, b] = [box[0] / 16, box[2] / 16]
+        // The zoom alone, and the final state with the drift (the drift trails the zoom).
+        for (const shift of [0, t]) {
+          const [l, r] = land(a, b, ox, s, shift)
+          expect(l).toBeGreaterThanOrEqual(-1e-3)
+          expect(r).toBeLessThanOrEqual(1 + 1e-3)
+          const [e0, e1] = land(0, 1, ox, s, shift)
+          expect(e0).toBeLessThanOrEqual(1e-3)
+          expect(e1).toBeGreaterThanOrEqual(1 - 1e-3)
+        }
+        const [top, bottom] = land(box[1] / 16, box[3] / 16, oy, s, 0)
+        expect(top).toBeGreaterThanOrEqual(-1e-3)
+        expect(bottom).toBeLessThanOrEqual(1 + 1e-3)
+      }
+      // Seeded drift, both ways across videos.
+      const drifts = ids.map((id) =>
+        parseFloat(vars(planOf(id, 'maxres2', box).shots[0].style)['--pkx1']),
+      )
+      expect(drifts.some((x) => x > 0) && drifts.some((x) => x < 0)).toBe(true)
+    })
+
+    it('moves a title card gently and without drift; a full-frame box or none keeps its move', () => {
+      const card = vars(planOf('cardcardcar', 'maxresdefault', [2, 3, 14, 12]).shots[0].style)
+      expect(card).toMatchObject({
+        '--ks1': 1,
+        '--pks1': '1.100',
+        '--pkx1': '0.00%',
+        '--pky1': '0%',
+      })
+
+      const wide = vars(planOf('widewidewid', 'maxres2', [0, 4, 16, 12]).shots[0].style)
+      const none = vars(planOf('nonenonenon', 'maxres2').shots[0].style)
+      for (const v of [wide, none])
+        expect([v['--pko'], v['--pks1'], v['--pkx1'], v['--pky1']]).toEqual([
+          v['--ko'],
+          v['--ks1'],
+          v['--kx1'],
+          v['--ky1'],
+        ])
+      // Several stills: no card move at all.
+      const three = buildReelPlan(testVideo)
+      expect(three.shots.every((shot) => !('--pks1' in vars(shot.style)))).toBe(true)
+    })
+
+    it('reads the box through the crop zoom of the 320px still', () => {
+      setFrameCrops({ zoomzoomzoo: [1, 1, 1.25] })
+      const v = vars(planOf('zoomzoomzoo', 'maxres2', [6, 6, 10, 10]).shots[0].style)
+      // Box [0.375, 0.625] → [0.34375, 0.65625] on screen: the push-in stays about the centre.
+      expect(v['--pko']).toBe('50.00% 50.00%')
+    })
   })
 
   it('times kinetic words so none passes or grows over another', () => {

@@ -150,7 +150,10 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
 WCAG AA contrast in both themes (verify `--color-ink-2`/`-3` on paper and surface); 2px maroon
 focus ring with offset; skip link; landmarks and heading order; icon buttons labelled; dialogs
 trap focus; all interactions keyboard-operable; touch targets ≥ 40px; no horizontal overflow at
-360px; LCP image gets `fetchPriority="high"`, everything else lazy; CLS ≈ 0.
+360px; LCP image gets `fetchPriority="high"`, everything else lazy; CLS ≈ 0. Each watch page's
+static shell preloads the very file its player poster (and the reel's first frame) shows, so the
+phone LCP image starts with the HTML (360×780: median 352 vs 456 ms at CPU 1x, 1232 vs 1520 ms at
+4x).
 
 ## Keyboard
 
@@ -283,13 +286,20 @@ the existing tokens:
 
 ## Round 3 addendum: reels and stills
 
-- **Frame filter:** candidate stills that catch a face not smiling, mid-word, looking angry or
-  with the mouth wide open (even in a laugh: jawOpen above 0.25 or the lips' gap over the mouth's
-  width above 0.30), or a face the landmarker cannot read (a turned, tilted or blurred head that a
-  second detector, YuNet, still finds; drawn faces excepted) are flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation,
-  the reel or the canonical slots (hero, quick look, poster), where the first clean still stands
-  in for a flagged original. When every candidate is flagged, the video's own picture (card,
-  list row, poster) is its least bad one; reels and previews still never use a flagged frame.
+- **Frame filter (strict; when in doubt, flag):** a candidate still is flagged at build time
+  (`src/data/frame-flags.json`) when a face is not clearly smiling; mid-word (jaw dropped, or lips
+  parted without a clear smile) or mid-chew; with the mouth wide open, even in a laugh; stern,
+  angry or sad (knit brows, a frown, a sneer, pressed or bitten lips, raised inner brows);
+  mid-blink, half-shut or squinting; lopsided, forced or grimacing; turned (yaw > 18°), tipped
+  down (> 7°) or up (> 10°) or tilted (> 15°); looking away, or down at notes, a laptop or a phone;
+  hands raised above the shoulders or held at the face (MediaPipe Pose); near the frame's edge;
+  blurred; or unreadable (a head the landmarker misses but YuNet finds;
+  drawn faces excepted). Misses seen on contact sheets go to `scripts/faces/overrides.json` with a
+  reason. Flagged stills are never used in the thumbnail rotation, the reel or the canonical slots
+  (hero, quick look, poster), where the first clean still stands in. When every candidate is
+  flagged, the video's own picture (card, list row, poster) is its least bad one (never dark or
+  blank); reels and previews never use a flagged frame, and a video without a clean still has no
+  reel or preview. Slides, title cards and smiling, frontal, sharp faces are the preferred picks.
 - **Repeated stills:** three cuts play only between three different stills; with fewer (repeats,
   or near-twins from a static lecture camera) the reel plays one long slow move on the first still.
 - **No usable image:** when every image is flagged or missing (`q: 0` videos have no YouTube stills

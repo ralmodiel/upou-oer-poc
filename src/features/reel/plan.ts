@@ -1,4 +1,6 @@
 import type { CSSProperties } from 'react'
+import { cropZoomOf, keepBoxOf } from '../../data/frameFlags'
+import type { Box } from '../../data/images'
 import { yearOf } from '../../lib/format'
 import { pick, seededRandom } from '../../lib/seed'
 import { isGenericTag, tagKey, tidyTag } from '../../lib/tags'
@@ -232,6 +234,52 @@ function longMoveVars(rand: () => number, src: string): Vars {
   }
 }
 
+/**
+ * Card previews of a one-still reel (reel.css: stages up to 480px) move more, about what the still
+ * keeps in view (keepBoxOf: its faces; a slide's or title card's text): a push-in, deeper on photos
+ * and gentle on slides and cards, whose origin keeps the box in frame under the zoom alone, then on
+ * photos a lateral drift within what keeps both the box and the edges covered at the final scale.
+ * The drift trails the zoom (reel.css), so those two states bound every frame in between. No box:
+ * the card keeps the reel's own move (`kb`).
+ */
+function cardMoveVars(
+  rand: () => number,
+  kb: Vars,
+  box: Box | undefined,
+  small: string,
+  slide: boolean,
+): Vars {
+  const own = {
+    '--pko': kb['--ko'],
+    '--pks1': kb['--ks1'],
+    '--pkx1': kb['--kx1'],
+    '--pky1': kb['--ky1'],
+  }
+  if (!box) return own
+  // The 320px still shows the box through its own crop zoom, about the centre.
+  const zoom = cropZoomOf(small)
+  const [x0, y0, x1, y1] = box.map((v) => Math.min(1, Math.max(0, 0.5 + (v - 0.5) * zoom)))
+  const s0 = Number(kb['--ks0'])
+  const target = slide ? 1.1 : 1.18 + rand() * 0.08
+  const s = Math.floor(Math.min(target, 1 / (x1 - x0), 1 / (y1 - y0)) * 1000) / 1000
+  if (s < s0 + 0.03) return own
+  // Origins at which the zoom alone keeps [a, b] in view: o + (a − o)·s ≥ 0 and o + (b − o)·s ≤ 1.
+  const origin = (a: number, b: number) =>
+    Math.min(Math.max((a + b) / 2, (b * s - 1) / (s - 1), 0), (a * s) / (s - 1), 1)
+  const ox = origin(x0, x1)
+  const oy = origin(y0, y1)
+  // Shifts that keep the edges covered and the box in view at the final scale.
+  const lo = Math.max(-(1 - ox) * (s - 1), -(ox + (x0 - ox) * s))
+  const hi = Math.min(ox * (s - 1), 1 - ox - (x1 - ox) * s)
+  const kx = slide ? 0 : (0.5 + rand() * 0.4) * (rand() < 0.5 ? Math.max(0, hi) : Math.min(0, lo))
+  return {
+    '--pko': `${pct(ox * 100)} ${pct(oy * 100)}`,
+    '--pks1': s.toFixed(3),
+    '--pkx1': pct(kx * 100),
+    '--pky1': '0%',
+  }
+}
+
 function moveVars({ s0, s1, ox, oy, angle }: Move): Vars {
   const dx = Math.cos(angle)
   const dy = Math.sin(angle) * 0.7
@@ -287,6 +335,7 @@ export function buildReelPlan(video: Video): ReelPlan {
   const rand = seededRandom(seed)
   // Framing has its own sequence, so the rest of the plan stays as it was.
   const frameRand = seededRandom(`${seed}:framing`)
+  const cardRand = seededRandom(`${seed}:card`)
   // Face-safe stills only, best first (none: no shots, and callers skip the reel).
   const stills: Still[] = reelImages(video).stills
   const sources = stills.length ? SHOT_AT.map((_, i) => stills[i % stills.length]) : []
@@ -345,6 +394,8 @@ export function buildReelPlan(video: Video): ReelPlan {
           '--o': ms(hideAt),
           ...(single && { '--kb-ms': ms(hideAt - at) }),
           ...kb,
+          ...(single &&
+            cardMoveVars(cardRand, kb, keepBoxOf(video.youtubeId), source.small, slide)),
           ...transitionVars(tx, rand),
         }),
       }

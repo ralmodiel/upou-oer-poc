@@ -114,6 +114,17 @@ describe('the floating More like this pill', () => {
     expect(screen.getByRole('dialog')).not.toHaveClass('scroll-pb-24')
   })
 
+  it('hides after a jump carries the heading past the view without crossing it', () => {
+    vi.stubGlobal('IntersectionObserver', FakeObserver)
+    open('/?v=climate-basics')
+    headingInView(false)
+    const section = screen.getByRole('region', { name: 'More like this' })
+    const jumps = observers.find((o) => o.el === section)!
+    const entry = { isIntersecting: true, boundingClientRect: { top: -80 }, rootBounds: { top: 0 } }
+    act(() => jumps.cb([entry as unknown as IntersectionObserverEntry], {} as IntersectionObserver))
+    expect(pill()).toBeNull()
+  })
+
   it('never shows without More like this', () => {
     vi.stubGlobal('IntersectionObserver', FakeObserver)
     setCatalog(fixtureVideos.slice(0, 1))

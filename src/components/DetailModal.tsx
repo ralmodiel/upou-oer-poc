@@ -146,7 +146,21 @@ function DetailDialog({ video }: { video: Video }) {
       { root },
     )
     observer.observe(heading)
-    return () => observer.disconnect()
+    // A jump (End or Home without smooth scrolling) can carry the heading across the view without
+    // it ever intersecting; the whole section, the panel's foot, still reports such a jump.
+    const jumps = new IntersectionObserver(
+      ([{ isIntersecting, boundingClientRect, rootBounds }]) => {
+        const top = rootBounds?.top ?? 0
+        if (!isIntersecting && boundingClientRect.top > top) setSimilarBelow(true)
+        else if (boundingClientRect.top < top) setSimilarBelow(false)
+      },
+      { root },
+    )
+    if (similarRef.current) jumps.observe(similarRef.current)
+    return () => {
+      observer.disconnect()
+      jumps.disconnect()
+    }
   }, [hasSimilar])
   const showPill = hasSimilar && similarBelow
   // Phones: How to cite spans the panel, so the pill steps aside while the citation is in the

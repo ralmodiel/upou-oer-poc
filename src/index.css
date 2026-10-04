@@ -309,9 +309,12 @@
   body {
     @apply min-h-dvh bg-paper text-ink antialiased;
   }
-  /* Themed scrollbar colours (the width stays the platform's, so the layout never shifts). */
+  /* Themed scrollbar colours (the width stays the platform's, so the layout never shifts). The
+     gutter is always kept: 100vw (in --gutter) then means the same width with or without the
+     quick look's scroll lock, so the page behind it never jumps sideways. */
   html {
     scrollbar-color: color-mix(in oklab, var(--color-ink-3) 55%, transparent) transparent;
+    scrollbar-gutter: stable;
   }
   h1,
   h2 {

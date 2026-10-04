@@ -33,9 +33,10 @@ import ThemeToggle from './ThemeToggle'
 import Menu, { type MenuSection } from './ui/Menu'
 import { buttonClass, iconButtonClass } from './ui/button-styles'
 
-// Active section: a maroon underline on paper (gold in dark mode) with a soft glow.
+// Active section: a maroon underline on paper (gold in dark mode) with a soft glow. Hover: a glass
+// pill, as the chips and breadcrumbs.
 const NAV_LINK =
-  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-frost hover:text-ink aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:shadow-[0_0_10px_1px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
+  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-[background-color,color,box-shadow] hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:shadow-glow aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:shadow-[0_0_10px_1px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
 
 // Saved ids that still exist in the catalog.
 function useSavedCount() {
@@ -64,9 +65,11 @@ export default function Header() {
   return (
     <header
       // The UP tri-colour stripe runs along the top edge (inside the header's height).
-      // Glass: translucent paper over a modest blur, so content scrolls softly beneath it.
-      className={`sticky top-0 z-40 border-b bg-glass backdrop-blur-lg backdrop-saturate-150 transition-[border-color,box-shadow] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:brand-stripe ${
-        scrolled ? 'border-glass-border shadow-elev-2' : 'border-line'
+      // Glass: translucent paper over a modest blur, so content scrolls softly beneath it. Once
+      // scrolled, a faint brand edge glows along its foot (index.css, shell-edge).
+      data-scrolled={scrolled || undefined}
+      className={`shell-edge sticky top-0 z-40 border-b bg-glass backdrop-blur-lg backdrop-saturate-150 transition-[border-color,box-shadow] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:brand-stripe ${
+        scrolled ? 'border-glass-border shadow-(--shadow-elev-2)' : 'border-line'
       }`}
     >
       <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) md:flex-nowrap lg:gap-x-3">
@@ -327,7 +330,7 @@ function SearchBox() {
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="h-10 w-full rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-elev-1 transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-ink-3 hover:bg-surface focus:border-focus focus:bg-surface focus-visible:shadow-glow [&::-webkit-search-cancel-button]:appearance-none"
+          className="h-10 w-full rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-ink-3 hover:bg-surface focus:border-focus focus:bg-surface focus-visible:shadow-glow [&::-webkit-search-cancel-button]:appearance-none"
         />
         {value && (
           <button

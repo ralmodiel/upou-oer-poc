@@ -60,7 +60,7 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
       ref={rootRef}
       role="group"
       aria-labelledby="autoplay-next-label autoplay-next-title"
-      className="watch-autoplay absolute inset-0 z-20 grid place-items-center @container"
+      className="watch-autoplay light-scope absolute inset-0 z-20 grid place-items-center @container"
     >
       <div className="watch-autoplay-body">
         <Thumbnail
@@ -81,8 +81,8 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
           {/* The seconds, seen only: the group's name says it once for screen readers. */}
           <p className="watch-autoplay-count" aria-hidden="true">
             Starting in
-            <span key={left} className="watch-autoplay-digit">
-              {left}
+            <span className="watch-autoplay-digit">
+              <span key={left}>{left}</span>
             </span>
           </p>
         </div>

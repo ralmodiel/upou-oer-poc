@@ -114,7 +114,7 @@ function CategoryCard({ category, eager = true }: { category: Category; eager?: 
   return (
     <article
       ref={ref}
-      className="tv-card group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface"
+      className="tv-card group/cat relative flex h-full flex-col overflow-hidden rounded-card border border-glass-border bg-surface"
     >
       <span aria-hidden="true" className={`h-1.5 shrink-0 ${MARK[toneOf(slug)]}`} />
       <Mosaic videos={coverVideos(slug, 3)} load={near} />
@@ -128,7 +128,7 @@ function CategoryCard({ category, eager = true }: { category: Category; eager?: 
           </Link>
         </h2>
         <p className="mt-1 text-sm text-ink-3">{countOf(category)}</p>
-        <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm text-ink-2">
+        <ul className="tv-hairline mt-3 space-y-1 border-t border-line pt-3 text-sm text-ink-2">
           {newest.map((v) => (
             <li key={v.id} className="truncate">
               {v.title}
@@ -161,12 +161,12 @@ export const CategoryListItem = memo(function CategoryListItem({
     <Link
       ref={ref}
       to={`/collections/${slug}`}
-      className="flex min-h-16 items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-2 focus-visible:outline-3 focus-visible:-outline-offset-3"
+      className="page-row flex min-h-16 items-center gap-3 px-3 py-2.5 transition-colors focus-visible:outline-3 focus-visible:-outline-offset-3"
     >
       <span aria-hidden="true" className={`h-11 w-1 shrink-0 rounded-pill ${MARK[toneOf(slug)]}`} />
       <span
         aria-hidden="true"
-        className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
+        className="page-row-cover relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
       >
         {images && near && (
           <img

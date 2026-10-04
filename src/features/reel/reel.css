@@ -229,7 +229,11 @@
   background: rgb(250 248 246 / 0.3);
 }
 
-/* Laid out at a quarter of the stage and scaled up, so the blur runs on a small layer. */
+/*
+  Laid out at a quarter of the stage and scaled up, so the blur runs on a small layer. Grey, like
+  the watch page's backdrop: a strong colour in the shot (a red microphone) never smears pink
+  through the band's frost or beside a slide.
+*/
 .reel-fill-shot {
   position: absolute;
   top: 0;
@@ -238,7 +242,7 @@
   height: 25%;
   transform-origin: 0 0;
   transform: translate(-6cqw, -6cqh) scale(4.48);
-  filter: blur(6px);
+  filter: blur(6px) grayscale(1);
   animation:
     reel-fade-in 700ms var(--ease) var(--s) both,
     reel-hide 1ms linear var(--o) forwards;
@@ -773,8 +777,11 @@
   align-items: flex-start;
   gap: max(0.25rem, 1cqh);
   padding: 2.4cqh var(--copy-r) 2.4cqh 5cqw;
-  /* Over the crisp poster rather than a blurred copy: more paper, so its own text stays out of the way. */
-  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  /*
+    Over the crisp poster rather than a blurred copy: nearly all paper, so its own text stays out
+    of the way and a strong colour under it (a red dress) shows no pink through.
+  */
+  background: color-mix(in srgb, var(--paper) 97%, transparent);
   box-shadow: 0 -1px 0 rgb(55 54 55 / 0.08);
   animation: reel-gone 380ms var(--ease-in) var(--tout) forwards;
 }

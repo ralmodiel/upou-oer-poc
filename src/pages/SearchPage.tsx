@@ -302,8 +302,8 @@ export default function SearchPage() {
                 </DetailsContext>
               </div>
               {count > PAGE_SIZE && (
-                <div className="mt-10 flex flex-col items-center gap-3">
-                  <p className="text-sm text-ink-3">
+                <div className="page-more mt-10 flex flex-col items-center gap-3">
+                  <p className="page-count text-sm text-ink-3">
                     Showing {visible.length} of {count}
                   </p>
                   {visible.length < count && (

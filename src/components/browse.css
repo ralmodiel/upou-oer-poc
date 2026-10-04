@@ -166,15 +166,31 @@ html:has(dialog[data-details][open]) {
   initial-value: 0px;
 }
 @supports (animation-timeline: scroll()) {
+  /* Two bands: the pictures (the track's top padding and a 16:9 card image) fade across the whole
+     gutter; the text under them is gone within its first fifth, so a peek reads as imagery only. */
   .row-track:not(.row-still) {
+    --row-img: calc(0.75rem + var(--row-card) * 9 / 16);
     clip-path: none;
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 var(--row-fade-l),
-      #000 calc(100% - var(--row-fade-r)),
-      transparent
-    );
+    mask-image:
+      linear-gradient(
+        to right,
+        transparent,
+        #000 var(--row-fade-l),
+        #000 calc(100% - var(--row-fade-r)),
+        transparent
+      ),
+      linear-gradient(
+        to right,
+        transparent calc(var(--row-fade-l) * 0.8),
+        #000 var(--row-fade-l),
+        #000 calc(100% - var(--row-fade-r)),
+        transparent calc(100% - var(--row-fade-r) * 0.8)
+      );
+    mask-size:
+      100% var(--row-img),
+      100% calc(100% - var(--row-img));
+    mask-position: top, bottom;
+    mask-repeat: no-repeat;
     animation: row-edges linear both;
     animation-timeline: scroll(self inline);
   }
@@ -208,10 +224,8 @@ html:has(dialog[data-details][open]) {
 .row-next {
   right: max(0.25rem - var(--gutter), var(--row-bleed) / -2 - 1.375rem);
 }
-/* From 80rem the buttons sit wholly in the gutter, clear of the cards: on pointer devices they stay
-   in view as a quiet outline, a hint that the row moves on, and come in full (surface, shadow, ink)
-   while the row is hovered or holds focus. Narrower, they would cover the cards' edges: hidden until
-   then (Carousel). */
+/* The buttons stay hidden until the row is hovered or holds focus (Carousel): at rest they would sit
+   over the faded peek of the next card. They stay Tab stops; the remote passes over them. */
 /* Small glass controls (the row buttons, "More video resources below"): a frosted, translucent
    surface with a light rim. Kept small: backdrop blur is costly over big areas. */
 .browse-glass {
@@ -226,24 +240,6 @@ html:has(dialog[data-details][open]) {
     background-color: var(--glass-fill-strong);
   }
 }
-@media (width >= 80rem) and (hover: hover) and (pointer: fine) {
-  .row-button {
-    opacity: 1;
-    background-color: transparent;
-    box-shadow: none;
-    color: var(--color-ink-3);
-  }
-  .row:hover > .row-button,
-  .row:focus-within > .row-button {
-    background-color: var(--glass-fill);
-    box-shadow: var(--glass-shadow);
-    color: var(--color-ink);
-  }
-  .row > .row-button:hover {
-    background-color: var(--glass-fill-strong);
-  }
-}
-
 /* The shared TV focus glow (index.css --shadow-glow) on the glass controls, which set their own
    shadow. */
 .browse-glass:focus-visible,
@@ -343,6 +339,45 @@ html:has(dialog[data-details][open]) {
     transition: none;
   }
 }
+/* TV-sized screens (from 120rem): titles rest a step quieter; the card in focus or under the pointer
+   turns its title full ink and lifts whole, 2px, title and picture together. The article moves, not
+   the title (a transform there would become the stretched link's containing block), and the hover
+   keys on its list item, which stays put, so the move never drops the hover. */
+@media (width >= 120rem) {
+  .card-lift > :is(h2, h3, h4) {
+    color: var(--color-ink-2);
+  }
+  .card-lift:has([data-card-link]:focus-visible) > :is(h2, h3, h4) {
+    color: var(--color-ink);
+  }
+  @media (hover: hover) {
+    li:hover > .card-lift > :is(h2, h3, h4) {
+      color: var(--color-ink);
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .card-lift {
+      transition: translate 350ms var(--ease-tv);
+    }
+    .card-lift:has([data-card-link]:focus-visible) {
+      translate: 0 -2px;
+    }
+    .card-lift .card-media,
+    .card-lift:has([data-card-link]:focus-visible) .card-media,
+    .card-lift:hover .card-media {
+      translate: none;
+    }
+    @media (hover: hover) {
+      li:hover > .card-lift {
+        translate: 0 -2px;
+      }
+    }
+    li:active > .card-lift {
+      translate: none;
+      transition-duration: 120ms;
+    }
+  }
+}
 /* Panels in the card family (How it works steps, the history-off note): a faint top light and a
    soft elevation over their hairline border. */
 .browse-panel {
@@ -404,6 +439,49 @@ html:has(dialog[data-details][open]) {
     to {
       opacity: 0;
     }
+  }
+}
+/* On a card, the reel counts down along the picture's foot as the Featured row's countdown does: a
+   rounded gold line on a faint light track. It shows once the reel paints its first frame (its
+   loading cover gone), runs the reel's 10s (REEL_MS) and pauses with it. Reduced motion: none. */
+.card-media > .card-preview > .card-preview-bar {
+  position: absolute;
+  inset: auto 0.625rem 0.5rem;
+  z-index: 2;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.45);
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.15);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.card-media > .card-preview > .card-preview-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-band-gold), #ffd36e);
+  box-shadow: 0 0 6px rgb(252 181 27 / 0.6);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+.card-media > .card-preview:has(.reel):not(:has(.reel-loading)) > .card-preview-bar {
+  opacity: 1;
+}
+.card-media > .card-preview:has(.reel):not(:has(.reel-loading)) > .card-preview-bar::after {
+  animation: card-preview-count 10s linear both;
+}
+.card-preview:has(.reel[data-paused]) > .card-preview-bar::after {
+  animation-play-state: paused;
+}
+@keyframes card-preview-count {
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-preview-bar {
+    display: none;
   }
 }
 
@@ -543,9 +621,10 @@ html[data-hero-swap]::view-transition-new(hero-text) {
 [data-row='featured'] > li[data-active]:not(:has(:focus-visible)) article {
   --card-hairline: 0 0 0 1px rgb(0 0 0 / 0.06), 0 0 28px -6px rgb(252 181 27 / 0.55);
 }
-/* The count: a rounded gold line inset along the picture's foot, on a faint light track. */
-[data-row='featured'] > li[data-active] article > .aspect-video::before,
-[data-row='featured'] > li[data-active] article > .aspect-video::after {
+/* The count: a rounded gold line inset along the picture's foot, on a faint light track (giving way
+   to the preview's own line while one plays). */
+[data-row='featured'] > li[data-active] article:not([data-previewing]) > .aspect-video::before,
+[data-row='featured'] > li[data-active] article:not([data-previewing]) > .aspect-video::after {
   content: '';
   position: absolute;
   inset: auto 0.625rem 0.5rem;
@@ -572,8 +651,27 @@ html[data-hero-swap]::view-transition-new(hero-text) {
   }
 }
 
-/* "More video resources below": fades in once, nudges once, then rests. Focus and anchor scrolls
-   keep clear of it. */
+/* "More video resources below": its fade is a soft paper pool behind the pill and a thin fall-off
+   along the screen's foot, so the titles beside the pill (the Featured row's, on short laptop
+   screens) stay crisp. Paper only, never a colour. --more-foot is the room under the pill (the tab
+   bar on phones). */
+.more-below {
+  --more-foot: calc(4.75rem + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(closest-side, var(--color-paper) 40%, transparent) 50%
+      calc(100% - var(--more-foot) + 1.5rem) / 22rem 5rem no-repeat,
+    linear-gradient(
+      to top,
+      var(--color-paper) calc(var(--more-foot) - 1.5rem),
+      transparent calc(var(--more-foot) - 0.75rem)
+    );
+}
+@media (width >= 48rem) {
+  .more-below {
+    --more-foot: 1.5rem;
+  }
+}
+/* It fades in once, nudges once, then rests. Focus and anchor scrolls keep clear of it. */
 html:has([data-more-below]:not([data-hidden])) {
   scroll-padding-bottom: calc(var(--tabbar-h) + 5.5rem);
 }

@@ -161,7 +161,10 @@ export function SeeAllTile({ to, count, title, tone, tabIndex }: SeeAll & { tabI
       aria-label={`See all ${count.toLocaleString('en')} videos in ${title}`}
       className="card-tile card-media group/all relative block aspect-video overflow-hidden rounded-card border border-line bg-linear-to-br from-surface to-surface-2/60 @container focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
-      <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1.5 ${MARK[tone]}`} />
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-1.5 bg-(image:--gradient-band) ${MARK[tone]}`}
+      />
       <span className="flex size-full flex-col justify-end p-[7cqi]">
         <span className="font-display text-[length:clamp(1.125rem,11cqi,2rem)] leading-tight text-ink transition-colors group-hover/all:text-maroon">
           See all
@@ -170,7 +173,7 @@ export function SeeAllTile({ to, count, title, tone, tabIndex }: SeeAll & { tabI
           <span>{count.toLocaleString('en')} videos</span>
           <span
             aria-hidden="true"
-            className="grid size-8 shrink-0 place-items-center rounded-pill border border-line text-ink transition-transform motion-safe:group-hover/all:translate-x-0.5"
+            className="browse-glass grid size-8 shrink-0 place-items-center rounded-pill border text-ink transition-transform motion-safe:group-hover/all:translate-x-0.5"
           >
             <ChevronRightIcon className="size-4" />
           </span>

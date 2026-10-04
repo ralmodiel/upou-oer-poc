@@ -31,7 +31,7 @@ export default function CollectionsPage() {
         ) : (
           <ul
             role="list"
-            className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface"
+            className="page-glass divide-y divide-glass-border overflow-hidden rounded-card border border-glass-border bg-surface"
           >
             {categories.map((category, i) => (
               <li key={category.slug}>

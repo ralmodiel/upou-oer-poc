@@ -27,11 +27,15 @@ export default function Breadcrumbs({ items, nowrap = false, className = '' }: B
             <li key={`${item.label}-${i}`} className={`flex min-w-0 items-center gap-x-1 ${fit}`}>
               {i > 0 && <ChevronRightIcon className="size-3.5 shrink-0 text-ink-3" />}
               {item.to !== undefined && !last ? (
+                // The 40px link keeps its box; a frosted pill inside it (wider by its negative
+                // margins, so the text stays put) shows hover and carries the focus ring.
                 <Link
                   to={item.to}
-                  className="-my-1.5 truncate rounded-sm px-0.5 py-2.5 text-ink-2 underline-offset-4 hover:text-maroon hover:underline"
+                  className="group/crumb -my-1.5 flex min-w-0 px-0.5 py-2.5 text-ink-2 outline-none hover:text-maroon focus-visible:text-maroon"
                 >
-                  {item.label}
+                  <span className="-mx-2 -my-1 block truncate rounded-pill px-2 py-1 transition-[background-color,box-shadow] group-hover/crumb:bg-frost-2 group-hover/crumb:shadow-(--shadow-glass) group-focus-visible/crumb:bg-frost-2 group-focus-visible/crumb:shadow-glow group-focus-visible/crumb:outline-2 group-focus-visible/crumb:outline-offset-2 group-focus-visible/crumb:outline-focus">
+                    {item.label}
+                  </span>
                 </Link>
               ) : (
                 <span

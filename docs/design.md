@@ -788,3 +788,86 @@ Paint only. Every measured box of the watch page stays within 2 px at 1366, 1920
 - **Empty and not-found states:** `.tv-spot` gives an empty state (My List, Search "Nothing matched") a soft gold spotlight on the page surface. `.tv-spot-page` gives Not found (404 and a missing collection) a corner glow from the top left. Gold is mixed at 12% in light and 7% in dark (`--tv-spot`), so it never turns muddy on charcoal. Neither is ever over a picture.
 - **Shortcuts keys:** keycaps get a surface-to-surface-2 gradient and a 2 px inset base shadow.
 - **Type:** quick look title and search results heading at -0.01em tracking.
+
+## Round 9: TV-app polish, second pass
+
+Paint only again; the same layout guard (boxes within 2 px; only the How to cite section, added separately, moves content below the watch page's facts line). The hero's second button is back to "Details" and opens the quick look with `#details`.
+
+### Chrome and tokens
+
+- **Ten-foot focus.** `--shadow-glow` is now two neutral layers: a close halo `0 0 14px 2px var(--color-glow)` and a wide bloom `0 0 40px 8px var(--color-glow-soft)`. Dark lifts both (glow white at 32%, soft at 16%) rather than changing the geometry, so the base rule and the `shadow-glow` utility match. `band-focus` turns both gold. The ring (maroon on paper 8.87:1, gold on dark 12.03:1) still carries the brand.
+- **Glass controls.** New tokens are `--shadow-glass` (a light top rim, a hairline and a soft drop) and `--color-rim` (a light border). They match R8-2's glass row arrows and are declared in both themes and in `.light-scope`. Use them as `shadow-(--shadow-glass)` and `border-rim`.
+- **Chips.** At rest they stay frosted. On hover and focus they turn to glass (`bg-frost-2`, `border-rim`, `--shadow-glass`) and lift 2px (motion-safe only), with no blur. Focus adds the glow, and selected chips now get the glow on focus too.
+- **Breadcrumbs.** Each link keeps its 40px box. A frosted glass pill inside it shows on hover, and on focus it carries the ring and glow. The pill is 8px wider each side, absorbed by negative margins, so the text never moves. A named group (`group/crumb`) stops an outer `.group` from lighting it.
+- **See all.** A frosted pill (a `::before` 10px wider each side and 32px tall, behind the text) shows on hover and focus and carries the focus ring. The link's box is unchanged.
+- **Header nav links.** They hover as a glass pill, matching the chips and breadcrumbs.
+- **Scrolled header edge.** `shell-edge` adds a tri-colour hairline (maroon, gold, forest, fading at both ends) along the header's foot, with a faint gold glow above it. It sits inside the header, so it never falls over a picture. It is at 45% on paper and 85% in dark, and fades in over 300ms with `[data-scrolled]`.
+- **Theme switch.** The page cross-fades over 320ms through a View Transition (`html[data-theme-fade]`, so pointer events pass through). It runs once however many `useTheme` callers apply the theme. With reduced motion, hidden tabs or no View Transition support, the theme changes at once. CLS stays 0.
+- **Dark depth from shell utilities.** Tailwind inlines `shadow-*` theme values at build time, so `shadow-elev-1..3`, `shadow-lift` and `shadow-action` always used the light values, even in dark. Shell components now use the var form (`shadow-(--shadow-elev-2)`), so the dark depth tokens apply.
+- **Inner scrollbars.** `shell-scroll` gives an inner scroll area a thin themed scrollbar. It is for menus, dialogs and the Up next list, and never for the page. Tailwind only emits it once a component uses it.
+- **Skip link.** It takes the primary's gradient and sheen, with the glow on focus.
+
+### Home and cards
+
+- **"More video resources below" fade** (`browse.css` `.more-below`): no longer a tall paper gradient up the screen. It is a soft paper pool behind the pill (a 22rem x 5rem radial) and a thin full-width fall-off along the screen's foot (0.75rem from md; on phones it rises to just above the tab bar). Titles beside the pill (the Featured row's at 1366x768) stay crisp; paper only, never a colour. `--more-foot` is the room under the pill.
+- **Edge peek reads as imagery** (`.row-track` scroll-timeline mask): two mask bands. The pictures (the track's 0.75rem top padding plus a 16:9 card image, `--row-img`) fade across the whole gutter as before; the text below them is gone within the first fifth of the fade, so a peeking card shows only its picture. Same `--row-fade-l/r` timeline, so ends and rows that do not scroll still have no fade.
+- **Row arrows never rest over the peek**: from 80rem the quiet resting outline is gone; the arrows come in (glass) only while the row is hovered or holds focus, as below 80rem. They stay Tab stops; the remote passes over them as before.
+- **TV-sized focus** (from 120rem): card titles rest at ink-2; the card in keyboard focus or under the pointer turns its title full ink (not maroon) and lifts whole, 2px, title and picture together. The article moves, not the title: a transform on the title would make it the stretched link's containing block and shrink the click area. The hover keys on the static `li`, so the 2px move never drops it. The picture's own 2px rise is cancelled at that size (total lift stays 2px). Reduced motion: colour only.
+- **Preview progress** (`.card-preview-bar`, rendered by preview.tsx inside the reel overlay): while a card's reel plays, a 3px rounded gold line on a faint light track along the picture's foot, inset like the Featured countdown. It shows once the reel paints its first frame (no `.reel-loading`), runs REEL_MS (10s) and pauses with the reel's `data-paused`. Only on `.card-media` (never on the hero or the quick look). The Featured row's countdown steps aside while its card previews. Reduced motion: hidden (and previews do not start).
+- **See all tile**: its collection bar takes the brand band's gradient (`--gradient-band`: a light corner and a deeper foot over the tone), and the chevron is a small glass circle (`.browse-glass`).
+- **Hero holds while any preview plays**: the auto-advance now checks for a `.card-preview` anywhere on the page, not only in the featured zone. Before, a hero swap under a playing Also new preview restarted it (measured: the preview dropped exactly when `data-lead` changed).
+- **Hero second button back to Details** (user request via the lead): InfoIcon + "Details", linking `#details` (`AT_DETAILS`) so the quick look opens on the video's details and citation. The button is 41px narrower than "More like this" (157 to 116px); Save moves left by the same.
+
+### Watch page
+
+Paint only. All of the watch page's own boxes stay within 2 px at 1366, 1920 and 390. The only
+boxes that moved sit below CITE's new "How to cite" section, and they moved because of it.
+
+- **Autoplay card tokens:** the card now carries R8-1's `.light-scope` class (AutoplayNext), so its
+  buttons use the shared light action, frost, depth and glow values. The copies in `.watch-autoplay`
+  are gone; the card sets only its page palette (paper, ink, line, forest, focus). Its focus glow is
+  now the shared neutral one, not the old maroon one. Cancel stays a light frost pill in dark mode.
+- **Countdown ring:** a 2px maroon arc drains clockwise around the seconds over the 5 s countdown,
+  in step with the bottom bar (`@property --watch-spent`, a conic gradient masked to a ring). The
+  ring sits on a span that is never re-keyed, so it runs without a break. Only the number inside
+  fades in each second. Under reduced motion there is no ring; the hairline circle and the number
+  stay.
+- **Reel band, no pink:** the blurred copy of the shot under the band's frost is grey
+  (`grayscale(1)`, like the watch backdrop and ambient light). A red microphone or dress no longer
+  shows as a pink smear in the band or beside a slide. The end card's band over the sharp poster
+  goes from 94% to 97% paper for the same reason.
+- **Light backdrop:** the paper share at the top goes from 55% to 86% (74% at 45%, then full
+  paper). Dark stills no longer leave a grey smudge above the stage and the Back row.
+- **Up next under focus:** while a row has keyboard focus, the list's top and bottom rules turn
+  toward gold and a faint gold glow shows just above and below them (`:has(.watch-next:focus-visible)`).
+  ↑ / ↓ already glide a clipped row into view (spatial.ts `focusAndReveal`, smooth scrollIntoView),
+  and jump with reduced motion, so this round adds no CSS `scroll-behavior`. That would also animate
+  the list's own scrollTop writes (centring the row now playing, Refresh) and break the in-sight
+  check that keeps focus.
+- **Player key time pill:** beside the focused Play / Pause key is a small pill in the same glass:
+  the time played, the length and a thin charcoal progress bar. The values come from the embed's
+  own `infoDelivery` messages (`currentTime`, `duration`), the same channel the player state already
+  uses; there is no YouTube script. Seconds are whole, so it re-renders at most once a second. The
+  length is rounded, as the embed's own clock shows it. The pill is `aria-hidden` and appears only
+  with the key's `:focus-visible`. The key and pill share a positioned row (`.watch-player-keys`),
+  so the key's box does not change.
+- **Measured:**
+  - The band under the red microphone (folklore, 2.6 s): the strongest red cast in the region,
+    R − (G+B)/2, falls from 22 to 4.
+  - The end card band: its mean red cast falls from 9.9 to 6.6. Plain paper alone measures 3.
+  - Above the stage on a dark still: grey 210 rises to 235.
+  - The time pill reads "0:01 / 1:20:15", the same as the embed's own clock.
+  - Keyboard walk, the same as before: ↓ goes to Unmute, → to Skip, Esc = Back. → reaches Now
+    playing; after ↓ and Enter, focus stays on the new page's Now playing row. The seed row stays
+    on top, and Refresh sits 8 px from the title.
+
+### Secondary pages and panels
+
+- **Dialogs on R8-1's elevation and glass:** Privacy, Shortcuts and the quick look panel use `shadow-elev-3` and a `border-glass-border` edge (the menus' pair), plus a faint lit rim (`inset 0 1px 0` white at 6%). The R8 `--tv-panel-edge` token and the custom 40/90 px shadow are gone. Privacy's sticky head line and the Shortcuts keycaps use `border-glass-border` too. In dark, Privacy and Shortcuts catch a faint light from above (`--page-sheen`: white 3.5% fading over 14rem; ink-3 stays 5.3:1). The quick look gets no sheen, because its picture sits at the top.
+- **Search suggestions:** the same `shadow-elev-3` and glass edge as the menus. The 94% glass fill and blur stay.
+- **Privacy switches:** under keyboard focus the knob takes a 2 px ring (focus colour at 40%), a neutral glow (`--color-glow`) and, in dark, the collection cards' gold bloom (`--tv-glow`). It grows 1.15 (motion-safe only; it stays inside the track).
+- **Collections on phones:** the list reads as one glass group (`.page-glass`: frost fill, `shadow-elev-2`, lit rim, `glass-border` edge and dividers; no blur, since only the plain page is behind it). Rows take an ink wash: 4% on hover, 5% under focus. Both keep the ink-3 count at 4.5:1 or better (4.6:1 in dark under focus). Under focus a row keeps its 3 px inset ring. The cover takes a 2 px ring with a surface gap and a soft neutral glow, and comes forward 1.06 (motion-safe). The control bloom is off on rows, because it would spill over the neighbouring rows.
+- **Collection cards (md up):** resting `shadow-elev-1`, hover and focus `shadow-elev-3` (focus adds the R8 gold bloom in dark), and a `glass-border` edge. The rule above the newest titles becomes a fading hairline (`.tv-hairline`).
+- **Category page:** a soft gold spotlight spills from the band over the sort toolbar and grid (`.page-stage`: a 64×22rem ellipse at top centre, `--tv-spot`, page surface only, behind the cards). The sort switch is glass like the search chips (`glass-border`, frost, `shadow-elev-1`). The missing-collection page keeps the R8 corner glow.
+- **"Showing N of M" and Load more (Category and Search):** a fading hairline (max 40rem, centred) sits halfway up the 40 px gap above (`.page-more::before`). The count is a quiet pill drawn outside its own box (`.page-count::before`, ink 6%, inset -4/-12 px), so nothing moves. Ink-3 on the pill: 4.7:1 light, 5.7:1 dark.
+- **Class names:** new globals are prefixed `page-` (`page-glass`, `page-row`, `page-row-cover`, `page-stage`, `page-more`, `page-count`, `--page-sheen`). None appear in any other stylesheet.

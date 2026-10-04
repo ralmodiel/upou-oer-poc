@@ -113,7 +113,7 @@ export default function CategoryPage() {
         {all.length} {all.length === 1 ? 'video' : 'videos'}
         {category.name === GENERAL_CATEGORY ? ' without a subject category' : ''}
       </PageBand>
-      <div className="px-(--gutter) pt-6 pb-16">
+      <div className="page-stage px-(--gutter) pt-6 pb-16">
         <div className="flex flex-wrap items-center justify-end gap-3">
           <span aria-hidden="true" className="text-sm text-ink-3">
             Sort by
@@ -121,7 +121,7 @@ export default function CategoryPage() {
           <div
             role="group"
             aria-label="Sort by"
-            className="inline-flex rounded-pill border border-line bg-surface p-0.5"
+            className="inline-flex rounded-pill border border-glass-border bg-frost p-0.5 shadow-elev-1"
           >
             {SORTS.map((o) => (
               <Link
@@ -141,8 +141,8 @@ export default function CategoryPage() {
         <div ref={grid} className="mt-6">
           <VideoGrid videos={visible} showCategory={false} />
         </div>
-        <div className="mt-10 flex flex-col items-center gap-3">
-          <p role="status" className="text-sm text-ink-3">
+        <div className="page-more mt-10 flex flex-col items-center gap-3">
+          <p role="status" className="page-count text-sm text-ink-3">
             Showing {visible.length} of {all.length}
           </p>
           {visible.length < all.length && (

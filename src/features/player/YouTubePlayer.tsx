@@ -21,8 +21,10 @@ const REPLAY_MS = 2000
 const command = (func: 'playVideo' | 'pauseVideo') =>
   JSON.stringify({ event: 'command', func, args: [], id: 1, channel: 'widget' })
 
-/** The player state a widget message reports, if any. */
-function stateOf(data: unknown): number | undefined {
+type Message = { event?: unknown; info?: unknown }
+
+/** A widget message, parsed, if `data` is one. */
+function messageOf(data: unknown): Message | undefined {
   let message: unknown = data
   if (typeof data === 'string') {
     try {
@@ -31,8 +33,11 @@ function stateOf(data: unknown): number | undefined {
       return undefined
     }
   }
-  if (!message || typeof message !== 'object') return undefined
-  const { event, info } = message as { event?: unknown; info?: unknown }
+  return message && typeof message === 'object' ? message : undefined
+}
+
+/** The player state a widget message reports, if any. */
+function stateOf({ event, info }: Message): number | undefined {
   const state =
     event === 'onStateChange'
       ? info
@@ -40,6 +45,25 @@ function stateOf(data: unknown): number | undefined {
         ? (info as { playerState?: unknown }).playerState
         : undefined
   return typeof state === 'number' ? state : undefined
+}
+
+/** Whole seconds played and the video's length, as far as an info delivery reports them. */
+function timeOf({ event, info }: Message): { at?: number; length?: number } {
+  if (event !== 'infoDelivery' || !info || typeof info !== 'object') return {}
+  const { currentTime, duration } = info as { currentTime?: unknown; duration?: unknown }
+  const at =
+    typeof currentTime === 'number' && currentTime >= 0 ? Math.floor(currentTime) : undefined
+  // The length rounds, as the embed's own clock shows it.
+  const length = typeof duration === 'number' && duration > 0 ? Math.round(duration) : undefined
+  return { at, length }
+}
+
+/** 75 → "1:15", 3725 → "1:02:05". */
+function clockOf(s: number): string {
+  const two = (n: number) => String(n).padStart(2, '0')
+  const h = Math.floor(s / 3600)
+  const m = Math.floor(s / 60) % 60
+  return h ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`
 }
 
 /**
@@ -109,6 +133,9 @@ export default function YouTubePlayer({
 }) {
   const [loaded, setLoaded] = useState(false)
   const [state, setState] = useState<number | undefined>()
+  // Whole seconds, so the many deliveries a second bring a re-render at most once a second.
+  const [at, setAt] = useState(0)
+  const [length, setLength] = useState<number | undefined>()
   const frameRef = useRef<HTMLIFrameElement>(null)
   const ended = useEffectEvent(() => onEnded?.())
   const playing = state === 1 || state === 3
@@ -134,7 +161,12 @@ export default function YouTubePlayer({
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== PLAYER_ORIGIN || e.source !== player) return
       heard = true
-      const next = stateOf(e.data)
+      const message = messageOf(e.data)
+      if (!message) return
+      const time = timeOf(message)
+      if (time.at !== undefined) setAt(time.at)
+      if (time.length !== undefined) setLength(time.length)
+      const next = stateOf(message)
       if (next === undefined || next === last) return
       setState(next)
       if (last === 1) played += performance.now() - since
@@ -188,19 +220,30 @@ export default function YouTubePlayer({
         onLoad={() => setLoaded(true)}
         className={`absolute inset-0 size-full border-0 transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
       />
-      <button
-        type="button"
-        className="watch-player-key"
-        onClick={() =>
-          frameRef.current?.contentWindow?.postMessage(
-            command(playing ? 'pauseVideo' : 'playVideo'),
-            PLAYER_ORIGIN,
-          )
-        }
-      >
-        {playing ? <PauseIcon /> : <PlayIcon className="size-4" />}
-        {playing ? 'Pause' : 'Play'}
-      </button>
+      {/* The key and, beside it while it has focus, the time and how far along (seen only). */}
+      <div className="watch-player-keys">
+        <button
+          type="button"
+          className="watch-player-key"
+          onClick={() =>
+            frameRef.current?.contentWindow?.postMessage(
+              command(playing ? 'pauseVideo' : 'playVideo'),
+              PLAYER_ORIGIN,
+            )
+          }
+        >
+          {playing ? <PauseIcon /> : <PlayIcon className="size-4" />}
+          {playing ? 'Pause' : 'Play'}
+        </button>
+        {length !== undefined && (
+          <span className="watch-player-time" aria-hidden="true">
+            {clockOf(Math.min(at, length))} / {clockOf(length)}
+            <span className="watch-player-track">
+              <span style={{ scale: `${Math.min(at / length, 1)} 1` }} />
+            </span>
+          </span>
+        )}
+      </div>
     </>
   )
 }

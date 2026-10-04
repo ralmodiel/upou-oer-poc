@@ -17,6 +17,9 @@ export const pageTarget = (base: string): DetailsTarget => ({ base, state: OPENE
 /** Hash for a quick look that starts on its More like this row (the home hero shows the rest). */
 export const MORE_LIKE_THIS = '#more-like-this'
 
+/** Hash for a quick look that starts on the video's details: title, facts and citation. */
+export const AT_DETAILS = '#details'
+
 export function detailsSearch(base: string, id: string) {
   const params = new URLSearchParams(base)
   params.set('v', id)

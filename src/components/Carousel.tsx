@@ -17,9 +17,9 @@ interface Props {
 
 /**
  * The track and its buttons. Pointer devices show the buttons while the row is hovered or holds
- * focus (from 80rem, a quiet outline at rest too: browse.css), each at its end only while there is
- * more that way; touch screens swipe instead. The
- * remote passes over the buttons (data-spatial="skip"): ← / → walk the cards, the track follows.
+ * focus (never at rest, where they would sit over the faded peek), each at its end only while there
+ * is more that way; touch screens swipe instead. The remote passes over the buttons
+ * (data-spatial="skip"): ← / → walk the cards, the track follows.
  */
 export default function Carousel({ carousel, label, className = '', children }: Props) {
   const { ref, start, end, step, engage } = carousel

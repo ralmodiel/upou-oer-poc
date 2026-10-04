@@ -89,14 +89,18 @@
   }
 }
 
+/*
+  Light paper: most of it at the top, so a dark still leaves no grey smudge above the stage and
+  the Back row; the still shows most beside the stage's middle, then fades into the page.
+*/
 .watch-backdrop::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--color-paper) 55%, transparent),
-    color-mix(in srgb, var(--color-paper) 72%, transparent) 50%,
+    color-mix(in srgb, var(--color-paper) 86%, transparent),
+    color-mix(in srgb, var(--color-paper) 74%, transparent) 45%,
     var(--color-paper)
   );
 }
@@ -473,6 +477,24 @@
   outline-offset: -3px;
 }
 
+/*
+  While keys or a remote move through the queue, its rules warm toward gold and a faint glow rises
+  above and below them, as a TV app lights the row that has focus.
+*/
+.watch-upnext-frame {
+  transition:
+    border-color 0.3s var(--ease-out-soft, ease),
+    box-shadow 0.3s var(--ease-out-soft, ease);
+}
+
+.watch-upnext-frame:has(.watch-next:focus-visible) {
+  --upnext-glow: color-mix(in srgb, var(--gold) 50%, transparent);
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--color-line));
+  box-shadow:
+    0 -10px 18px -14px var(--upnext-glow),
+    0 10px 18px -14px var(--upnext-glow);
+}
+
 /* The row now playing: a forest wash with a faint forest edge; its "Now playing" label names it. */
 .watch-next[aria-current='true'] {
   background: var(--color-forest-soft);
@@ -710,9 +732,10 @@
 
 /*
   Autoplay's "Up next" card on the stage: light whatever the theme (the stage never turns into a
-  dark box), so the light palette is set here for everything inside it. It is set like the reel's
-  end card: the next video's picture beside a spaced eyebrow, the serif title, its facts and
-  "Starting in" with the seconds in a ring, then Play now and Cancel.
+  dark box). The buttons' action, frost, depth and glow come from index.css's .light-scope (on the
+  card, AutoplayNext); the page palette is set here. It is set like the reel's end card: the next
+  video's picture beside a spaced eyebrow, the serif title, its facts and "Starting in" with the
+  seconds in a draining ring, then Play now and Cancel.
 */
 .watch-autoplay {
   --color-paper: #faf8f6;
@@ -725,26 +748,8 @@
   --color-maroon: #8d0c34;
   --color-forest: #00563f;
   --color-forest-soft: #e2efe9;
-  --color-action: #7b1113;
-  --color-action-2: #640d0f;
-  --color-on-action: #ffffff;
   --color-focus: #8d0c34;
   --shadow-lift: 0 10px 30px -12px rgb(27 26 23 / 0.25);
-  /* The buttons' frost, depth and glow (index.css) in their light values too. */
-  --color-glass-border: rgb(55 54 55 / 0.1);
-  --color-frost: rgb(255 255 255 / 0.78);
-  --color-frost-2: rgb(255 255 255 / 0.96);
-  --color-glow: rgb(141 12 52 / 0.38);
-  --shadow-elev-1: 0 1px 2px rgb(27 26 23 / 0.06), 0 2px 8px -3px rgb(27 26 23 / 0.1);
-  --shadow-elev-2: 0 1px 3px rgb(27 26 23 / 0.06), 0 10px 24px -12px rgb(27 26 23 / 0.24);
-  --shadow-glow: 0 0 18px 2px var(--color-glow);
-  --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 10px 26px -12px rgb(27 26 23 / 0.55);
-  --gradient-action: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--color-action), white 14%),
-    var(--color-action) 60%,
-    color-mix(in oklab, var(--color-action), black 12%)
-  );
   /* Paper with a soft light falling from the picture's side: a lit set rather than a flat page. */
   background: radial-gradient(120% 100% at 25% 30%, #ffffff, var(--color-paper) 55%, #f3efec);
   color: var(--color-ink);
@@ -834,8 +839,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The seconds in a ring, as in the reel's "Starting in 3 · 2 · 1". */
+/*
+  The seconds in a ring, as in the reel's "Starting in 3 · 2 · 1". A maroon arc drains around it
+  with the countdown, clockwise from the top, as the bar fills (none with reduced motion).
+*/
 .watch-autoplay-digit {
+  position: relative;
   display: grid;
   place-items: center;
   min-width: 1.9em;
@@ -844,6 +853,31 @@
   border-radius: 999px;
   font-weight: 600;
   color: var(--color-ink);
+}
+
+@property --watch-spent {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-autoplay-digit::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: conic-gradient(transparent var(--watch-spent), var(--color-maroon) 0);
+    /* Just a 2px ring over the hairline. */
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+    animation: watch-drain 5s linear both;
+  }
+}
+
+@keyframes watch-drain {
+  to {
+    --watch-spent: 360deg;
+  }
 }
 
 /* Large stages (wide screens, TVs): the buttons grow with the type, to the large button's size. */
@@ -902,7 +936,8 @@
     animation: watch-autoplay-in 250ms var(--ease-out-soft, ease) both;
   }
 
-  .watch-autoplay-digit {
+  /* The number comes in each second; its ring (the span around it) drains on unbroken. */
+  .watch-autoplay-digit > span {
     animation: watch-digit 450ms var(--ease-out-soft, ease) both;
   }
 }
@@ -939,11 +974,18 @@
   The player's Play / Pause key for keyboards and remotes (Enter on the stage reaches it): out of
   sight and out of the pointer's way until it has keyboard focus, as the embed has its own controls.
 */
-.watch-player-key {
+.watch-player-keys {
   position: absolute;
   bottom: 4%;
   left: 3%;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.watch-player-key {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -966,6 +1008,61 @@
 .watch-player-key:focus-visible {
   opacity: 1;
   outline-color: #8d0c34;
+}
+
+/*
+  Beside the focused key, as a TV remote's OK brings up: the same glass holding the time played,
+  the length and a thin bar of how far along (from the embed's own info messages).
+*/
+.watch-player-time {
+  display: grid;
+  gap: 0.3125rem;
+  padding: 0.4375rem 0.75rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 0.75rem;
+  background: rgb(250 248 246 / 0.84);
+  color: #373637;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 10px 28px -12px rgb(27 26 23 / 0.6);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+}
+
+.watch-player-key:focus-visible + .watch-player-time {
+  opacity: 1;
+}
+
+.watch-player-track {
+  position: relative;
+  overflow: hidden;
+  min-width: 6rem;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(55 54 55 / 0.18);
+}
+
+.watch-player-track > span {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #373637;
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-player-key,
+  .watch-player-time {
+    transition: opacity 0.2s var(--ease-out-soft, ease);
+  }
+
+  .watch-player-track > span {
+    transition: scale 1s linear;
+  }
 }
 
 /* Phones: Back kept in reach under the header once its row has scrolled away (WatchPage). */

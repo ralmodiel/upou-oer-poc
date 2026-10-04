@@ -81,6 +81,7 @@
   /* Focus bloom: neutral (a soft dark halo on paper, a soft light one in dark), so it never tints a
      picture; the ring carries the brand colour. Active-tab and nav indicators glow in brand. */
   --color-glow: rgb(27 26 23 / 0.3);
+  --color-glow-soft: rgb(27 26 23 / 0.14);
   --color-glow-brand: rgb(141 12 52 / 0.45);
   --color-selection: rgb(141 12 52 / 0.16);
   --color-shimmer: rgb(255 255 255 / 0.65);
@@ -100,8 +101,15 @@
   --shadow-elev-1: 0 1px 2px rgb(27 26 23 / 0.06), 0 2px 8px -3px rgb(27 26 23 / 0.1);
   --shadow-elev-2: 0 1px 3px rgb(27 26 23 / 0.06), 0 10px 24px -12px rgb(27 26 23 / 0.24);
   --shadow-elev-3: 0 2px 6px rgb(27 26 23 / 0.06), 0 24px 48px -18px rgb(27 26 23 / 0.34);
-  /* TV focus: the focus ring plus this soft bloom around it (base layer below). */
-  --shadow-glow: 0 0 18px 2px var(--color-glow);
+  /* TV focus: the focus ring plus this bloom around it (base layer below): a close halo and a
+     wide soft one, so focus reads from across a room. */
+  --shadow-glow: 0 0 14px 2px var(--color-glow), 0 0 40px 8px var(--color-glow-soft);
+  /* Glass controls (chips under hover or focus, as the row arrows): a light top rim, a hairline
+     and a soft drop. Use as shadow-(--shadow-glass) so the dark values apply. */
+  --shadow-glass:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(27 26 23 / 0.08),
+    0 8px 22px -10px rgb(27 26 23 / 0.32);
+  --color-rim: rgb(255 255 255 / 0.7);
   /* Primary fill: a top sheen and a soft drop under the maroon. */
   --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 10px 26px -12px rgb(27 26 23 / 0.55);
   /* Brand bands (no imagery on them): a light corner and a deeper foot. */
@@ -162,10 +170,15 @@
     --color-frost-2: rgb(255 255 255 / 0.96);
     --color-glass-border: rgb(55 54 55 / 0.1);
     --color-glow: rgb(27 26 23 / 0.3);
+    --color-glow-soft: rgb(27 26 23 / 0.14);
+    --color-rim: rgb(255 255 255 / 0.7);
+    --shadow-glass:
+      inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(27 26 23 / 0.08),
+      0 8px 22px -10px rgb(27 26 23 / 0.32);
     --shadow-elev-1: 0 1px 2px rgb(27 26 23 / 0.06), 0 2px 8px -3px rgb(27 26 23 / 0.1);
     --shadow-elev-2: 0 1px 3px rgb(27 26 23 / 0.06), 0 10px 24px -12px rgb(27 26 23 / 0.24);
     --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 10px 26px -12px rgb(27 26 23 / 0.55);
-    --shadow-glow: 0 0 18px 2px var(--color-glow);
+    --shadow-glow: 0 0 14px 2px var(--color-glow), 0 0 40px 8px var(--color-glow-soft);
   }
 
   [data-theme='dark'] {
@@ -206,7 +219,12 @@
     --color-glass-border: rgb(255 255 255 / 0.08);
     --color-frost: rgb(48 44 45 / 0.72);
     --color-frost-2: rgb(66 61 62 / 0.85);
-    --color-glow: rgb(255 255 255 / 0.24);
+    --color-glow: rgb(255 255 255 / 0.32);
+    --color-glow-soft: rgb(255 255 255 / 0.16);
+    --shadow-glass:
+      inset 0 1px 0 rgb(255 255 255 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.3),
+      0 10px 26px -10px rgb(0 0 0 / 0.7);
+    --color-rim: rgb(255 255 255 / 0.18);
     --color-glow-brand: rgb(252 181 27 / 0.5);
     --color-selection: rgb(252 199 90 / 0.3);
     --color-shimmer: rgb(255 255 255 / 0.06);
@@ -251,7 +269,12 @@
       --color-glass-border: rgb(255 255 255 / 0.08);
       --color-frost: rgb(48 44 45 / 0.72);
       --color-frost-2: rgb(66 61 62 / 0.85);
-      --color-glow: rgb(255 255 255 / 0.24);
+      --color-glow: rgb(255 255 255 / 0.32);
+      --color-glow-soft: rgb(255 255 255 / 0.16);
+      --shadow-glass:
+        inset 0 1px 0 rgb(255 255 255 / 0.12), 0 0 0 1px rgb(0 0 0 / 0.3),
+        0 10px 26px -10px rgb(0 0 0 / 0.7);
+      --color-rim: rgb(255 255 255 / 0.18);
       --color-glow-brand: rgb(252 181 27 / 0.5);
       --color-selection: rgb(252 199 90 / 0.3);
       --color-shimmer: rgb(255 255 255 / 0.06);
@@ -292,8 +315,10 @@
       .reel *,
       article *
     ) {
-    /* --shadow-glow, spelled out so a band's own --color-glow applies. */
-    box-shadow: 0 0 18px 2px var(--color-glow);
+    /* --shadow-glow, spelled out so a band's own glow colours apply. */
+    box-shadow:
+      0 0 14px 2px var(--color-glow),
+      0 0 40px 8px var(--color-glow-soft);
   }
   ::selection {
     background-color: var(--color-selection);
@@ -322,10 +347,61 @@
   );
 }
 
+/* Inner scroll areas only (menus, dialogs, lists such as Up next): a thin themed scrollbar. Never on
+   the page, where the thinner gutter would reflow everything. */
+@utility shell-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-ink-3) 50%, transparent) transparent;
+}
+
+/* Scrolled header: a faint tri-colour hairline along its foot with a soft gold glow above it, both
+   inside the header, so nothing tints the page or a picture beneath. Shown with [data-scrolled]. */
+@utility shell-edge {
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 0.75rem;
+    pointer-events: none;
+    background:
+      linear-gradient(
+          90deg,
+          transparent,
+          var(--color-band-maroon) 22%,
+          var(--color-band-gold) 50%,
+          var(--color-band-forest) 78%,
+          transparent
+        )
+        bottom / 100% 1px no-repeat,
+      radial-gradient(45% 100% at 50% 100%, rgb(252 181 27 / 0.12), transparent);
+    opacity: 0;
+    transition: opacity 300ms var(--ease-out-soft);
+  }
+  /* Fainter on paper, where the maroon and forest ends read darker than on the dark glass. */
+  &[data-scrolled]::after {
+    opacity: 0.45;
+  }
+  [data-theme='dark'] &[data-scrolled]::after {
+    opacity: 0.85;
+  }
+}
+
+/* Theme switch (lib/theme.ts): the page cross-fades, motion-safe only; it stays usable meanwhile. */
+html[data-theme-fade]::view-transition {
+  pointer-events: none;
+}
+html[data-theme-fade]::view-transition-old(root),
+html[data-theme-fade]::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-out-soft);
+}
+
 /* On a maroon, forest or charcoal band the maroon focus ring would vanish: gold instead (ring and
    glow). */
 @utility band-focus {
   --color-glow: rgb(252 181 27 / 0.45);
+  --color-glow-soft: rgb(252 181 27 / 0.16);
   & :focus-visible {
     outline-color: var(--color-band-gold);
   }

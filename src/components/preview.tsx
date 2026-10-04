@@ -164,6 +164,8 @@ export function useCardPreview(video: Video) {
       <Suspense fallback={null}>
         <PromoReel video={video} variant="preview" muted onComplete={onComplete} />
       </Suspense>
+      {/* The reel's progress along a card's foot (browse.css). */}
+      <span className="card-preview-bar" />
     </div>
   ) : null
 

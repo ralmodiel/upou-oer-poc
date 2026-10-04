@@ -117,7 +117,7 @@ export default function Menu({
           role="menu"
           aria-label={label}
           onKeyDown={onKeyDown}
-          className="absolute top-full right-0 z-50 mt-1.5 min-w-60 rounded-card border border-glass-border bg-surface/95 p-1.5 text-sm shadow-elev-3 backdrop-blur-lg backdrop-saturate-150 motion-safe:transition-[opacity,translate] motion-safe:duration-150 motion-safe:starting:-translate-y-1 motion-safe:starting:opacity-0"
+          className="absolute top-full right-0 z-50 mt-1.5 min-w-60 rounded-card border border-glass-border bg-surface/95 p-1.5 text-sm shadow-(--shadow-elev-3) backdrop-blur-lg backdrop-saturate-150 motion-safe:transition-[opacity,translate] motion-safe:duration-150 motion-safe:starting:-translate-y-1 motion-safe:starting:opacity-0"
         >
           {sections.map((section, i) => (
             <div

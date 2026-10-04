@@ -31,7 +31,7 @@ export default function AppLayout() {
         href="#main"
         onClick={skipToMain}
         data-spatial="skip"
-        className="sr-only z-50 rounded-pill bg-action font-semibold text-on-action focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-2"
+        className="sr-only z-50 rounded-pill bg-action bg-(image:--gradient-action) font-semibold text-on-action shadow-(--shadow-action) focus:not-sr-only focus-visible:shadow-[var(--shadow-action),var(--shadow-glow)] focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-2"
       >
         Skip to content
       </a>

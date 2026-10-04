@@ -30,13 +30,15 @@ const SIZE = {
   // Compact tags; still 40px tall on touch screens.
   sm: 'h-9 px-3 text-xs [@media(hover:none)]:h-10',
 }
-// At rest: a frosted pill (no blur: chips come in long rows). Hover lifts it a step.
+// At rest: a frosted pill (no blur: chips come in long rows). Hover and focus turn it to glass, as
+// the row arrows: a fuller fill, a light rim and a soft drop, lifted 2px (motion-safe); focus adds
+// the TV glow.
 const OFF =
-  'border-glass-border bg-frost text-ink-2 shadow-elev-1 hover:border-ink-3 hover:bg-frost-2 hover:text-ink hover:shadow-elev-2'
+  'border-glass-border bg-frost text-ink-2 shadow-(--shadow-elev-1) hover:border-rim hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:border-rim focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5'
 // Selected: the maroon fill with the primary button's sheen (UP maroon; the deep band maroon in
 // dark). A brand dot keeps a ring.
 const ON =
-  'border-action bg-action bg-(image:--gradient-action) text-on-action shadow-action [&_[data-dot]]:ring-1 [&_[data-dot]]:ring-on-action'
+  'border-action bg-action bg-(image:--gradient-action) text-on-action shadow-(--shadow-action) focus-visible:shadow-[var(--shadow-action),var(--shadow-glow)] [&_[data-dot]]:ring-1 [&_[data-dot]]:ring-on-action'
 
 const chipClass = (active: boolean, size: 'md' | 'sm', extra: string) =>
   `${BASE} ${SIZE[size]} ${active ? ON : OFF} ${extra}`.trim()

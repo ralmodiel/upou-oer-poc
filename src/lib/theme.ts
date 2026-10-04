@@ -25,12 +25,33 @@ export const systemTheme = (): ResolvedTheme =>
 export const resolveTheme = (theme: Theme): ResolvedTheme =>
   theme === 'system' ? systemTheme() : theme
 
-/** Puts the resolved theme on <html data-theme> and the browser UI colour. */
+/** Puts the resolved theme on <html data-theme> and the browser UI colour. A switch cross-fades
+ *  (a View Transition, index.css) where supported and motion is welcome; elsewhere at once. */
 export function applyTheme(resolved: ResolvedTheme) {
-  document.documentElement.dataset.theme = resolved
-  document
-    .querySelectorAll('meta[name="theme-color"]')
-    .forEach((meta) => meta.setAttribute('content', CHROME_COLOR[resolved]))
+  const root = document.documentElement
+  const apply = () => {
+    root.dataset.theme = resolved
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((meta) => meta.setAttribute('content', CHROME_COLOR[resolved]))
+  }
+  // Every useTheme caller applies the theme: the first starts the fade, the rest find it under way.
+  // A fade still running is always replaced by a new one (which applies the old theme first).
+  const fading = root.dataset.themeFade
+  if (fading === resolved) return
+  const switching =
+    fading !== undefined || (root.dataset.theme !== undefined && root.dataset.theme !== resolved)
+  if (
+    !switching ||
+    !document.startViewTransition ||
+    document.hidden ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+    return apply()
+  root.dataset.themeFade = resolved
+  void document.startViewTransition(apply).finished.finally(() => {
+    if (root.dataset.themeFade === resolved) delete root.dataset.themeFade
+  })
 }
 
 /** The stored choice, read without React (for the pre-render bootstrap). */

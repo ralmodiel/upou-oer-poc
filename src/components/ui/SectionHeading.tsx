@@ -77,12 +77,14 @@ export default function SectionHeading({
             <Link
               to={seeAllTo}
               data-spatial="heading"
-              className="group inline-flex h-10 items-center gap-0.5 rounded-pill text-sm font-semibold text-maroon transition-colors hover:text-maroon-2"
+              // Hover and focus: a frosted pill behind the text (wider than the link, so nothing
+              // moves) that carries the focus ring.
+              className="group/all relative isolate inline-flex h-10 items-center gap-0.5 rounded-pill text-sm font-semibold text-maroon outline-none transition-colors before:absolute before:inset-y-1 before:-inset-x-2.5 before:-z-10 before:rounded-pill before:bg-frost-2 before:opacity-0 before:shadow-(--shadow-glass) before:transition-opacity hover:text-maroon-2 hover:before:opacity-100 focus-visible:before:opacity-100 focus-visible:before:shadow-glow focus-visible:before:outline-2 focus-visible:before:outline-offset-2 focus-visible:before:outline-focus focus-visible:before:transition-none"
             >
               {/* Visible text first, then the section name: repeated links stay distinct. */}
               {seeAllContext ? `${seeAll} ` : seeAll}
               {seeAllContext && <span className="sr-only">in {seeAllContext}</span>}
-              <ChevronRightIcon className="size-4 transition-transform motion-safe:group-hover:translate-x-0.5" />
+              <ChevronRightIcon className="size-4 transition-transform motion-safe:group-hover/all:translate-x-0.5" />
             </Link>
           )}
         </div>

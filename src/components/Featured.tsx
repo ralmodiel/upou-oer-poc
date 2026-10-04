@@ -10,9 +10,9 @@ import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { FactsLine, LONG_TITLE } from './browse-ui'
-import { MORE_LIKE_THIS } from './details'
+import { AT_DETAILS } from './details'
 import { prefersReducedMotion } from './hooks'
-import { ChevronDownIcon, PlayIcon, StackIcon } from './icons'
+import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
 import { useCardPreview } from './preview'
 import SectionHeading from './ui/SectionHeading'
 import { PRESSED, buttonClass } from './ui/button-styles'
@@ -47,9 +47,10 @@ function Featured(props: Props) {
 
 /**
  * The hero moves on to the next featured video after ADVANCE_MS left alone: no click or key press,
- * no pointer over the hero or the row, no focus in them, no preview playing, no dialog open (a
- * hidden tab pauses it). A pointer resting on a card (HOVER_INTENT_MS), or focus on one, shows that
- * video at once; the count then starts from it. The active card shows the count as a thin line.
+ * no pointer over the hero or the row, no focus in them, no preview playing anywhere (a swap would
+ * restart one in Also new), no dialog open (a hidden tab pauses it). A pointer resting on a card
+ * (HOVER_INTENT_MS), or focus on one, shows that video at once; the count then starts from it. The
+ * active card shows the count as a thin line.
  */
 function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
   const [index, setIndex] = useState(start)
@@ -70,7 +71,7 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
       const busy =
         hovered.current ||
         el.contains(document.activeElement) ||
-        el.querySelector('.card-preview') ||
+        document.querySelector('.card-preview') ||
         document.querySelector('dialog[open]')
       waited = busy ? 0 : waited + TICK_MS
       el.style.setProperty('--advance', String(waited / ADVANCE_MS))
@@ -241,9 +242,9 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
           <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-pretty text-ink-2">
             {video.description}
           </p>
-          {/* One row at every width (More like this and Save as icons on phones): ↓ from Play
-              leaves the hero instead of stopping on a wrapped Save. The details are shown here
-              already, so the quick look opens on what it adds: More like this. */}
+          {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves the
+              hero instead of stopping on a wrapped Save. Details opens the quick look on the
+              video's details (title, facts and citation). */}
           <div className="mt-5 flex items-center gap-3">
             <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
               <PlayIcon />
@@ -251,11 +252,11 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
             </PlayLink>
             <DetailsLink
               id={video.id}
-              hash={MORE_LIKE_THIS}
+              hash={AT_DETAILS}
               className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
             >
-              <StackIcon />
-              <span className="max-sm:sr-only">More like this</span>
+              <InfoIcon />
+              <span className="max-sm:sr-only">Details</span>
             </DetailsLink>
             <MyListButton
               id={video.id}
@@ -325,7 +326,7 @@ function MoreBelow() {
     <div
       data-more-below=""
       data-hidden={atFooter || covering ? '' : undefined}
-      className="more-below pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-linear-to-t from-paper via-paper/70 to-transparent pt-16 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-opacity duration-300 data-hidden:invisible data-hidden:opacity-0 md:pb-6"
+      className="more-below pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pt-16 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-opacity duration-300 data-hidden:invisible data-hidden:opacity-0 md:pb-6"
     >
       <button
         ref={pill}

@@ -5,19 +5,19 @@
    page is set light, or set dark). */
 :root {
   --tv-glow: transparent;
-  --tv-panel-edge: rgb(27 26 23 / 0.08);
+  --page-sheen: transparent;
   --tv-spot: color-mix(in oklab, var(--color-gold) 12%, transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
-    --tv-panel-edge: rgb(255 255 255 / 0.08);
+    --page-sheen: rgb(255 255 255 / 0.035);
     --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
   }
 }
 :root[data-theme='dark'] {
   --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
-  --tv-panel-edge: rgb(255 255 255 / 0.08);
+  --page-sheen: rgb(255 255 255 / 0.035);
   --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
 }
 
@@ -29,13 +29,17 @@ html dialog.tv-sheet::backdrop {
   backdrop-filter: blur(8px) saturate(0.85);
 }
 
-/* Floating panels: a deep, soft shadow and a hairline edge in place of the drawn border. */
+/* Floating panels: the menus' elevation and glass edge (R8-1), with a faint lit rim on top. */
 .tv-sheet,
 .ql-panel {
-  border-color: var(--tv-panel-edge);
+  border-color: var(--color-glass-border);
   box-shadow:
-    0 40px 90px -30px rgb(0 0 0 / 0.6),
-    0 0 0 1px var(--tv-panel-edge);
+    var(--shadow-elev-3),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+/* Dark: Privacy and Shortcuts catch a faint light from above (no picture in them). */
+.tv-sheet {
+  background-image: linear-gradient(to bottom, var(--page-sheen), transparent 14rem);
 }
 @media (width < 48rem) {
   .ql-panel {
@@ -46,6 +50,22 @@ html dialog.tv-sheet::backdrop {
 .tv-sheet-head {
   background-color: color-mix(in oklab, var(--color-surface) 86%, transparent);
   backdrop-filter: blur(12px);
+}
+/* Privacy switches: under focus the knob glows like a focused card (neutral, plus the gold bloom
+   in dark). */
+.tv-sheet [role='switch'] > span > span {
+  transition-property: translate, scale, background-color, box-shadow;
+}
+.tv-sheet [role='switch']:focus-visible > span > span {
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--color-focus) 40%, transparent),
+    0 0 12px 3px var(--color-glow),
+    0 0 18px 4px var(--tv-glow);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tv-sheet [role='switch']:focus-visible > span > span {
+    scale: 1.15;
+  }
 }
 .tv-sheet kbd {
   background-image: linear-gradient(to bottom, var(--color-surface), var(--color-surface-2));
@@ -112,20 +132,20 @@ html dialog.tv-sheet::backdrop {
 /* Collection cards: a cinematic cover (a soft neutral vignette, never a colour) and a TV focus:
    lifted, ringed and glowing. */
 .tv-card {
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  box-shadow: var(--shadow-elev-1);
   transition:
     translate 250ms var(--ease-out-soft),
     scale 250ms var(--ease-out-soft),
     box-shadow 250ms var(--ease-out-soft);
 }
 .tv-card:hover {
-  box-shadow: 0 20px 44px -18px rgb(0 0 0 / 0.45);
+  box-shadow: var(--shadow-elev-3);
 }
 .tv-card:has(a:focus-visible) {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
   box-shadow:
-    0 24px 50px -16px rgb(0 0 0 / 0.5),
+    var(--shadow-elev-3),
     0 0 32px 4px var(--tv-glow);
 }
 .tv-cover {
@@ -168,12 +188,11 @@ html dialog.tv-sheet::backdrop {
 
 /* Search suggestions: a glass panel; the active row lifts out of it with the focus ring. */
 .tv-suggest {
-  border-color: var(--tv-panel-edge);
   /* 94%: small labels keep 4.5:1 even over a black or white patch behind the blur. */
   background-color: color-mix(in oklab, var(--color-surface) 94%, transparent);
   backdrop-filter: blur(18px) saturate(1.5);
   box-shadow:
-    0 28px 60px -20px rgb(0 0 0 / 0.5),
+    var(--shadow-elev-3),
     inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 .tv-suggest [role='option'] {
@@ -197,4 +216,77 @@ html dialog.tv-sheet::backdrop {
 /* Search results heading: tighter display tracking. */
 .tv-heading h1 {
   letter-spacing: -0.01em;
+}
+
+/* Collections on phones: the list reads as one glass group (no blur: plain page behind it). */
+.page-glass {
+  background-color: var(--color-frost);
+  box-shadow:
+    var(--shadow-elev-2),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+/* Washes stay light enough for the ink-3 count to keep 4.5:1 on the frost (4.6:1 dark, focused). */
+.page-row:hover {
+  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+}
+/* TV focus on a row: the row keeps its inset ring and washes lighter; the cover takes a ring and a
+   soft neutral glow and comes forward (the glow replaces the control bloom, which would spill). */
+.page-row:focus-visible {
+  background-color: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  box-shadow: none;
+}
+.page-row:focus-visible .page-row-cover {
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-focus),
+    0 0 18px 4px var(--color-glow);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page-row-cover {
+    transition:
+      scale 250ms var(--ease-out-soft),
+      box-shadow 250ms var(--ease-out-soft);
+  }
+  .page-row:focus-visible .page-row-cover {
+    scale: 1.06;
+  }
+}
+
+/* Category page: a soft spotlight spills from the band over the toolbar and grid (page surface
+   only, behind the cards). */
+.page-stage {
+  background: radial-gradient(64rem 22rem at 50% 0%, var(--tv-spot), transparent 70%) no-repeat;
+}
+
+/* "Showing N of M" and Load more: a fading hairline half way up the gap above, and the count as a
+   quiet pill drawn outside its box (no layout change). */
+.page-more {
+  position: relative;
+}
+.page-more::before {
+  content: '';
+  position: absolute;
+  top: -1.25rem;
+  left: 50%;
+  width: min(100%, 40rem);
+  height: 1px;
+  translate: -50% 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in oklab, var(--color-ink) 16%, transparent) 20% 80%,
+    transparent
+  );
+}
+.page-count {
+  position: relative;
+  isolation: isolate;
+}
+.page-count::before {
+  content: '';
+  position: absolute;
+  inset: -0.25rem -0.75rem;
+  z-index: -1;
+  border-radius: var(--radius-pill);
+  background-color: color-mix(in oklab, var(--color-ink) 6%, transparent);
 }

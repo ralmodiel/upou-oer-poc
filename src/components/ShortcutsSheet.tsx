@@ -43,7 +43,7 @@ export default function ShortcutsSheet() {
       tabIndex={-1}
       aria-labelledby={titleId}
       onClick={onClick}
-      className="tv-sheet m-auto w-[min(28rem,calc(100%-2rem))] rounded-card border border-glass-border bg-surface p-0 text-ink shadow-elev-3 outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
+      className="tv-sheet m-auto w-[min(28rem,calc(100%-2rem))] shell-scroll rounded-card border border-glass-border bg-surface p-0 text-ink shadow-(--shadow-elev-3) outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
     >
       <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">

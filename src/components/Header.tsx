@@ -88,7 +88,7 @@ export default function Header() {
               role="note"
               title="Proof of concept"
               aria-label="Proof of concept"
-              className="rounded-pill border border-glass-border bg-frost px-1 py-1 text-xs leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
+              className="rounded-pill border border-glass-border bg-frost px-1 py-1 text-xs shadow-[inset_0_1px_0_var(--color-rim)] leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
             >
               Proof of concept
             </span>
@@ -164,12 +164,17 @@ function HelpMenu() {
     }),
   })
 
-  // Wide screens show the word, so help is discoverable; phones keep the icon.
+  // Wide screens show the word, so help is discoverable; phones keep the icon. While open the
+  // trigger stays glass, so the menu reads as coming from it.
+  const held =
+    'aria-expanded:bg-frost-2 aria-expanded:text-ink aria-expanded:shadow-(--shadow-glass)'
   return (
     <Menu
       label="Help and theme"
       sections={sections}
-      triggerClassName={wide ? buttonClass('ghost', 'sm') : iconButtonClass('ghost', 'sm')}
+      triggerClassName={
+        wide ? buttonClass('ghost', 'sm', held) : iconButtonClass('ghost', 'sm', held)
+      }
     >
       <HelpIcon />
       {wide && 'Help'}
@@ -301,8 +306,8 @@ function SearchBox() {
       <label htmlFor={inputId} className="sr-only">
         Search videos
       </label>
-      <div className="relative w-full">
-        <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3" />
+      <div className="group/search relative w-full">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3 transition-colors group-focus-within/search:text-ink-2" />
         <input
           ref={input}
           id={inputId}
@@ -330,14 +335,16 @@ function SearchBox() {
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="h-10 w-full rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-ink-3 hover:bg-surface focus:border-focus focus:bg-surface focus-visible:shadow-glow [&::-webkit-search-cancel-button]:appearance-none"
+          // Glass, as the other chrome controls: a light rim, a hairline and a soft drop on hover
+          // and focus; focus adds the focus-colour border and the TV glow.
+          className="h-10 w-full rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-rim hover:bg-surface hover:shadow-(--shadow-glass) focus:border-focus focus:bg-surface focus:shadow-(--shadow-glass) focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] [&::-webkit-search-cancel-button]:appearance-none"
         />
         {value && (
           <button
             type="button"
             aria-label="Clear search"
             onClick={clear}
-            className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
+            className="absolute top-1/2 right-1 grid size-8 -translate-y-1/2 cursor-pointer place-items-center rounded-pill text-ink-3 transition-[background-color,color,box-shadow] hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)]"
           >
             <CloseIcon className="size-4" />
           </button>
@@ -348,10 +355,14 @@ function SearchBox() {
   )
 }
 
-// Active tab: maroon label and a glowing top bar on paper, gold in dark mode; its icon gets a soft
-// halo. The focus ring sits inside the bar (it is flush with the screen edge).
+// Active tab: maroon label and a glowing top bar on paper, gold in dark mode; its icon sits on a
+// small glass disc. The focus ring sits inside the bar (it is flush with the screen edge).
 const TAB =
-  'relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink focus-visible:-outline-offset-4 aria-[current=page]:font-semibold aria-[current=page]:text-maroon aria-[current=page]:[&_svg]:drop-shadow-[0_0_6px_var(--color-glow-brand)] after:absolute after:inset-x-6 after:top-0 after:h-[3px] after:rounded-b-full after:bg-maroon after:opacity-0 after:shadow-[0_0_12px_2px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:aria-[current=page]:text-band-gold dark:after:bg-band-gold'
+  'group/tab relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink focus-visible:-outline-offset-4 aria-[current=page]:font-semibold aria-[current=page]:text-maroon after:absolute after:inset-x-6 after:top-0 after:h-[3px] after:rounded-b-full after:bg-maroon after:opacity-0 after:shadow-[0_0_12px_2px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:aria-[current=page]:text-band-gold dark:after:bg-band-gold'
+// The icon's box (24px, as the icon alone); the disc is a ::before 4px wider all round, so nothing
+// moves. Warm grey on paper (white frost would vanish on the white bar), frost in dark.
+const TAB_ICON =
+  'relative isolate grid place-items-center before:absolute before:-inset-1 before:-z-10 before:rounded-full before:bg-surface-2 before:opacity-0 before:shadow-(--shadow-glass) before:transition-opacity group-aria-[current=page]/tab:before:opacity-100 dark:before:bg-frost-2'
 
 /** Phone navigation (< md): Browse · Collections · Search · My List, pinned to the bottom. */
 export function TabBar() {
@@ -360,30 +371,37 @@ export function TabBar() {
     <nav
       aria-label="Primary"
       // Glass like the header; surface at 92% so the ink-3 labels keep AA over a black picture.
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-glass-border bg-surface/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_28px_-18px_rgb(0_0_0/0.35)] backdrop-blur-lg backdrop-saturate-150 md:hidden"
+      // A faint lift on paper, a deeper one in dark.
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-glass-border bg-surface/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgb(27_26_23/0.18)] dark:shadow-[0_-12px_32px_-16px_rgb(0_0_0/0.6)] backdrop-blur-lg backdrop-saturate-150 md:hidden"
     >
       <ul className="flex h-(--tabbar-h)">
         <li className="flex flex-1">
           <NavLink to="/" end className={TAB}>
-            <HomeIcon className="size-6" />
+            <span className={TAB_ICON}>
+              <HomeIcon className="size-6" />
+            </span>
             Browse
           </NavLink>
         </li>
         <li className="flex flex-1">
           <NavLink to="/collections" className={TAB}>
-            <GridIcon className="size-6" />
+            <span className={TAB_ICON}>
+              <GridIcon className="size-6" />
+            </span>
             Collections
           </NavLink>
         </li>
         <li className="flex flex-1">
           <NavLink to="/search" className={TAB}>
-            <SearchIcon className="size-6" />
+            <span className={TAB_ICON}>
+              <SearchIcon className="size-6" />
+            </span>
             Search
           </NavLink>
         </li>
         <li className="flex flex-1">
           <NavLink to="/my-list" aria-label={myListLabel(saved)} className={TAB}>
-            <span className="relative">
+            <span className={TAB_ICON}>
               <BookmarkIcon className="size-6" />
               {saved > 0 && <CountBadge count={saved} className="absolute -top-1.5 -right-3" />}
             </span>

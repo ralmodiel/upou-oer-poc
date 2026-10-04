@@ -37,8 +37,10 @@ export interface MenuProps {
   className?: string
 }
 
+// Items turn to glass on hover and focus, as the other chrome controls (a light rim, a hairline and
+// a soft drop); focus adds the TV glow, with the ring inside the item.
 const ITEM =
-  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ink-2 transition-colors hover:bg-frost-2 hover:text-ink focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:-outline-offset-2 aria-checked:font-semibold aria-checked:text-maroon [&>svg]:size-4.5 [&>svg]:shrink-0'
+  'flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-ink-2 transition-[background-color,color,box-shadow] hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] focus-visible:-outline-offset-2 aria-checked:font-semibold aria-checked:text-maroon [&>svg]:size-4.5 [&>svg]:shrink-0'
 
 export default function Menu({
   label,
@@ -117,7 +119,7 @@ export default function Menu({
           role="menu"
           aria-label={label}
           onKeyDown={onKeyDown}
-          className="absolute top-full right-0 z-50 mt-1.5 min-w-60 rounded-card border border-glass-border bg-surface/95 p-1.5 text-sm shadow-(--shadow-elev-3) backdrop-blur-lg backdrop-saturate-150 motion-safe:transition-[opacity,translate] motion-safe:duration-150 motion-safe:starting:-translate-y-1 motion-safe:starting:opacity-0"
+          className="absolute top-full right-0 z-50 mt-1.5 min-w-60 rounded-card border border-glass-border bg-surface/95 p-1.5 text-sm shadow-[inset_0_1px_0_var(--color-rim),var(--shadow-elev-3)] backdrop-blur-lg backdrop-saturate-150 motion-safe:transition-[opacity,translate] motion-safe:duration-150 motion-safe:starting:-translate-y-1 motion-safe:starting:opacity-0"
         >
           {sections.map((section, i) => (
             <div

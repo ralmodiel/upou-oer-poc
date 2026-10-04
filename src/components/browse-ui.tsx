@@ -18,13 +18,14 @@ export const ITEM_FOCUS =
 
 /**
  * Hover and keyboard-focus cue on a card's image (the card link already plays): a small round play
- * badge in the bottom-left corner, clear of the speaker's face. `item` for list items (group/item).
+ * badge in the bottom-left corner, clear of the speaker's face, in glass (browse.css .card-play).
+ * `item` for list items (group/item).
  */
 export function PlayBadge({ item = false }: { item?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`absolute bottom-2.5 left-2.5 grid size-10 place-items-center rounded-pill bg-surface/95 text-maroon opacity-0 shadow-lift transition-opacity duration-200 ${
+      className={`absolute bottom-2.5 left-2.5 grid size-10 place-items-center card-play rounded-pill text-maroon opacity-0 transition-opacity duration-200 ${
         item
           ? 'group-hover/item:opacity-100 group-has-[[data-card-link]:focus-visible]/item:opacity-100'
           : 'group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100'
@@ -163,7 +164,7 @@ export function SeeAllTile({ to, count, title, tone, tabIndex }: SeeAll & { tabI
     >
       <span
         aria-hidden="true"
-        className={`absolute inset-x-0 top-0 h-1.5 bg-(image:--gradient-band) ${MARK[tone]}`}
+        className={`card-bar absolute inset-x-0 top-0 h-1.5 bg-(image:--gradient-band) ${MARK[tone]}`}
       />
       <span className="flex size-full flex-col justify-end p-[7cqi]">
         <span className="font-display text-[length:clamp(1.125rem,11cqi,2rem)] leading-tight text-ink transition-colors group-hover/all:text-maroon">

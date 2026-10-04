@@ -73,7 +73,7 @@ function CitationBox({
   return (
     <section
       aria-labelledby={headingId}
-      className={`max-w-2xl rounded-card border border-glass-border bg-surface p-4 shadow-elev-1 sm:p-5 ${className}`}
+      className={`max-w-2xl rounded-card border border-glass-border bg-surface p-4 shadow-(--shadow-elev-1) sm:p-5 ${className}`}
     >
       <SectionHeading as={as} id={headingId} title="How to cite" rule={false} />
       <p

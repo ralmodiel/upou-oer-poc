@@ -22,6 +22,9 @@ interface Props {
   className?: string
 }
 
+// A soft contact shadow and a wide low one under the title on the deep bands (not gold, whose
+// charcoal text needs none), so the serif sits off the colour.
+const TITLE_DEPTH = '[text-shadow:0_1px_1px_rgb(0_0_0/0.18),0_8px_28px_rgb(0_0_0/0.22)]'
 const EYEBROW = 'text-xs font-semibold tracking-[0.08em] uppercase'
 
 export default function PageBand({
@@ -51,7 +54,7 @@ export default function PageBand({
           />
           {eyebrow && <p className={`mt-4 ${EYEBROW} ${eyebrowColor}`}>{eyebrow}</p>}
           <h1
-            className={`font-display text-balance ${eyebrow ? 'mt-1.5' : 'mt-4'} ${titleClassName}`}
+            className={`font-display text-balance ${eyebrow ? 'mt-1.5' : 'mt-4'} ${tone === 'gold' ? '' : TITLE_DEPTH} ${titleClassName}`}
           >
             {title}
           </h1>

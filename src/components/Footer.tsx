@@ -3,10 +3,12 @@ import { useHelp } from '../lib/howitworks'
 import { openPrivacy } from '../lib/privacy'
 import { openShortcuts } from '../lib/shortcuts'
 
-// The footer is a deep maroon band: paper text, gold on hover and for headings (band-focus turns
-// the focus ring gold too).
+// The footer is a deep maroon band: paper text, gold headings. Links turn to a glass pill on hover
+// and focus (white at 8% with a light rim, a ::before 8px wider each side, so nothing moves) and
+// their underline goes gold; paper text keeps 7.8:1 on the pill where gold would fall near 4:1 under
+// the band's light corner in dark. The pill carries the gold focus ring and glow (band-focus).
 const LINK =
-  'rounded-sm text-on-band underline decoration-on-band/40 underline-offset-4 transition-colors hover:text-band-gold hover:decoration-band-gold'
+  'relative isolate text-on-band underline decoration-on-band/40 underline-offset-4 outline-none transition-[text-decoration-color] before:absolute before:-inset-x-2 before:inset-y-1.5 before:-z-10 before:rounded-pill before:bg-white/8 before:opacity-0 before:shadow-[inset_0_1px_0_rgb(255_255_255/0.16),0_0_0_1px_rgb(255_255_255/0.1),0_8px_20px_-10px_rgb(0_0_0/0.5)] before:transition-opacity hover:decoration-band-gold hover:before:opacity-100 focus-visible:decoration-band-gold focus-visible:before:opacity-100 focus-visible:before:shadow-[inset_0_1px_0_rgb(255_255_255/0.16),0_0_0_1px_rgb(255_255_255/0.1),0_0_14px_2px_var(--color-glow),0_0_40px_8px_var(--color-glow-soft)] focus-visible:before:outline-2 focus-visible:before:outline-offset-2 focus-visible:before:outline-band-gold focus-visible:before:transition-none'
 const HEADING = 'text-xs font-semibold tracking-[0.08em] text-band-gold uppercase'
 // List items: the same look with a 40px tall hit area.
 const ITEM = `${LINK} -my-2.5 inline-block py-2.5`

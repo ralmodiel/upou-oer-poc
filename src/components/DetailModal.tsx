@@ -25,7 +25,7 @@ import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { useFrozen } from './browse-hooks'
 import { FactsLine, LONG_TITLE, TEXT_LINK } from './browse-ui'
-import { AT_DETAILS, DetailsContext, wasOpenedInApp } from './details'
+import { AT_DETAILS, DetailsContext, detailsShortfall, wasOpenedInApp } from './details'
 import { prefersReducedMotion, useDocumentTitle } from './hooks'
 import { ChevronDownIcon, CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
 import { stopPreview } from './preview'
@@ -98,10 +98,11 @@ function DetailDialog({ video }: { video: Video }) {
     }
   }, [])
 
-  // Each title (the first and any similar one swapped in) starts on its still, grown: Enter
-  // plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by surprise. Opened
-  // from the home hero's Details (#details), on the details, with the title and the citation
-  // below the picture brought into view together once the citation is in.
+  // Each title (the first and any similar one swapped in) opens at the top of the panel, on its
+  // still, grown: Enter plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by
+  // surprise. Opened from the home hero's Details (#details), focus starts on the details instead,
+  // still at the top: the dialog scrolls only when the title is off screen once the citation above
+  // it (phones) is in, and then just far enough to show the title and its facts line.
   useEffect(() => {
     stopPreview()
     const el = dialog.current
@@ -115,9 +116,7 @@ function DetailDialog({ video }: { video: Video }) {
     let live = true
     void citeOf(video).then(() =>
       requestAnimationFrame(() => {
-        if (!live) return
-        const tops = [details, citeRef.current].map((n) => n?.getBoundingClientRect().top ?? 1e9)
-        el.scrollBy({ top: Math.min(...tops) - el.getBoundingClientRect().top - 16 })
+        if (live) el.scrollBy({ top: detailsShortfall(el, details) })
       }),
     )
     return () => {
@@ -144,6 +143,20 @@ function DetailDialog({ video }: { video: Video }) {
     return () => observer.disconnect()
   }, [hasSimilar])
   const showPill = hasSimilar && similarBelow
+  // Phones: How to cite spans the panel, so the pill steps aside while the citation is in the
+  // bottom band it floats in (from md it sits beside the citation, never over it).
+  const [citeLow, setCiteLow] = useState(false)
+  useEffect(() => {
+    const cite = citeRef.current
+    const root = dialog.current
+    if (!cite || !root) return
+    const observer = new IntersectionObserver(([entry]) => setCiteLow(entry.isIntersecting), {
+      root,
+      rootMargin: '-90% 0px 0px 0px',
+    })
+    observer.observe(cite)
+    return () => observer.disconnect()
+  }, [])
 
   // Scrolls More like this to the top of the view; from a keyboard or remote, onto its first card.
   const toSimilar = (e: MouseEvent<HTMLButtonElement>) => {
@@ -234,7 +247,7 @@ function DetailDialog({ video }: { video: Video }) {
       // While the pill shows, focus and anchor scrolls stop short of it.
       className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10 ${showPill ? 'scroll-pb-24' : ''}`}
     >
-      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-lift motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
+      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-(--shadow-lift) motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
         <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />
         <IconButton
           label="Close"
@@ -286,7 +299,7 @@ function DetailDialog({ video }: { video: Video }) {
             ref={citeRef}
             className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7"
           >
-            <WatchCite video={video} as="h3" />
+            <WatchCite video={video} as="h3" className="ql-cite" />
           </div>
 
           <div
@@ -374,17 +387,20 @@ function DetailDialog({ video }: { video: Video }) {
 
       {/* At the foot of the view, above the content, in the glass of the home's "More video
           resources below". Fixed, not sticky: focusing it must not scroll the dialog (that would
-          bring the row into view and take the pill, and its focus, away). */}
+          bring the row into view and take the pill, and its focus, away). From md it sits on the
+          panel's own grid, centred under the details column, so it never covers How to cite. */}
       {showPill && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={toSimilar}
-            className="browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:transition-[opacity,background-color] motion-safe:duration-300 motion-safe:starting:opacity-0"
-          >
-            More like this
-            <ChevronDownIcon className="size-4" />
-          </button>
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto flex justify-center md:grid md:w-[min(64rem,calc(100%-3rem))] md:grid-cols-12 md:gap-x-8 md:px-8 lg:gap-x-10">
+            <button
+              type="button"
+              onClick={toSimilar}
+              className={`browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:transition-[opacity,background-color] motion-safe:duration-300 motion-safe:starting:opacity-0 md:col-span-6 md:col-start-7 md:mr-8 md:justify-self-center lg:col-span-5 lg:col-start-8 ${citeLow ? 'max-md:not-focus:invisible max-md:not-focus:opacity-0' : ''}`}
+            >
+              More like this
+              <ChevronDownIcon className="size-4" />
+            </button>
+          </div>
         </div>
       )}
     </dialog>

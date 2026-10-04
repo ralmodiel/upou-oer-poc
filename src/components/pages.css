@@ -5,18 +5,22 @@
    page is set light, or set dark). */
 :root {
   --tv-glow: transparent;
+  /* Collection card focus: the browse cards' neutral glow in light, the gold bloom in dark. */
+  --tv-card-glow: var(--shadow-glow);
   --page-sheen: transparent;
   --tv-spot: color-mix(in oklab, var(--color-gold) 12%, transparent);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
+    --tv-card-glow: 0 0 32px 4px var(--tv-glow);
     --page-sheen: rgb(255 255 255 / 0.035);
     --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
   }
 }
 :root[data-theme='dark'] {
   --tv-glow: color-mix(in oklab, var(--color-focus) 32%, transparent);
+  --tv-card-glow: 0 0 32px 4px var(--tv-glow);
   --page-sheen: rgb(255 255 255 / 0.035);
   --tv-spot: color-mix(in oklab, var(--color-gold) 7%, transparent);
 }
@@ -48,7 +52,16 @@ html dialog.tv-sheet::backdrop {
 }
 /* Privacy's sticky title bar: glass while the list scrolls under it. */
 .tv-sheet-head {
-  background-color: color-mix(in oklab, var(--color-surface) 86%, transparent);
+  border-bottom-color: transparent;
+  background:
+    linear-gradient(
+        to right,
+        transparent,
+        color-mix(in oklab, var(--color-ink) 16%, transparent) 10% 90%,
+        transparent
+      )
+      bottom / 100% 1px no-repeat border-box,
+    color-mix(in oklab, var(--color-surface) 86%, transparent);
   backdrop-filter: blur(12px);
 }
 /* Privacy switches: under focus the knob glows like a focused card (neutral, plus the gold bloom
@@ -101,6 +114,19 @@ html dialog.tv-sheet::backdrop {
   letter-spacing: -0.01em;
 }
 
+/* How to cite under the picture: the watch page's glass-edged card, lifted off the panel by a warm
+   paper fade, a lit top rim and the themed (deeper in dark) elevation. */
+.ql-cite {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--color-surface-2) 60%, transparent),
+    transparent 10rem
+  );
+  box-shadow:
+    var(--shadow-elev-1),
+    inset 0 1px 0 var(--color-rim);
+}
+
 /* More like this: a tray set into the panel, a fading hairline in place of the rule. */
 .ql-more,
 .tv-hairline {
@@ -144,9 +170,7 @@ html dialog.tv-sheet::backdrop {
 .tv-card:has(a:focus-visible) {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
-  box-shadow:
-    var(--shadow-elev-3),
-    0 0 32px 4px var(--tv-glow);
+  box-shadow: var(--shadow-elev-3), var(--tv-card-glow);
 }
 .tv-cover {
   position: relative;
@@ -183,6 +207,17 @@ html dialog.tv-sheet::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .tv-card {
     transition: none;
+  }
+}
+
+/* Collection covers: a still's well shimmers while its picture loads (not before it is asked for,
+   nor after it is in or has failed). */
+@media (prefers-reduced-motion: no-preference) {
+  :is(.page-tile, .page-row-cover):has(> img:not([data-loaded], [data-failed])) {
+    background-image: linear-gradient(to right, transparent, var(--color-shimmer), transparent);
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: var(--animate-shimmer);
   }
 }
 

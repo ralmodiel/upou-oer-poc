@@ -121,7 +121,7 @@ export default function CategoryPage() {
           <div
             role="group"
             aria-label="Sort by"
-            className="inline-flex rounded-pill border border-glass-border bg-frost p-0.5 shadow-elev-1"
+            className="inline-flex rounded-pill border border-glass-border bg-frost p-0.5 shadow-(--shadow-elev-1)"
           >
             {SORTS.map((o) => (
               <Link

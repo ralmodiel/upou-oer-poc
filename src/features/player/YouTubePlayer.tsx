@@ -110,7 +110,7 @@ export function PlayerPoster({ video }: { video: Video }) {
           className="watch-poster size-full object-cover"
         />
       ) : (
-        <div className="absolute inset-[20%] overflow-hidden rounded-card shadow-lift">
+        <div className="absolute inset-[20%] overflow-hidden rounded-card shadow-(--shadow-lift)">
           <TitleTile video={video} />
         </div>
       )}

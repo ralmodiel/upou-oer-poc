@@ -210,11 +210,19 @@
     --color-mark-maroon: #c23a5f;
     --color-mark-forest: #2f8f68;
     --color-mark-charcoal: #9b9699;
-    --shadow-lift: 0 2px 6px -2px rgb(0 0 0 / 0.4), 0 16px 36px -14px rgb(0 0 0 / 0.75);
-    --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.35), 0 2px 8px -3px rgb(0 0 0 / 0.4);
-    --shadow-elev-2: 0 1px 3px rgb(0 0 0 / 0.35), 0 12px 28px -12px rgb(0 0 0 / 0.65);
-    --shadow-elev-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 28px 56px -18px rgb(0 0 0 / 0.8);
-    --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 10px 26px -12px rgb(0 0 0 / 0.8);
+    /* Dark depth: a contact, a mid and an ambient layer, deeper than light so a surface still
+       separates from near-black paper. */
+    --shadow-lift:
+      0 1px 2px rgb(0 0 0 / 0.5), 0 6px 14px -4px rgb(0 0 0 / 0.5),
+      0 24px 48px -16px rgb(0 0 0 / 0.9);
+    --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 12px -4px rgb(0 0 0 / 0.55);
+    --shadow-elev-2:
+      0 1px 3px rgb(0 0 0 / 0.45), 0 6px 14px -6px rgb(0 0 0 / 0.5),
+      0 18px 36px -14px rgb(0 0 0 / 0.8);
+    --shadow-elev-3:
+      0 2px 6px rgb(0 0 0 / 0.5), 0 12px 24px -10px rgb(0 0 0 / 0.55),
+      0 36px 72px -20px rgb(0 0 0 / 0.9);
+    --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 12px 30px -12px rgb(0 0 0 / 0.9);
     --color-glass: rgb(20 17 18 / 0.8);
     --color-glass-border: rgb(255 255 255 / 0.08);
     --color-frost: rgb(48 44 45 / 0.72);
@@ -260,11 +268,17 @@
       --color-mark-maroon: #c23a5f;
       --color-mark-forest: #2f8f68;
       --color-mark-charcoal: #9b9699;
-      --shadow-lift: 0 2px 6px -2px rgb(0 0 0 / 0.4), 0 16px 36px -14px rgb(0 0 0 / 0.75);
-      --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.35), 0 2px 8px -3px rgb(0 0 0 / 0.4);
-      --shadow-elev-2: 0 1px 3px rgb(0 0 0 / 0.35), 0 12px 28px -12px rgb(0 0 0 / 0.65);
-      --shadow-elev-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 28px 56px -18px rgb(0 0 0 / 0.8);
-      --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 10px 26px -12px rgb(0 0 0 / 0.8);
+      --shadow-lift:
+        0 1px 2px rgb(0 0 0 / 0.5), 0 6px 14px -4px rgb(0 0 0 / 0.5),
+        0 24px 48px -16px rgb(0 0 0 / 0.9);
+      --shadow-elev-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 12px -4px rgb(0 0 0 / 0.55);
+      --shadow-elev-2:
+        0 1px 3px rgb(0 0 0 / 0.45), 0 6px 14px -6px rgb(0 0 0 / 0.5),
+        0 18px 36px -14px rgb(0 0 0 / 0.8);
+      --shadow-elev-3:
+        0 2px 6px rgb(0 0 0 / 0.5), 0 12px 24px -10px rgb(0 0 0 / 0.55),
+        0 36px 72px -20px rgb(0 0 0 / 0.9);
+      --shadow-action: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 12px 30px -12px rgb(0 0 0 / 0.9);
       --color-glass: rgb(20 17 18 / 0.8);
       --color-glass-border: rgb(255 255 255 / 0.08);
       --color-frost: rgb(48 44 45 / 0.72);

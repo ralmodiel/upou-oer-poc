@@ -47,9 +47,9 @@ function Tile({
   // Canonical stills: a mosaic of three shows any odd rotating frame at once (the least bad image
   // when every image is flagged).
   const { small, srcSet, zoom } = thumbnailOf(video, true)
-  if (!load) return <div className={`bg-surface-2 ${className}`} />
+  if (!load) return <div className={`page-tile bg-surface-2 ${className}`} />
   return (
-    <div className={`overflow-hidden bg-surface-2 ${className}`}>
+    <div className={`page-tile overflow-hidden bg-surface-2 ${className}`}>
       <img
         src={small}
         srcSet={srcSet}

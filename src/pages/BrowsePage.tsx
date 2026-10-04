@@ -300,7 +300,6 @@ export default function BrowsePage() {
         )}
         <RecentlyViewed videos={recent} />
         <HistoryOff />
-        <CollectionChips />
         {showBecause && recs.because && becauseList.length > 0 && (
           <Recommended
             row="because"
@@ -318,6 +317,8 @@ export default function BrowsePage() {
         {shownRows.map((row) => (
           <Section key={row.id} row={row} eager={restoring} />
         ))}
+        {/* The subject index closes the feed: mid-page, a wall of chips read as its end. */}
+        <CollectionChips />
         <MoreCollections shown={shownRows.length} />
       </div>
     </>

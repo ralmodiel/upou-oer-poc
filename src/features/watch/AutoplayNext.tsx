@@ -1,6 +1,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { PlayIcon } from '../../components/icons'
 import Thumbnail from '../../components/Thumbnail'
 import Button from '../../components/ui/Button'
+import { formatDate } from '../../lib/format'
 import { isEditable, topDialog } from '../../lib/shortcuts'
 import type { Video } from '../../types'
 import './watch.css'
@@ -17,9 +19,10 @@ interface Props {
 
 /**
  * Shown on the stage when a video ends with autoplay on: the next video, a five-second countdown,
- * Play now and Cancel. A light card whatever the theme, never a dark box. Cancel takes focus, so a
- * remote's OK stops it (unless the viewer is typing or in a dialog); the Back keys, Esc and
- * Backspace, cancel too, before the app would treat them as Back. An open dialog keeps its Esc.
+ * Play now and Cancel. A light card whatever the theme, never a dark box, set like the reel's end
+ * card (eyebrow, serif title, facts, "Starting in", a progress bar along the bottom). Cancel takes
+ * focus, so a remote's OK stops it (unless the viewer is typing or in a dialog); the Back keys, Esc
+ * and Backspace, cancel too, before the app would treat them as Back. An open dialog keeps its Esc.
  */
 export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
   const [left, setLeft] = useState(AUTOPLAY_SECONDS)
@@ -51,50 +54,48 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
     }
   }, [])
 
+  const facts = [next.category, formatDate(next.publishedAt)].filter(Boolean).join(' · ')
   return (
     <div
       ref={rootRef}
       role="group"
       aria-labelledby="autoplay-next-label autoplay-next-title"
-      className="watch-autoplay absolute inset-0 z-20 grid place-items-center p-[4%] @container"
+      className="watch-autoplay absolute inset-0 z-20 grid place-items-center @container"
     >
-      <div className="flex w-full max-w-3xl items-center gap-[4cqi]">
+      <div className="watch-autoplay-body">
         <Thumbnail
           video={next}
           sizes="(min-width: 1024px) 320px, 40vw"
           loading="eager"
-          className="w-[38%] shrink-0 rounded-lg ring-1 ring-black/5"
+          className="watch-autoplay-thumb rounded-lg ring-1 ring-black/5"
         />
-        <div className="min-w-0">
-          <p
-            id="autoplay-next-label"
-            className="text-[length:clamp(0.7rem,2.4cqi,0.95rem)] font-semibold tracking-wide text-forest uppercase"
-          >
-            <span aria-hidden="true">
-              Next <span className="text-ink-2 tabular-nums">· {left}</span>
-            </span>
-            <span className="sr-only">Next, playing in {AUTOPLAY_SECONDS} seconds</span>
+        <div className="watch-autoplay-copy">
+          <p id="autoplay-next-label" className="watch-autoplay-eyebrow">
+            <span aria-hidden="true">Up next</span>
+            <span className="sr-only">Up next, playing in {AUTOPLAY_SECONDS} seconds</span>
           </p>
-          <p
-            id="autoplay-next-title"
-            className="mt-[1cqi] line-clamp-2 font-display text-[length:clamp(1rem,4.2cqi,2.25rem)] leading-tight text-ink"
-          >
+          <p id="autoplay-next-title" className="watch-autoplay-title">
             {next.title}
           </p>
-          <span
-            aria-hidden="true"
-            className="watch-autoplay-bar mt-[2cqi] block h-1 rounded-pill"
-          />
-          <div className="mt-[2.5cqi] flex flex-wrap gap-2">
-            <Button size="sm" onClick={onPlay}>
-              Play now
-            </Button>
-            <Button data-cancel="" variant="secondary" size="sm" onClick={onCancel}>
-              Cancel
-            </Button>
-          </div>
+          {facts && <p className="watch-autoplay-facts">{facts}</p>}
+          {/* The seconds, seen only: the group's name says it once for screen readers. */}
+          <p className="watch-autoplay-count" aria-hidden="true">
+            Starting in
+            <span key={left} className="watch-autoplay-digit">
+              {left}
+            </span>
+          </p>
+        </div>
+        <div className="watch-autoplay-actions">
+          <Button size="sm" icon={<PlayIcon />} onClick={onPlay}>
+            Play now
+          </Button>
+          <Button data-cancel="" variant="secondary" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
         </div>
       </div>
+      <span aria-hidden="true" className="watch-autoplay-bar" />
     </div>
   )
 }

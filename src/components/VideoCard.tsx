@@ -6,7 +6,8 @@ import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import { CardReasons } from './recs'
-import { InfoIcon, PlayIcon } from './icons'
+import { CARD_RING, PlayBadge } from './browse-ui'
+import { InfoIcon } from './icons'
 import { isNew } from './media'
 import { useCardPreview } from './preview'
 import Badge from './ui/Badge'
@@ -48,6 +49,8 @@ function VideoCard({
   const reasons = use(CardReasons)
   const reason = reasons?.get(id)
   const { hostProps, overlay, previewing } = useCardPreview(video)
+  // Without an eyebrow line the title keeps the eyebrow's distance from the image.
+  const titleGap = reasons || showCategory ? 'mt-1' : 'mt-3'
   // DOM order: eyebrow, title link, media, meta, actions. CSS order puts the media first. Every
   // line has a fixed height (one-line eyebrow, two-line title; in a grid with reasons a two-line
   // reason slot, bottom-aligned), so cards in a row line up.
@@ -69,7 +72,7 @@ function VideoCard({
       )}
       <Heading
         title={title}
-        className="order-3 mt-1 line-clamp-2 min-h-[2lh] text-base/snug font-semibold text-ink transition-colors duration-200 group-hover/card:text-maroon"
+        className={`order-3 ${titleGap} line-clamp-2 min-h-[2lh] text-base/snug font-semibold text-ink transition-colors duration-200 group-hover/card:text-maroon`}
       >
         {/* Stretched link: a click, tap or Enter anywhere on the card plays the video. */}
         <PlayLink
@@ -85,19 +88,11 @@ function VideoCard({
       <Thumbnail
         video={video}
         sizes={sizes}
-        className={`order-1 rounded-card ring-1 ring-black/5 transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-active/card:translate-y-0 motion-reduce:transition-none ${FOCUS}`}
+        className={`order-1 rounded-card ${CARD_RING} transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/card:-translate-y-0.5 group-hover/card:shadow-lift group-active/card:translate-y-0 group-active/card:shadow-none motion-safe:group-active/card:scale-99 motion-reduce:transition-none ${FOCUS}`}
       >
         {overlay}
-        {/* Visual cue only: the card link already plays. In a corner, clear of the speaker's face;
-            hidden while a preview runs. */}
-        {!previewing && (
-          <span
-            aria-hidden="true"
-            className="absolute bottom-2.5 left-2.5 grid size-10 place-items-center rounded-pill bg-surface/95 text-maroon opacity-0 shadow-lift transition-opacity duration-200 group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100"
-          >
-            <PlayIcon className="size-5 translate-x-px" />
-          </span>
-        )}
+        {/* Hidden while a preview runs. */}
+        {!previewing && <PlayBadge />}
       </Thumbnail>
       <p className="order-4 mt-1 flex h-5 items-center gap-1.5 text-sm text-ink-3">
         <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>

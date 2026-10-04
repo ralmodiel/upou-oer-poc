@@ -5,12 +5,15 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { thumbnailOf } from '../../src/components/media'
 import { getCategories } from '../../src/data/catalog'
 import records from '../../src/data/catalog.json'
 import { expandRecord } from '../../src/data/expand'
+import { STAGE_SIZES } from '../../src/data/images'
 import { setCatalog } from '../../src/data/testing'
+import { reelImages } from '../../src/features/reel/stills'
 import { pageTitle } from '../../src/lib/seo'
-import { loadCatalog } from './catalog.mjs'
+import { loadCatalog, posterOf } from './catalog.mjs'
 
 const SITE = 'https://example.github.io/upou-networks'
 const LIMIT = 40
@@ -82,6 +85,14 @@ describe('tools/seo/generate.mjs', () => {
     )
     expect(ld[0]).toMatchObject({ '@type': 'VideoObject', url: `${SITE}/watch/${first.id}/` })
     expect(ld[0].thumbnailUrl).toEqual(expect.arrayContaining(first.thumbnails))
+    // The player poster downloads with the page, before the scripts render it (with the stage's
+    // srcSet and sizes when the poster has one, so each screen fetches the size it shows).
+    const poster = posterOf(first)
+    const sizes = poster.srcSet ? ` imagesrcset="${poster.srcSet}" imagesizes="${STAGE_SIZES}"` : ''
+    expect(shell).toContain(
+      `<link rel="preload" as="image" href="${poster.href}"${sizes} fetchpriority="high" data-seo />`,
+    )
+    expect(shell.match(/rel="preload"/g)).toHaveLength(1)
 
     // Search and My List: shells so a direct load is a 200, but noindex and out of the sitemap.
     for (const [dir, title] of [
@@ -123,5 +134,20 @@ describe('tools/seo/generate.mjs', () => {
     setCatalog(records)
     expect(node.categories.map((c) => c.slug)).toEqual(getCategories().map((c) => c.slug))
     expect(node.categories.at(-1).name).toBe('General')
+  })
+
+  it("preloads the very file the watch page's player poster shows", () => {
+    let withSrcSet = 0
+    for (const r of records) {
+      const app = expandRecord(r)
+      // PlayerPoster: the reel's shared poster, else the least bad picture at the stage's sizes.
+      const poster = reelImages(app).poster
+      const picture = thumbnailOf(app, true)
+      const expected = poster ? { href: poster } : { href: picture.large, srcSet: picture.srcSet }
+      expect(posterOf(app)).toEqual(expected)
+      if (!poster && picture.srcSet) withSrcSet++
+    }
+    expect(withSrcSet).toBeGreaterThan(0)
+    expect(STAGE_SIZES).toMatch(/100vw$/)
   })
 })

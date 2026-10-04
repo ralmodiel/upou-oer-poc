@@ -50,12 +50,12 @@ describe('Header and tab bar', () => {
     const tabs = screen.getByRole('navigation', { name: 'Primary' })
     expect(within(tabs).getAllByRole('link')).toHaveLength(4)
     expect(within(tabs).getByRole('link', { name: 'My List, 1 saved' })).toHaveTextContent('1')
-    expect(screen.getByRole('searchbox', { name: 'Search videos' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Search videos' })).toBeInTheDocument()
   })
 
   it('fill the search field on /search/ too (a direct load of the static shell lands there)', async () => {
     const router = renderAt('/search/?q=climate', <Header />)
-    const field = screen.getByRole('searchbox', { name: 'Search videos' })
+    const field = screen.getByRole('combobox', { name: 'Search videos' })
     expect(field).toHaveValue('climate')
     // On the search page typing replaces the entry instead of adding one per key.
     await userEvent.type(field, 's')
@@ -109,7 +109,7 @@ describe('ShortcutsSheet', () => {
   it('lists the remote keys, including what ↓ does from a card and in a chip row', () => {
     render(<ShortcutsSheet />)
     expect(
-      screen.getByText('From a card, ↓ reaches its Save and Details before the next row'),
+      screen.getByText('↓ from a card goes on to the next row; ↑ straight after, to its Save'),
     ).toBeInTheDocument()
     expect(screen.getByText('Along a row of chips (↑ or ↓ leaves the row)')).toBeInTheDocument()
     expect(screen.getByText('Previous or next section of the page')).toBeInTheDocument()

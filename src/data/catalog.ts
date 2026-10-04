@@ -1,7 +1,24 @@
 import catalogNames from 'virtual:catalog-names'
 import records from './catalog.json'
 import { formatDate } from '../lib/format'
-import { isOrgTag, registerNameTokens, topicTags, type LearnedNames } from '../lib/tags'
+import {
+  buildVocabulary,
+  correctionOf,
+  matchTier,
+  maxEdits,
+  NEAR,
+  nearWords,
+  normalize,
+  wordsOf,
+  type Term,
+} from '../lib/fuzzy'
+import {
+  isNameToken,
+  isOrgTag,
+  registerNameTokens,
+  topicTags,
+  type LearnedNames,
+} from '../lib/tags'
 import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 import { frameFlagsOf } from './frameFlags'
@@ -36,8 +53,19 @@ export interface SearchOptions {
   /** Category name or slug. */
   category?: string
   limit?: number
+  /** Match titles only (suggestions). */
+  titles?: boolean
 }
 
+export interface SearchResults {
+  videos: Video[]
+  /** How many match every word as typed; the rest match a word only by a near spelling. */
+  exact: number
+  /** The query with misspelt words fixed ("nutrition"), when the fix is used more. */
+  correction?: string
+}
+
+// Each field as a run of words (see wordsOf).
 interface IndexedVideo {
   v: Video
   title: string
@@ -255,50 +283,111 @@ export function similarTo(video: Video, list: readonly Video[] = videos, limit =
     .map((x) => x.v)
 }
 
-const normalize = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-
-// Built on the first search.
+// Built on the first search (or a search field's first focus, see warmSearch).
 const index = () =>
   cached('index', (): IndexedVideo[] =>
     videos.map((v) => ({
       v,
-      title: normalize(v.title),
-      meta: normalize(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
-      body: normalize(v.description),
+      title: wordsOf(v.title),
+      meta: wordsOf(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
+      body: wordsOf(v.description),
     })),
   )
 
-/** Every term must match; title hits outrank tag/category hits, which outrank description hits. */
-export function searchVideos(query: string, { category, limit = 60 }: SearchOptions = {}): Video[] {
-  const wanted = category ? (getCategory(category)?.name ?? category) : undefined
-  // Edge punctuation is dropped so quoted or comma-separated queries still match.
+// Words of titles, tags, collections and channel, for near spellings; people's names left out.
+const vocabulary = () =>
+  cached('vocabulary', () =>
+    buildVocabulary(
+      index().map(({ title, meta }) => title + meta),
+      isNameToken,
+    ),
+  )
+
+// A word in fewer videos than this, as typed, also matches near spellings.
+const FEW_HITS = 3
+
+const hitsOf = (word: string) => {
+  let hits = 0
+  for (const { title, meta, body } of index()) {
+    if (title.includes(word) || meta.includes(word) || body.includes(word)) {
+      if (++hits >= FEW_HITS) break
+    }
+  }
+  return hits
+}
+
+/** A query's words, each with the near spellings it may stand for when it is rare as typed. */
+export function queryTerms(query: string): Term[] {
+  const last = memo.get('terms') as { query: string; terms: Term[] } | undefined
+  if (last?.query === query) return last.terms
   const terms = normalize(query)
     .split(/\s+/)
-    .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+    // Edge punctuation is dropped so quoted or comma-separated queries still match; inside a
+    // word it splits it as in the index ("covid-19" → "covid 19").
+    .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' '))
     .filter(Boolean)
-  if (!terms.length) return []
+    .map((word): Term => {
+      const hits = maxEdits(word) ? hitsOf(word) : FEW_HITS
+      if (hits >= FEW_HITS) return { word, near: [] }
+      // A misspelling is rarer than the word meant: "beta" (2 videos) never means "zeta" (1).
+      const near = nearWords(vocabulary(), word).filter((n) => n.count > hits)
+      return { word, near: near.map((n) => n.word) }
+    })
+  memo.set('terms', { query, terms })
+  return terms
+}
+
+/**
+ * Every term must match, as typed or (a word rare as typed) by a near spelling. Title hits outrank
+ * tag/category hits, which outrank description hits; within a field the whole word beats the
+ * start of a word, then a part of one, then a near spelling.
+ */
+export function searchCatalog(
+  query: string,
+  { category, limit = 60, titles = false }: SearchOptions = {},
+): SearchResults {
+  const wanted = category ? (getCategory(category)?.name ?? category) : undefined
+  const terms = queryTerms(query)
+  if (!terms.length) return { videos: [], exact: 0 }
   const hits: { v: Video; score: number }[] = []
+  let exact = 0
   for (const { v, title, meta, body } of index()) {
     if (wanted && v.category !== wanted) continue
     let score = 0
+    let typed = true
     for (const t of terms) {
-      const s = title.includes(t) ? 5 : meta.includes(t) ? 3 : body.includes(t) ? 1 : 0
-      if (!s) {
+      const a = matchTier(title, t)
+      const b = titles ? 0 : matchTier(meta, t)
+      const c = titles ? 0 : matchTier(body, t)
+      if (!a && !b && !c) {
         score = 0
         break
       }
-      score += s
+      // Field weights: title 5, collection, tags and channel 3, description 1.
+      score += Math.max(a * 5, b * 3, c)
+      if (Math.max(a, b, c) === NEAR) typed = false
     }
-    if (score) hits.push({ v, score })
+    if (!score) continue
+    hits.push({ v, score })
+    if (typed) exact++
   }
-  return hits
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((h) => h.v)
+  return {
+    videos: hits
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((h) => h.v),
+    exact,
+    correction: correctionOf(terms),
+  }
+}
+
+/** The videos searchCatalog finds. */
+export const searchVideos = (query: string, options?: SearchOptions): Video[] =>
+  searchCatalog(query, options).videos
+
+/** Builds the search index and the spelling vocabulary ahead of a first search. */
+export function warmSearch(): void {
+  vocabulary()
 }
 
 /** Installs a catalog and forgets everything derived from it. Tests: use setCatalog in testing.ts. */

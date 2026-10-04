@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -55,7 +55,7 @@ const frame = () => act(() => new Promise((resolve) => requestAnimationFrame(() 
 // A hidden button has no accessible name to query by role; its label still finds it.
 const button = (name: string) => screen.getByLabelText(name, { selector: 'button' })
 
-// A row renders its first page (and the card peeking after it) at once, the rest when used or idle:
+// A row renders its first page (and the card peeking after it) at once, the rest once used:
 // pointing at it renders all of it.
 function renderRow() {
   renderAt(<Section row={getRows(16)[0]} />)
@@ -68,11 +68,13 @@ describe('Collection rows', () => {
   it('hold up to sixteen cards, then a See all tile for the whole collection', async () => {
     renderAt(<Section row={getRows(16)[0]} />)
     const region = screen.getByRole('region', { name: 'Research' })
-    // The first page and the card after it come first; the rest once the browser is idle.
+    // The first page and the card after it come first, and stay while the row is not used (no idle
+    // render: rows scrolled past keep their first page); focus renders the rest.
     expect(within(region).getAllByRole('article')).toHaveLength(5)
-    await waitFor(() => expect(within(region).getAllByRole('article')).toHaveLength(16), {
-      timeout: 5000,
-    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 400)))
+    expect(within(region).getAllByRole('article')).toHaveLength(5)
+    fireEvent.focus(within(region).getAllByRole('link', { name: /^Play / })[0])
+    expect(within(region).getAllByRole('article')).toHaveLength(16)
     const items = within(region).getAllByRole('listitem')
     expect(items).toHaveLength(17)
     expect(within(items[16]).getByRole('link')).toHaveAccessibleName(
@@ -88,6 +90,20 @@ describe('Collection rows', () => {
     const region = screen.getByRole('region', { name: 'Research' })
     fireEvent.pointerEnter(region.querySelector('.row')!)
     expect(within(region).getAllByRole('listitem')).toHaveLength(17)
+  })
+
+  it('count the whole row in their page dots before the rest renders', async () => {
+    renderAt(<Section row={getRows(16)[0]} />)
+    const region = screen.getByRole('region', { name: 'Research' })
+    const dots = () => region.querySelectorAll('span[aria-hidden="true"].pointer-fine\\:flex > *')
+    // Five of the seventeen items are rendered, four to a page: still five pages, as once used.
+    await layOut(region).scrollTo(0)
+    expect(within(region).getAllByRole('listitem')).toHaveLength(5)
+    expect(dots()).toHaveLength(5)
+    fireEvent.pointerEnter(region.querySelector('.row')!)
+    await layOut(region).scrollTo(0)
+    expect(within(region).getAllByRole('listitem')).toHaveLength(17)
+    expect(dots()).toHaveLength(5)
   })
 
   it('label their buttons and show each one only while there is more that way', async () => {

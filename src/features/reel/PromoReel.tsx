@@ -8,6 +8,8 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
+import { zoomStyle } from '../../components/media'
+import { cropZoomOf } from '../../data/frameFlags'
 import { usePersistentState } from '../../lib/storage'
 import type { Video } from '../../types'
 import { createReelAudio, type ReelAudio } from './audio'
@@ -58,6 +60,9 @@ const coverOf = (video: Video) => {
   const safe = reelImages(video)
   return safe.thumbnail ?? safe.poster ?? video.thumbnail
 }
+
+// Black bars baked into a still are zoomed out of the frame, as on its card and the player poster.
+const cropOf = (src: string) => zoomStyle(cropZoomOf(src))
 
 export default function PromoReel({
   video,
@@ -211,7 +216,7 @@ export default function PromoReel({
         <Timeline plan={plan} stills={stills} preview={preview} />
       ) : (
         <div className="reel-loading" role={preview ? undefined : 'status'}>
-          <img src={coverOf(video)} alt="" draggable={false} />
+          <img src={coverOf(video)} alt="" draggable={false} style={cropOf(coverOf(video))} />
           {!preview && <span className="sr-only">Loading preview</span>}
         </div>
       )}
@@ -255,7 +260,12 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
           (shot, i) =>
             stills.shots[i] && (
               <div key={i} className="reel-fill-shot" style={shot.style}>
-                <img src={stills.shots[i]} alt="" draggable={false} />
+                <img
+                  src={stills.shots[i]}
+                  alt=""
+                  draggable={false}
+                  style={cropOf(stills.shots[i])}
+                />
               </div>
             ),
         )}
@@ -270,7 +280,14 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
           >
             <div className="reel-tx" data-tx={shot.tx}>
               <div className="reel-kb">
-                {stills.shots[i] && <img src={stills.shots[i]} alt="" draggable={false} />}
+                {stills.shots[i] && (
+                  <img
+                    src={stills.shots[i]}
+                    alt=""
+                    draggable={false}
+                    style={cropOf(stills.shots[i])}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -279,7 +296,7 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       {/* Previews start on the card's own image and dissolve into the reel half a second in. */}
       {preview && stills.backdrop && (
         <div className="reel-cover" aria-hidden="true">
-          <img src={stills.backdrop} alt="" draggable={false} />
+          <img src={stills.backdrop} alt="" draggable={false} style={cropOf(stills.backdrop)} />
         </div>
       )}
       {/* The light band under the picture: the brand, the type and the controls live there. */}
@@ -367,7 +384,9 @@ const Timeline = memo(function Timeline({ plan, stills, preview }: TimelineProps
       <div className="reel-end">
         <div className="reel-end-poster" aria-hidden="true">
           <div className="reel-end-art">
-            {stills.backdrop && <img src={stills.backdrop} alt="" draggable={false} />}
+            {stills.backdrop && (
+              <img src={stills.backdrop} alt="" draggable={false} style={cropOf(stills.backdrop)} />
+            )}
           </div>
         </div>
         <div className="reel-end-copy">

@@ -1,15 +1,15 @@
 import { useEffect, useEffectEvent, useRef, useState, type SyntheticEvent } from 'react'
 import { PlayIcon } from '../../components/icons'
-import { thumbnailOf } from '../../components/media'
+import { thumbnailOf, zoomStyle } from '../../components/media'
 import { TitleTile } from '../../components/Thumbnail'
+import { cropZoomOf } from '../../data/frameFlags'
+import { STAGE_SIZES } from '../../data/images'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
 import { reelImages } from '../reel/stills'
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 const PLAYER_ORIGIN = 'https://www.youtube-nocookie.com'
-// The stage: the page's width on phones, two thirds of it beside Up next.
-const STAGE_SIZES = '(min-width: 1024px) 66vw, 100vw'
 // The embed's widget messages (enablejsapi=1) report its state, with no YouTube script: 0 ended,
 // 1 playing, 2 paused, 3 buffering. Commands go back the same way.
 const LISTENING = JSON.stringify({ event: 'listening', id: 1, channel: 'widget' })
@@ -47,7 +47,8 @@ function stateOf(data: unknown): number | undefined {
  * reel as well, so the reel's closing move lands on it and the swap has nothing to load. With no
  * clean image (every candidate flagged) the video's least bad picture stands in, as on its card,
  * never a plain colour tile. A still that fails to load gives way to its 320px version; only when
- * that fails too does the title tile sit on the paper, so the stage is never dark or blank.
+ * that fails too does the title tile sit on the paper, so the stage is never dark or blank. Black
+ * bars baked into the still are zoomed out of the frame, as on its card and the reel's end card.
  */
 export function PlayerPoster({ video }: { video: Video }) {
   const [tries, setTries] = useState(0)
@@ -66,7 +67,10 @@ export function PlayerPoster({ video }: { video: Video }) {
   }
   if (!isYouTubeId(video.youtubeId)) return null
   return (
-    <div className="pointer-events-none absolute inset-0 bg-[#faf8f6]" aria-hidden="true">
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden bg-[#faf8f6]"
+      aria-hidden="true"
+    >
       {source ? (
         <img
           key={tries}
@@ -74,8 +78,10 @@ export function PlayerPoster({ video }: { video: Video }) {
           srcSet={source.srcSet}
           sizes={source.srcSet ? STAGE_SIZES : undefined}
           alt=""
+          fetchPriority="high"
           onLoad={check}
           onError={fail}
+          style={zoomStyle(cropZoomOf(source.src))}
           className="size-full object-cover"
         />
       ) : (

@@ -3,7 +3,7 @@ import { openPrivacy } from '../lib/privacy'
 import { Link } from 'react-router'
 import { factsOf } from '../data/catalog'
 import type { Video } from '../types'
-import { ChevronRightIcon } from './icons'
+import { ChevronRightIcon, PlayIcon } from './icons'
 import { MARK, type Tone } from './tones'
 import Skeleton from './ui/Skeleton'
 
@@ -11,10 +11,37 @@ export const TEXT_LINK = 'font-semibold text-maroon underline-offset-4 hover:und
 
 /**
  * A list item's focus outline (Also new, Recently viewed): on its image while its link has keyboard
- * focus, as on cards; the title's own outline would be cut by its line clamp.
+ * focus, with the slight lift in scale cards have; the title's own outline would be cut by its line
+ * clamp.
  */
 export const ITEM_FOCUS =
-  'group-has-[[data-card-link]:focus-visible]/item:outline-3 group-has-[[data-card-link]:focus-visible]/item:outline-offset-2 group-has-[[data-card-link]:focus-visible]/item:outline-focus'
+  'group-has-[[data-card-link]:focus-visible]/item:outline-3 group-has-[[data-card-link]:focus-visible]/item:outline-offset-2 group-has-[[data-card-link]:focus-visible]/item:outline-focus motion-safe:group-has-[[data-card-link]:focus-visible]/item:scale-102'
+
+/** A list item's image on hover and press, as on cards: a 2px lift with the lift shadow. */
+export const ITEM_LIFT =
+  'transition-[translate,scale,box-shadow] duration-200 ease-out-soft group-hover/item:-translate-y-0.5 group-hover/item:shadow-lift group-active/item:translate-y-0 group-active/item:shadow-none motion-safe:group-active/item:scale-99 motion-reduce:transition-none'
+
+/** The hairline around every video image: dark on paper, light on dark paper (dark stills). */
+export const CARD_RING = 'ring-1 ring-black/5 dark:ring-white/10'
+
+/**
+ * Hover and keyboard-focus cue on a card's image (the card link already plays): a small round play
+ * badge in the bottom-left corner, clear of the speaker's face. `item` for list items (group/item).
+ */
+export function PlayBadge({ item = false }: { item?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`absolute bottom-2.5 left-2.5 grid size-10 place-items-center rounded-pill bg-surface/95 text-maroon opacity-0 shadow-lift transition-opacity duration-200 ${
+        item
+          ? 'group-hover/item:opacity-100 group-has-[[data-card-link]:focus-visible]/item:opacity-100'
+          : 'group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100'
+      }`}
+    >
+      <PlayIcon className="size-5 translate-x-px" />
+    </span>
+  )
+}
 
 /** Titles longer than this get a smaller display size in the hero and the quick look. */
 export const LONG_TITLE = 120
@@ -97,7 +124,9 @@ export function RowSkeleton({
                   <Skeleton className={`h-3 ${reasons ? 'w-3/4' : 'w-1/3'}`} />
                 </div>
               )}
-              <div className="mt-1 flex h-11 flex-col justify-center gap-1.5">
+              <div
+                className={`${eyebrow ? 'mt-1' : 'mt-3'} flex h-11 flex-col justify-center gap-1.5`}
+              >
                 <Skeleton className="h-4 w-11/12" />
                 <Skeleton className="h-4 w-2/3" />
               </div>

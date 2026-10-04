@@ -1,6 +1,6 @@
 import type { ImgHTMLAttributes, ReactNode, SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { slugOfCategory, thumbnailOf } from './media'
+import { slugOfCategory, thumbnailOf, zoomStyle } from './media'
 import { BAND, toneOf, type Tone } from './tones'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
@@ -67,8 +67,8 @@ interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'f
 
 /**
  * 16:9 still on a plain surface-2 well (no letter or tile while it loads); a video whose every
- * image is flagged shows its least bad one, never a plain colour tile. Lazy images fade in; eager
- * ones (LCP) paint at once.
+ * image is flagged shows its least bad one, never a plain colour tile. Black bars baked into the
+ * still are zoomed out of the box. Lazy images fade in; eager ones (LCP) paint at once.
  */
 export default function Thumbnail({
   video,
@@ -95,6 +95,7 @@ export default function Thumbnail({
         decoding="async"
         onLoad={markLoaded}
         onError={(e) => retryOrFail(e.currentTarget, images.small)}
+        style={zoomStyle(images.zoom)}
         className={`relative size-full object-cover data-failed:hidden ${
           fade
             ? 'opacity-0 transition-opacity duration-300 data-loaded:opacity-100 motion-reduce:transition-none'

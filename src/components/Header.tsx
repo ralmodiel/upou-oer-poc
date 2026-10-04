@@ -28,6 +28,7 @@ import {
   SunIcon,
   ShieldIcon,
 } from './icons'
+import { useSearchSuggestions } from './SearchSuggest'
 import ThemeToggle from './ThemeToggle'
 import Menu, { type MenuSection } from './ui/Menu'
 import { buttonClass, iconButtonClass } from './ui/button-styles'
@@ -231,6 +232,16 @@ function SearchBox() {
     return () => clearTimeout(timer)
   }, [pending])
 
+  // Suggestions while typing; a topic or a fix is searched as if submitted.
+  const suggestions = useSearchSuggestions(
+    input,
+    (term) => {
+      setValue(term)
+      go(term, true)
+    },
+    'inset-x-0 md:left-auto md:w-[max(100%,26rem)]',
+  )
+
   const requestFocus = () => {
     // The search page's own field (phones) takes over while it is the visible one.
     const pageField = document.querySelector<HTMLInputElement>('input[data-search-page]')
@@ -262,16 +273,19 @@ function SearchBox() {
     const next = e.target.value
     setValue(next)
     setPending(next.trim())
+    suggestions.onType(next)
   }
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    suggestions.close()
     go(value.trim(), true)
     input.current?.blur()
   }
 
   const clear = () => {
     setValue('')
+    suggestions.close()
     go('')
     input.current?.focus({ preventScroll: true })
   }
@@ -292,9 +306,13 @@ function SearchBox() {
           id={inputId}
           type="search"
           value={value}
+          {...suggestions.fieldProps}
           onChange={onChange}
+          onFocus={suggestions.onFocus}
           onKeyDown={(e) => {
-            if (e.key !== 'Escape') return
+            // An open list takes ↑ / ↓, Enter and the first Esc.
+            suggestions.onKeyDown(e)
+            if (e.defaultPrevented || e.key !== 'Escape') return
             // With a query: leave the field but keep the query and its results. Empty: the
             // app-wide Esc = Back takes over.
             if (value) {
@@ -303,6 +321,7 @@ function SearchBox() {
             } else setOpen(false)
           }}
           onBlur={() => {
+            suggestions.onBlur()
             if (!value.trim()) setOpen(false)
           }}
           placeholder="Search videos"
@@ -321,6 +340,7 @@ function SearchBox() {
             <CloseIcon className="size-4" />
           </button>
         )}
+        {suggestions.list}
       </div>
     </form>
   )

@@ -18,7 +18,9 @@ import UpNext from '../features/watch/UpNext'
 import { useAutoplay, useUpNext } from '../features/watch/useUpNext'
 import { withPlaylist, type Playlist } from '../features/watch/recommendations'
 import WatchBackdrop from '../features/watch/WatchBackdrop'
+import WatchDescription from '../features/watch/WatchDescription'
 import WatchMeta from '../features/watch/WatchMeta'
+import WatchSource from '../features/watch/WatchSource'
 import WatchTags from '../features/watch/WatchTags'
 import '../features/watch/watch.css'
 import { useProfile } from '../lib/history'
@@ -249,20 +251,18 @@ function Watch({ video }: { video: Video }) {
                 {video.title}
               </h1>
               <WatchMeta video={video} category={category} />
-              {/* Under a gold rule; most source pages have no description, and then the topics
-                  carry the facts (empty, the block and its rule go away). */}
+              {/* Under a gold rule: the description (most source pages have none), then the
+                  topics and the source links, each beside a small label. */}
               <div className="watch-about">
-                {video.description && (
-                  <p className="max-w-prose text-base leading-relaxed whitespace-pre-line text-ink-2">
-                    {video.description}
-                  </p>
-                )}
+                {video.description && <WatchDescription text={video.description} />}
                 <WatchTags tags={video.tags} />
+                <WatchSource video={video} />
               </div>
             </article>
           </div>
 
-          <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-16" onKeyDown={onAsideKeyDown}>
+          {/* From lg its gold rule lines up with the top of the stage, beside the Back row. */}
+          <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-14" onKeyDown={onAsideKeyDown}>
             <UpNext video={video} list={upNext} />
             {category && (
               <Link to={`/collections/${category.slug}`} className="watch-more mt-5">

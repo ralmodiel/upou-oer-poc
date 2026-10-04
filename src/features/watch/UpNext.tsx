@@ -34,7 +34,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     if (ol && row) ol.scrollTop = row.offsetTop - (ol.clientHeight - row.offsetHeight) / 2
   }, [listRef])
 
-  // After More…: focus on the first new row, scrolled to the top of the list.
+  // After More…: focus on the first new row, scrolled to the top of the list (below its edge fade).
   useEffect(() => {
     const from = focusFrom.current
     const ol = listRef.current
@@ -43,7 +43,11 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     const row = ol.querySelectorAll<HTMLElement>('.watch-next')[from]
     if (!row) return
     row.focus({ preventScroll: true })
-    ol.scrollTo?.({ top: row.offsetTop, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+    const pad = parseFloat(getComputedStyle(ol).scrollPaddingTop) || 0
+    ol.scrollTo?.({
+      top: row.offsetTop - pad,
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    })
   }, [items, more, listRef])
 
   // Focus moves to the first new row; with nothing left to add, More… goes and the last row takes it.
@@ -104,7 +108,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   state={linkState}
                   aria-current={current || undefined}
                   onClick={current ? stay : undefined}
-                  className="watch-next group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2"
+                  className="watch-next group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2 active:bg-surface-2"
                 >
                   {/* Never a flagged frame: a video with no clean image gets its title tile. */}
                   <Thumbnail

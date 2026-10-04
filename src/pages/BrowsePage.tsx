@@ -3,7 +3,7 @@ import { useNavigationType } from 'react-router'
 import CollectionChips from '../components/CollectionChips'
 import Featured from '../components/Featured'
 import HistoryOff from '../components/HistoryOff'
-import HowItWorks from '../components/HowItWorks'
+import HowItWorks, { HowItWorksChip } from '../components/HowItWorks'
 import PageBand from '../components/PageBand'
 import RecentlyViewed from '../components/RecentlyViewed'
 import Recommended from '../components/Recommended'
@@ -345,13 +345,17 @@ function MoreCollections({ shown }: { shown: number }) {
   )
 }
 
-/** Visible page title on the maroon band: the full meaning of OER, for first-time visitors. */
+/**
+ * Visible page title on the maroon band: the full meaning of OER, for first-time visitors, with
+ * "How it works" one press away (the strip itself sits below the featured block).
+ */
 function Intro() {
   return (
     <PageBand
       tone="maroon"
       title="Open Educational Resources from the University of the Philippines Open University"
       titleClassName="text-xl leading-snug sm:text-2xl lg:text-[1.75rem]"
+      action={<HowItWorksChip />}
       compact
     >
       {videos.length.toLocaleString('en')} free videos: lectures, webinars and student work. Browse

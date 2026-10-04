@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { setFrameFlags } from '../data/frameFlags'
+import { setFrameCrops, setFrameFlags } from '../data/frameFlags'
 import type { Video } from '../types'
-import { heroImageOf, imagesOf, largeImageOf, thumbnailOf } from './media'
+import { heroImageOf, imagesOf, largeImageOf, thumbnailOf, zoomStyle } from './media'
 import { fixtureVideos } from './test-fixtures'
 
 const yt = (name: string) => `https://i.ytimg.com/vi/abcdefghijk/${name}.jpg`
@@ -78,6 +78,7 @@ describe('imagesOf', () => {
       small: yt('mq3'),
       large: yt('maxres3'),
       srcSet: `${yt('mq3')} 320w, ${yt('sd3')} 640w, ${yt('maxres3')} 1280w`,
+      zoom: 1,
     })
     expect(largeImageOf(v)).toBe(yt('maxres3'))
   })
@@ -87,6 +88,7 @@ describe('imagesOf', () => {
       small: yt('mqdefault'),
       large: yt('maxresdefault'),
       srcSet: `${yt('mqdefault')} 320w, ${yt('sddefault')} 640w, ${yt('maxresdefault')} 1280w`,
+      zoom: 1,
     })
   })
 
@@ -94,5 +96,45 @@ describe('imagesOf', () => {
     const low = video('mq1', yt('mq1'))
     expect(imagesOf(low)?.srcSet).toBeUndefined()
     expect(imagesOf(low, true)).toMatchObject({ small: yt('mqdefault'), large: yt('mqdefault') })
+  })
+})
+
+describe('baked-in black bars', () => {
+  afterEach(() => setFrameCrops({}))
+
+  it('zooms every size of a still with the same bars alike', () => {
+    setFrameCrops({ abcdefghijk: [1, 1, 1, 1.364] })
+    expect(imagesOf(video('mq3', yt('maxres3')))).toEqual({
+      small: yt('mq3'),
+      large: yt('maxres3'),
+      srcSet: `${yt('mq3')} 320w, ${yt('sd3')} 640w, ${yt('maxres3')} 1280w`,
+      zoom: 1.364,
+    })
+    expect(imagesOf(video('mq2', yt('maxres2')))?.zoom).toBe(1)
+  })
+
+  it('keeps sizes that need another zoom out of the srcSet', () => {
+    // A 4:3 video: the 320px still needs a zoom, the 640px one (no pillarbox) none.
+    setFrameCrops({ abcdefghijk: [1, 1, [1.334, 1]] })
+    expect(imagesOf(video('mq2', yt('sd2')))).toEqual({
+      small: yt('sd2'),
+      large: yt('sd2'),
+      srcSet: `${yt('sd2')} 640w`,
+      zoom: 1,
+    })
+    expect(imagesOf(video('mq2', yt('maxres2')))).toEqual({
+      small: yt('mq2'),
+      large: yt('maxres2'),
+      srcSet: `${yt('mq2')} 320w, ${yt('maxres2')} 1280w`,
+      zoom: 1.334,
+    })
+    // A source-site image never takes the zoom of YouTube's thumbnail.
+    setFrameCrops({ abcdefghijk: [1.2] })
+    expect(imagesOf(video('mqdefault', OG))).toMatchObject({ small: OG, srcSet: `${OG} 1280w` })
+  })
+
+  it('styles only zoomed images', () => {
+    expect(zoomStyle(1)).toBeUndefined()
+    expect(zoomStyle(1.25)).toEqual({ '--zoom': 1.25, scale: 'var(--zoom)' })
   })
 })

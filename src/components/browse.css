@@ -164,6 +164,42 @@ html:has(dialog[data-details][open]) {
 .row-next {
   right: max(0.25rem - var(--gutter), var(--row-bleed) / -2 - 1.375rem);
 }
+/* From 80rem the buttons sit wholly in the gutter, clear of the cards: on pointer devices they stay
+   in view as a quiet outline, a hint that the row moves on, and come in full (surface, shadow, ink)
+   while the row is hovered or holds focus. Narrower, they would cover the cards' edges: hidden until
+   then (Carousel). */
+@media (width >= 80rem) and (hover: hover) and (pointer: fine) {
+  .row-button {
+    opacity: 1;
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--color-ink-3);
+  }
+  .row:hover > .row-button,
+  .row:focus-within > .row-button {
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-lift);
+    color: var(--color-ink);
+  }
+  .row > .row-button:hover {
+    background-color: var(--color-surface-2);
+  }
+}
+
+/* How it works, brought into view by Help or the intro chip: a gold outline that fades. */
+@media (prefers-reduced-motion: no-preference) {
+  .how-strip[data-arrived] {
+    animation: how-arrived 1.6s var(--ease-out-soft) 0.3s both;
+  }
+  @keyframes how-arrived {
+    from {
+      box-shadow: inset 0 0 0 3px var(--color-band-gold);
+    }
+    to {
+      box-shadow: inset 0 0 0 3px transparent;
+    }
+  }
+}
 
 /* Preview reel over a card's thumbnail (the reel sizes itself to this box). Transparent, so the
    still stays visible until the reel paints its first frame. */

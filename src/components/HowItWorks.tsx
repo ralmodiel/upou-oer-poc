@@ -1,10 +1,12 @@
 // HowItWorks: three-card strip for first-time visitors (home page). "Got it" hides it and the choice
 // is remembered under localStorage "upou:howitworks"; useHowItWorks().show() / useHelp() bring it
-// back and focus the heading. Keyboard wording appears only on mouse/trackpad devices.
+// back, scroll it into view with a short gold highlight and focus the heading. HowItWorksChip opens
+// it from the home intro band, near the top. Keyboard wording appears only on mouse/trackpad devices.
 import { useEffect, useId, useRef } from 'react'
-import { HOW_IT_WORKS_EVENT, takeHowItWorksFocus, useHowItWorks } from '../lib/howitworks'
+import { HOW_IT_WORKS_EVENT, takeHowItWorksFocus, useHelp, useHowItWorks } from '../lib/howitworks'
 import { openShortcuts, useAppEvent } from '../lib/shortcuts'
-import { BookmarkIcon, CheckIcon, FilmIcon, GridIcon } from './icons'
+import { prefersReducedMotion } from './hooks'
+import { BookmarkIcon, CheckIcon, FilmIcon, GridIcon, HelpIcon } from './icons'
 import Button from './ui/Button'
 
 const KBD =
@@ -39,29 +41,50 @@ const STEPS = [
   },
 ]
 
+// Brought into view (smoothly unless reduced motion), its heading focused and the strip briefly
+// outlined in gold (browse.css), so a press of Help or the intro chip shows where it landed.
+function reveal(section: HTMLElement | null, heading: HTMLElement) {
+  heading.focus({ preventScroll: true })
+  heading.scrollIntoView?.({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  if (!section) return
+  delete section.dataset.arrived
+  void section.offsetWidth
+  section.dataset.arrived = ''
+}
+
 export default function HowItWorks() {
   const { dismissed, dismiss } = useHowItWorks()
+  const section = useRef<HTMLElement>(null)
   const heading = useRef<HTMLHeadingElement>(null)
   const headingId = useId()
 
   const focusHeading = () => {
     if (!heading.current) return
     takeHowItWorksFocus()
-    heading.current.focus()
+    reveal(section.current, heading.current)
   }
   useAppEvent(HOW_IT_WORKS_EVENT, focusHeading)
   // Asked for before the strip existed (Help from another page): focus once it is here, after
   // the router's scroll restoration so the focus scroll is the one that lasts.
   useEffect(() => {
     if (dismissed || !takeHowItWorksFocus()) return
-    const frame = requestAnimationFrame(() => heading.current?.focus())
+    const frame = requestAnimationFrame(() => {
+      if (heading.current) reveal(section.current, heading.current)
+    })
     return () => cancelAnimationFrame(frame)
   }, [dismissed])
 
   if (dismissed) return null
 
   return (
-    <section aria-labelledby={headingId} className="border-b border-line bg-surface">
+    <section
+      ref={section}
+      aria-labelledby={headingId}
+      onAnimationEnd={(e) => {
+        delete e.currentTarget.dataset.arrived
+      }}
+      className="how-strip border-b border-line bg-surface"
+    >
       <div className="px-(--gutter) py-5 sm:py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -81,7 +104,10 @@ export default function HowItWorks() {
         </div>
         <ol className="mt-4 grid gap-3 sm:grid-cols-3">
           {STEPS.map(({ Icon, tone, title, text }, i) => (
-            <li key={title} className="flex gap-3 rounded-card border border-line bg-paper p-4">
+            <li
+              key={title}
+              className="flex gap-3 rounded-card border border-line bg-paper p-4 dark:bg-surface-2"
+            >
               <span className={`grid size-10 shrink-0 place-items-center rounded-pill ${tone}`}>
                 <Icon className="size-5" />
               </span>
@@ -116,5 +142,20 @@ export default function HowItWorks() {
         </Button>
       </div>
     </section>
+  )
+}
+
+/** Opens the strip from the home intro band (on a maroon band: paper outline, gold focus ring). */
+export function HowItWorksChip() {
+  const help = useHelp()
+  return (
+    <button
+      type="button"
+      onClick={help}
+      className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-pill border border-on-band/45 px-4 text-sm font-semibold text-on-band transition-[background-color,border-color,translate] duration-200 hover:border-on-band/80 hover:bg-on-band/10 motion-safe:active:translate-y-px"
+    >
+      <HelpIcon className="size-4" />
+      How it works
+    </button>
   )
 }

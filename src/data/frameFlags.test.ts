@@ -4,10 +4,13 @@ import type { CatalogRecord } from '../types'
 import { expandRecord, setLoadSeed } from './expand'
 import {
   beautifulMaskOf,
+  cropZoomOf,
   fallbackIndexOf,
   flaggedMaskOf,
+  keepBoxOf,
   nearDuplicatesOf,
   rankOf,
+  setFrameCrops,
   setFrameFlags,
   slideMaskOf,
 } from './frameFlags'
@@ -17,7 +20,10 @@ const name = (url: string) => url.split('/').pop()!
 // Seed that shows member `i` of this record's (unfiltered) thumbnail set.
 const seedFor = (i: number) => -hashString(rec.id) + i
 
-afterEach(() => setFrameFlags({}))
+afterEach(() => {
+  setFrameFlags({})
+  setFrameCrops({})
+})
 
 /** A frame-flags value from its fields (layout in frameFlags.ts). */
 const pack = (f: {
@@ -187,5 +193,36 @@ describe('frame flags', () => {
     expect(expandRecord(rec).slides).toEqual([true, false, false])
     setFrameFlags({ abcdefghijk: pack({ slides: 0b0001 }) }) // only the thumbnail: no reel frame
     expect(expandRecord(rec).slides).toBeUndefined()
+  })
+
+  it('reads the keep box of a one-still reel past bit 31, leaving the other fields intact', () => {
+    // x0 3, y0 2, x1 - 1 = 12, y1 - 1 = 9 (16ths), with the presence bit.
+    const box = 1 + 2 * (3 | (2 << 4) | (12 << 8) | (9 << 12))
+    const low = pack({ mask: 0b0010, slides: 0b0100, rank: [2, 3, 0, 1] })
+    setFrameFlags({ abcdefghijk: low + box * 2 ** 25, plain: low })
+    expect(keepBoxOf('abcdefghijk')).toEqual([3 / 16, 2 / 16, 13 / 16, 10 / 16])
+    expect(flaggedMaskOf('abcdefghijk')).toBe(0b0010)
+    expect(slideMaskOf('abcdefghijk')).toBe(0b0100)
+    expect(rankOf('abcdefghijk')).toEqual([2, 3, 0, 1])
+    expect(keepBoxOf('plain')).toBeUndefined()
+    expect(keepBoxOf('unknown')).toBeUndefined()
+  })
+
+  it('zooms baked-in bars out by candidate and by the shape of the size shown', () => {
+    const yt = (name: string) => `https://i.ytimg.com/vi/abcdefghijk/${name}.jpg`
+    setFrameCrops({ abcdefghijk: [1.364, 1, [1.334, 1], 3], texttexttex: 'x' })
+    expect(cropZoomOf(yt('mqdefault'))).toBe(1.364)
+    expect(cropZoomOf(yt('maxresdefault'))).toBe(1.364)
+    expect(cropZoomOf(yt('sddefault'))).toBe(1.364)
+    expect(cropZoomOf(yt('mq1'))).toBe(1)
+    // A 4:3 video: its 16:9 stills carry a pillarbox, its 640px ones show the picture whole.
+    expect(cropZoomOf(yt('mq2'))).toBe(1.334)
+    expect(cropZoomOf(yt('maxres2'))).toBe(1.334)
+    expect(cropZoomOf(yt('sd2'))).toBe(1)
+    // Malformed values, unknown videos and source-site images get no zoom.
+    expect(cropZoomOf(yt('mq3'))).toBe(1)
+    expect(cropZoomOf('https://i.ytimg.com/vi/zzzzzzzzzzz/mqdefault.jpg')).toBe(1)
+    expect(cropZoomOf('https://i.ytimg.com/vi/texttexttex/mqdefault.jpg')).toBe(1)
+    expect(cropZoomOf('https://oer.upou.edu.ph/wp-content/uploads/still.jpg')).toBe(1)
   })
 })

@@ -1,18 +1,24 @@
-import { useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint } from '../components/browse-ui'
 import { BookmarkIcon } from '../components/icons'
 import EmptyState from '../components/ui/EmptyState'
 import LinkButton from '../components/ui/LinkButton'
 import SectionHeading from '../components/ui/SectionHeading'
-import { getVideo } from '../data/catalog'
+import { getLatest, getVideo, hasCleanPoster } from '../data/catalog'
 import { myListSeo, useSeo } from '../lib/seo'
 import { useMyList } from '../lib/storage'
+
+/** Starting picks under an empty list: one line of cards at every width (browse.css). */
+const PICKS = 5
 
 export default function MyListPage() {
   useSeo(myListSeo())
   const { ids } = useMyList()
   const saved = useMemo(() => ids.map((id) => getVideo(id)).filter((v) => v !== undefined), [ids])
+  // Opened with nothing saved: the newest videos stay below for this visit, so a Save pressed there
+  // keeps its place (and focus) while the list above fills in.
+  const [starter] = useState(() => saved.length === 0)
 
   return (
     <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
@@ -37,6 +43,7 @@ export default function MyListPage() {
         <EmptyState
           icon={<BookmarkIcon />}
           title="Nothing saved yet"
+          compact={starter}
           action={
             <div className="flex flex-wrap justify-center gap-3">
               <LinkButton to="/collections">Browse collections</LinkButton>
@@ -52,6 +59,25 @@ export default function MyListPage() {
           </p>
         </EmptyState>
       )}
+      {starter && <StarterPicks />}
     </div>
+  )
+}
+
+/** The newest videos with a clean image, each with its Save: somewhere to start an empty list. */
+function StarterPicks() {
+  const headingId = useId()
+  const picks = useMemo(() => getLatest(24).filter(hasCleanPoster).slice(0, PICKS), [])
+  if (picks.length === 0) return null
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="starter-picks mt-4 border-t border-line pt-8 sm:pt-10"
+    >
+      <SectionHeading id={headingId} title="Start with the newest" />
+      <div className="mt-5">
+        <VideoGrid videos={picks} />
+      </div>
+    </section>
   )
 }

@@ -7,7 +7,7 @@ import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
-import { FactsLine, ITEM_FOCUS, LONG_TITLE } from './browse-ui'
+import { CARD_RING, FactsLine, ITEM_FOCUS, ITEM_LIFT, LONG_TITLE } from './browse-ui'
 import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, PlayIcon } from './icons'
 import { imagesOf } from './media'
 import { useCardPreview } from './preview'
@@ -198,7 +198,7 @@ function Hero({
           canonical
           loading="eager"
           fetchPriority={priority ? 'high' : undefined}
-          className="rounded-card shadow-lift ring-1 ring-black/10"
+          className="rounded-card shadow-lift ring-1 ring-black/10 dark:ring-white/10"
         >
           {overlay}
         </Thumbnail>
@@ -216,7 +216,7 @@ function AlsoNewItem({ video }: { video: Video }) {
         video={video}
         sizes="(min-width: 40rem) 160px, 128px"
         canonical
-        className={`w-32 shrink-0 rounded-lg ring-1 ring-black/5 sm:w-40 ${ITEM_FOCUS}`}
+        className={`w-32 shrink-0 rounded-[10px] sm:w-40 ${CARD_RING} ${ITEM_LIFT} ${ITEM_FOCUS}`}
       >
         {overlay}
       </Thumbnail>

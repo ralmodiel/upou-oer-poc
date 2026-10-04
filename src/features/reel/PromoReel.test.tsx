@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { setFrameCrops } from '../../data/frameFlags'
 import PromoReel, { REEL_MS } from './PromoReel'
 import { buildReelPlan, REEL_TITLE_MAX } from './plan'
 import { DECODE_CAP_MS } from './preload'
@@ -90,6 +91,23 @@ describe('PromoReel', () => {
 
     await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('zooms black bars baked into a still out of every frame it fills', async () => {
+    vi.useFakeTimers()
+    setFrameCrops({ abcDEF12345: [1.3, 1.25, 1.25, 1.25] })
+    const zoomOf = (img: Element | null) =>
+      (img as HTMLElement | null)?.style.getPropertyValue('--zoom')
+    const { container } = render(
+      <PromoReel video={testVideo} variant="preview" onComplete={() => {}} />,
+    )
+    expect(zoomOf(container.querySelector('.reel-loading img'))).toBe('1.3')
+    await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+    for (const img of container.querySelectorAll('.reel-kb img, .reel-fill-shot img'))
+      expect(zoomOf(img)).toBe('1.25')
+    expect(zoomOf(container.querySelector('.reel-cover img'))).toBe('1.3')
+    expect(zoomOf(container.querySelector('.reel-end-art img'))).toBe('1.3')
+    setFrameCrops({})
   })
 
   it('leaves no timers behind when unmounted early, and completes once under StrictMode', async () => {

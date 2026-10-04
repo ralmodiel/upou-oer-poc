@@ -6,6 +6,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { STAGE_SIZES } from '../../src/data/images.ts'
 import { formatDate } from '../../src/lib/format.ts'
 import {
   SITE_NAME,
@@ -24,7 +25,7 @@ import {
 } from '../../src/lib/seo.ts'
 import { registerNameTokens } from '../../src/lib/tags.ts'
 import { watchUrl } from '../../src/lib/youtube.ts'
-import { hasCleanPoster, isGeneral, loadCatalog, newestFirst } from './catalog.mjs'
+import { hasCleanPoster, isGeneral, loadCatalog, newestFirst, posterOf } from './catalog.mjs'
 
 const CATALOG = fileURLToPath(new URL('../../src/data/catalog.json', import.meta.url))
 
@@ -61,8 +62,8 @@ export const templateOf = (html) =>
     .replace(/<div id="root">[\s\S]*?<!--\/seo-fallback--><\/div>/, '<div id="root"></div>')
     .replace(/\n?[ \t]*<meta\b[^>]*\bname="description"[^>]*>/, '')
 
-function shell(template, options, fallback) {
-  const block = ['<!--seo-->', ...headTags(options).map(renderTag), '<!--/seo-->']
+function shell(template, options, fallback, extra = []) {
+  const block = ['<!--seo-->', ...[...headTags(options), ...extra].map(renderTag), '<!--/seo-->']
     .map((line) => `    ${line}`)
     .join('\n')
   return template
@@ -72,6 +73,18 @@ function shell(template, options, fallback) {
       '<div id="root"></div>',
       `<div id="root"><!--seo-fallback-->\n${fallback}\n<!--/seo-fallback--></div>`,
     )
+}
+
+// A watch page's largest paint is its player poster, which React renders only after the scripts
+// run: the shell starts that download at once, for exactly the file the page then shows (with the
+// stage's srcSet and sizes when it has one), so phones and desktops each fetch one size.
+function posterPreload(v) {
+  const { href, srcSet } = posterOf(v)
+  const sizes = srcSet ? { imagesrcset: srcSet, imagesizes: STAGE_SIZES } : {}
+  return {
+    tag: 'link',
+    attrs: { rel: 'preload', as: 'image', href, ...sizes, fetchpriority: 'high' },
+  }
 }
 
 // Fallback markup uses utility classes the app already ships, so it is styled until React mounts.
@@ -266,7 +279,7 @@ export async function generate({
     const c = byName.get(v.category)
     files.push([
       join(dist, 'watch', v.id, 'index.html'),
-      shell(template, videoSeo(v, c), videoFallback(v, c)),
+      shell(template, videoSeo(v, c), videoFallback(v, c), [posterPreload(v)]),
     ])
     urls.push({ loc: canonicalUrl(`/watch/${v.id}`), lastmod: v.publishedAt })
   }

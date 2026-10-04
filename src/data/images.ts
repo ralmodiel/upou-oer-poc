@@ -49,6 +49,90 @@ export function rankingOf(value: unknown): number[] | undefined {
   return bits && new Set(order).size === 4 ? order : undefined
 }
 
+/** A box in fractions of the frame: [x0, y0, x1, y1]. */
+export type Box = [number, number, number, number]
+
+/** Bits 25-41: what a move on the reel's one still keeps in view (in 16ths), if anything. */
+export function keepOf(value: unknown): Box | undefined {
+  // Past bit 31: read with arithmetic, then the 17 bits with bitwise operators.
+  const bits = Math.floor(flagsOf(value) / 2 ** 25)
+  if (!(bits & 1)) return undefined
+  const at = (shift: number) => (bits >>> (1 + shift)) & 15
+  return [at(0) / 16, at(4) / 16, (at(8) + 1) / 16, (at(12) + 1) / 16]
+}
+
+const YOUTUBE_IMAGE = /^https:\/\/i\.ytimg\.com\/vi\/([\w-]{11})\//
+// YouTube's 480px and 640px stills are 4:3 (letterboxed); its 320px and 1280px ones are 16:9.
+const NARROW = /\/(?:hq|sd)(?:default|[1-3])\.jpg(\?|$)/
+
+/** The video id in a YouTube image URL; null for anything else (a source-site og:image). */
+export const youtubeIdOf = (src: string): string | null => YOUTUBE_IMAGE.exec(src)?.[1] ?? null
+
+/**
+ * The zoom that pushes black bars baked into a YouTube image out of a 16:9 slot (1 when none),
+ * from the video's frame-crops.json entry: per candidate one zoom for every size, or a pair for
+ * the 16:9 sizes and the 4:3 ones (a 4:3 video's 320px stills add a pillarbox of their own).
+ */
+export function zoomFrom(entry: unknown, src: string): number {
+  const crop: unknown = Array.isArray(entry) ? entry[candidateOf(src)] : undefined
+  const zoom: unknown = Array.isArray(crop) ? crop[NARROW.test(src) ? 1 : 0] : crop
+  return typeof zoom === 'number' && zoom > 1 && zoom < 2 ? zoom : 1
+}
+
+// Pixel width of a YouTube still by its name. Source-site images (og:image) are featured images
+// of at least 1200px, so anything that is not a known small YouTube still counts as large.
+const SMALL = /\/mq(default|[123])\.jpg(\?|$)/
+const WIDTHS: [RegExp, number][] = [
+  [/\/maxres(default|[123])\.jpg(\?|$)/, 1280],
+  [/\/sd(default|[123])\.jpg(\?|$)/, 640],
+  [/\/hq(default|[123])\.jpg(\?|$)/, 480],
+]
+export const widthOf = (url: string) =>
+  SMALL.test(url) ? 320 : (WIDTHS.find(([re]) => re.test(url))?.[1] ?? 1280)
+
+// The 640px "sd" version of a 1280px YouTube still (YouTube serves both sizes whenever the large
+// one exists; its 4:3 letterbox bars fall outside a 16:9 slot), for 2x screens and mid-size slots.
+const SD = /\/maxres(default|[123])\.jpg(\?|$)/
+const sdOf = (url: string) => (SD.test(url) ? url.replace('/maxres', '/sd') : null)
+
+export interface SlotImages {
+  small: string
+  large: string
+  srcSet: string | undefined
+  /** Zoom that pushes black bars baked into every one of these images out of the slot (1: none). */
+  zoom: number
+}
+
+/**
+ * Sources for a 16:9 slot showing `large`, whose 320px version is `small`; a srcSet from 640px.
+ * Whatever size the browser picks takes the large image's zoom (`zoomOf`, from frame-crops.json),
+ * so sizes that need another one stay out: a 4:3 video's 640px stills lack the pillarbox of its
+ * 320px ones, and an og:image the bars of YouTube's thumbnail.
+ */
+export function slotImages(
+  small: string,
+  large: string,
+  zoomOf: (src: string) => number,
+): SlotImages {
+  const width = widthOf(large)
+  const zoom = zoomOf(large)
+  const fits = (src: string | null): src is string => !!src && zoomOf(src) === zoom
+  const sd = sdOf(large)
+  const srcSet =
+    width >= 640
+      ? [fits(small) && `${small} 320w`, fits(sd) && `${sd} 640w`, `${large} ${width}w`]
+          .filter(Boolean)
+          .join(', ')
+      : undefined
+  return { small: fits(small) ? small : large, large, srcSet, zoom }
+}
+
+/**
+ * `sizes` of the watch stage's player poster (the page's width on phones, two thirds of it beside
+ * Up next); the static shells preload the poster with the same sizes, so both pick one file.
+ */
+export const STAGE_SIZES = '(min-width: 1024px) 66vw, 100vw'
+
 export type VideoImages = Pick<
   Video,
   'thumbnail' | 'thumbnails' | 'backdrop' | 'poster' | 'frames' | 'slides'

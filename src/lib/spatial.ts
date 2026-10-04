@@ -22,9 +22,12 @@
 // previous / next): ↓ lands on the entry, as the image between them is no stop.
 // While a <dialog> is open only its contents count. A card's stretched link ([data-card-link])
 // stands for its whole <article>, so a grid moves card by card; inside a card its own controls
-// (Save, Details) come first. Pinned bars (sticky header, tab bar) are targets only when nothing
+// (Save, Details) come first, except that ↓ from its link leaves the card for the next row in one
+// press (its controls only when nothing lies below) and an ↑ straight after comes back to its Save.
+// Pinned bars (sticky header, tab bar) are targets only when nothing
 // in the page lies that way. Text fields keep ← / → until the caret reaches the edge of their
-// text; ↑ / ↓ always leave them.
+// text; ↑ / ↓ leave them, except a search field whose suggestion list is open (an expanded
+// combobox), which walks the list with them.
 import { useEffect } from 'react'
 import { isEditable } from './shortcuts'
 
@@ -56,7 +59,9 @@ const ENTRY = '[data-spatial="entry"]'
 const OVER_ENTRY = '[data-spatial="over-entry"]'
 // Widgets whose arrow keys mean something natively.
 const OWNS_ARROWS =
-  'select, input[type="range"], input[type="number"], input[type="radio"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"], [role="slider"], [role="listbox"], [role="menu"], [role="menubar"], [role="radiogroup"], [role="tablist"], [role="tree"], [role="grid"], [role="combobox"], audio, video'
+  'select, input[type="range"], input[type="number"], input[type="radio"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"], [role="slider"], [role="listbox"], [role="menu"], [role="menubar"], [role="radiogroup"], [role="tablist"], [role="tree"], [role="grid"], audio, video'
+// A combobox with its list open (search suggestions) keeps ↑ / ↓; closed, it is a text field.
+const EXPANDED_COMBOBOX = '[role="combobox"][aria-expanded="true"]'
 
 export const isCandidate = (el: Element): boolean =>
   el instanceof HTMLElement &&
@@ -234,19 +239,27 @@ function caretAtEdge(el: Element, dir: 'left' | 'right'): boolean {
 
 /**
  * True when `target` keeps the arrow key for itself: native widgets keep all four; a text field
- * keeps ← / → while the caret can still move (↑ / ↓ always leave it).
+ * keeps ← / → while the caret can still move, and ↑ / ↓ only while its suggestion list is open.
  */
 export function keepsArrow(target: EventTarget | null, dir: Direction): boolean {
   if (!(target instanceof Element)) return false
   if (target.closest(OWNS_ARROWS)) return true
-  if (!isEditable(target) || dir === 'up' || dir === 'down') return false
+  const vertical = dir === 'up' || dir === 'down'
+  if (vertical && target.closest(EXPANDED_COMBOBOX)) return true
+  if (!isEditable(target) || vertical) return false
   return !caretAtEdge(target, dir)
 }
 
+// The card the last ↓ left from its link, and where that move landed (moveFocus): an ↑ from there
+// straight after comes back to the card's Save.
+let leftCard: { card: Element; to: Element } | null = null
+
 /**
  * The element focus should move to for `dir`, or null when nothing lies that way. Inside a card
- * its own controls come first (↓ from the title reaches Save and Details, ↑ from them the title);
- * beyond it the page moves card by card. A chip group counts as one target.
+ * its own controls come first (↑ from Save and Details reaches the title, ← / → walk them), but ↓
+ * from the title leaves the card in one press, to the next row (to its Save and Details only when
+ * nothing lies below); an ↑ straight after comes back to its Save. Beyond a card the page moves
+ * card by card. A chip group counts as one target.
  */
 export function findTarget(dir: Direction, from: Element | null = document.activeElement) {
   const dialog = openDialog()
@@ -256,14 +269,26 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   const article = start && isCandidate(start) ? start.closest('article') : null
   // Only a card (an article with a stretched link) is one unit; other articles are plain content.
   const home = article?.querySelector('[data-card-link]') ? article : null
-  if (start && home) {
+  // ↑ straight after ↓ left a card from its link: its first own control (Save).
+  const back = dir === 'up' && start && leftCard?.to === start ? leftCard.card : null
+  if (back?.isConnected) {
+    const save = candidates(back).find(
+      (el) => !el.hasAttribute('data-card-link') && visible(shownBox(el, back)),
+    )
+    if (save) return save
+  }
+  const ownTarget = () => {
+    if (!start || !home) return undefined
     const inside = candidates(home)
       .filter((el) => el !== start)
       .map((el) => ({ el, box: shownBox(el, home) }))
       .filter((m) => visible(m.box))
-    const own = nearest(shownBox(start, home), inside, dir, (m) => m.box)
-    if (own) return own.el
+    return nearest(shownBox(start, home), inside, dir, (m) => m.box)?.el
   }
+  // ↓ from a card's link looks past the card first.
+  const leaving = dir === 'down' && home !== null && start?.hasAttribute('data-card-link') === true
+  const own = leaving ? undefined : ownTarget()
+  if (own) return own
   // ↓ from the hero's previous / next: its Play.
   if (dir === 'down' && start?.matches(OVER_ENTRY)) {
     const entry = root.querySelector<HTMLElement>(ENTRY)
@@ -373,7 +398,9 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   return (
     (startBar
       ? (pick(first) ?? (vertical ? (entry() ?? pick(last) ?? pick(passed)) : otherBars()))
-      : (pick(first) ?? pick(passed) ?? (vertical ? pickBar() : undefined))) ?? null
+      : (pick(first) ?? pick(passed) ?? (vertical ? pickBar() : undefined))) ??
+    (leaving ? ownTarget() : undefined) ??
+    null
   )
 }
 
@@ -433,8 +460,13 @@ function trackTarget(track: HTMLElement, card: Element): number | null {
 
 /** Moves focus in `dir` and scrolls the target into view; false when nothing lies that way. */
 export function moveFocus(dir: Direction, instant = false): boolean {
+  const from = document.activeElement
   const target = findTarget(dir)
-  return target ? focusAndReveal(target, instant) : false
+  if (!target || !focusAndReveal(target, instant)) return false
+  // A card left downward from its link, for an ↑ back to its Save.
+  const card = from?.hasAttribute('data-card-link') ? from.closest('article') : null
+  leftCard = dir === 'down' && card && !card.contains(target) ? { card, to: target } : null
+  return true
 }
 
 const firstIn = (root: ParentNode) => candidates(root).find((el) => visible(rectOf(el))) ?? null

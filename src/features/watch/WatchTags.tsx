@@ -12,12 +12,12 @@ export default function WatchTags({ tags }: { tags: readonly string[] }) {
   })
   if (!topics.length) return null
   return (
-    <section aria-labelledby="topics-heading" className="mt-6 sm:flex sm:items-baseline sm:gap-4">
-      <h2 id="topics-heading" className="eyebrow shrink-0">
+    <section aria-labelledby="topics-heading" className="watch-row">
+      <h2 id="topics-heading" className="eyebrow">
         Topics
       </h2>
       {/* One stop for ↑ / ↓ on a remote; ← / → walk the chips. */}
-      <ul role="list" data-spatial="group" className="mt-2 flex flex-wrap gap-2 sm:mt-0">
+      <ul role="list" data-spatial="group" className="flex flex-wrap gap-2">
         {topics.slice(0, 12).map((tag) => (
           <li key={tag}>
             <Chip to={`/search?q=${encodeURIComponent(tag)}`}>{tidyTag(tag)}</Chip>

@@ -45,9 +45,9 @@ describe('Proof-of-concept notice', () => {
 describe('Header search', () => {
   it('searches shortly after typing stops', async () => {
     const router = renderLayout()
-    const box = screen.queryByRole('searchbox')
+    const box = screen.queryByRole('combobox', { name: 'Search videos' })
     if (!box) await userEvent.click(screen.getByRole('button', { name: /search/i }))
-    await userEvent.type(screen.getByRole('searchbox'), 'climate')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Search videos' }), 'climate')
     expect(router.state.location.pathname).toBe('/')
     await wait(400)
     expect(router.state.location.pathname + router.state.location.search).toBe('/search?q=climate')
@@ -55,9 +55,9 @@ describe('Header search', () => {
 
   it('drops a pending search when the user navigates elsewhere', async () => {
     const router = renderLayout()
-    const box = screen.queryByRole('searchbox')
+    const box = screen.queryByRole('combobox', { name: 'Search videos' })
     if (!box) await userEvent.click(screen.getByRole('button', { name: /search/i }))
-    await userEvent.type(screen.getByRole('searchbox'), 'climate')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Search videos' }), 'climate')
     await act(() => router.navigate('/my-list'))
     await wait(400)
     expect(router.state.location.pathname).toBe('/my-list')

@@ -1,9 +1,8 @@
 // State of a home row that scrolls sideways (Carousel): `useCarousel(count)` measures the track
 // (again when `count`, the number of items, changes), pages it, says when the whole row may render
-// (`full`; at once with `startFull`, the row Back returns to) and loads the next page's images ahead
-// of time.
+// (`full`: once the row is used; at once with `startFull`, the row Back returns to) and loads the
+// next page's images ahead of time.
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
-import { onIdle } from './browse-hooks'
 import { prefersReducedMotion } from './hooks'
 
 /** Items a row renders at first: its first page and the card peeking after it. */
@@ -65,23 +64,22 @@ export function useCarousel(count: number, startFull = false) {
   const [state, setState] = useState(INITIAL)
   // Where the last button press is taking the track, so a quick second press pages on from there.
   const aim = useRef({ to: 0, at: -Infinity })
-  // The rest of the row renders once it is used (hovered, focused, touched) or the browser is idle,
-  // so a page of rows near the viewport does not render all their cards in one go.
+  // The rest of the row renders only once it is used (hovered, focused, touched): rows scrolled past
+  // keep their first page, so the whole page never holds every card of every row.
   const [full, setFull] = useState(startFull)
   const used = useRef(false)
-
-  useEffect(() => {
-    if (full || !count) return
-    return onIdle(() => startTransition(() => setFull(true)))
-  }, [full, count])
 
   const measure = useCallback(() => {
     const track = ref.current
     if (!track) return
     const { pitch, page, max } = geometry(track)
+    // Items not rendered yet (the rest of an unused row) count as if there, so the page dots show
+    // the whole row from the start instead of growing on first use.
+    const missing = Math.max(0, count - (track.firstElementChild?.children.length ?? 0))
+    const span = max + missing * pitch
     const x = track.scrollLeft
-    const end = x >= max - 1
-    const pages = max > 1 ? Math.ceil((max - 1) / page) + 1 : 1
+    const end = x >= span - 1
+    const pages = span > 1 ? Math.ceil((span - 1) / page) + 1 : 1
     const focused = track.contains(document.activeElement)
     setState((s) => {
       const next = {
@@ -93,7 +91,7 @@ export function useCarousel(count: number, startFull = false) {
       }
       return same(s, next) ? s : next
     })
-  }, [])
+  }, [count])
 
   // A row put to use before the rest of it rendered loads its next page once it has.
   useEffect(() => {
@@ -132,10 +130,14 @@ export function useCarousel(count: number, startFull = false) {
     }
   }, [measure, count, full])
 
-  /** The row is in use: render all of it and load its next page. */
+  /**
+   * The row is in use: render all of it and load its next page. In a transition, so the hover, key
+   * or touch that engaged it paints at once; the first page (four cards and the next one) is there
+   * to walk meanwhile.
+   */
   const engage = useCallback(() => {
     used.current = true
-    setFull(true)
+    startTransition(() => setFull(true))
     if (ref.current) warm(ref.current)
   }, [])
 

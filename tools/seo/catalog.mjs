@@ -1,8 +1,17 @@
 // Node-side view of the catalog. It mirrors src/data/expand.ts and the category grouping in
 // src/data/catalog.ts, which Node cannot import (JSON import, extensionless paths); images come
 // from the same src/data/images.ts. tools/seo/generate.test.mjs checks that the two agree.
+import CROPS from '../../src/data/frame-crops.json' with { type: 'json' }
 import FLAGS from '../../src/data/frame-flags.json' with { type: 'json' }
-import { flagsOf, isCleanImage, videoImages } from '../../src/data/images.ts'
+import {
+  candidateOf,
+  flagsOf,
+  isCleanImage,
+  slotImages,
+  videoImages,
+  youtubeIdOf,
+  zoomFrom,
+} from '../../src/data/images.ts'
 
 const SOURCE_ORIGIN = 'https://oer.upou.edu.ph'
 const DEFAULT_CHANNEL = 'UP Open University'
@@ -57,6 +66,22 @@ export const isGeneral = (name) => Number(name === GENERAL_CATEGORY)
 /** Whether the video's canonical image passes the frame filter (it fails only when all do). */
 export const hasCleanPoster = (v, flags = FLAGS) =>
   !!v.poster && isCleanImage(flags[v.youtubeId], v.poster)
+
+/**
+ * The image the watch page's player poster loads first (PlayerPoster), for the shell to preload:
+ * the reel's shared poster (its first clean image) as is, or when every image is flagged the least
+ * bad one with the stage's srcSet, which needs the same sizes to pick the same file.
+ */
+export function posterOf(v, flags = FLAGS, crops = CROPS) {
+  const value = flags[v.youtubeId]
+  const poster = [v.poster, v.backdrop, ...v.frames].find((src) => src && isCleanImage(value, src))
+  if (poster) return { href: poster }
+  const large = v.poster ?? v.thumbnail
+  const small = v.thumbnails?.find((s) => candidateOf(s) === candidateOf(large))
+  const zoomOf = (src) => zoomFrom(crops[youtubeIdOf(src)], src)
+  const slot = slotImages(small ?? v.thumbnail, large, zoomOf)
+  return { href: slot.large, srcSet: slot.srcSet }
+}
 
 /**
  * Videos in catalog order and categories largest first (General, posts without a subject, last),

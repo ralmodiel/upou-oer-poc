@@ -1,21 +1,15 @@
+import type { CSSProperties } from 'react'
 import { getCategoryByName, getLatest } from '../data/catalog'
 import { thumbnailSetOf } from '../data/expand'
-import { flaggedMaskOf } from '../data/frameFlags'
+import { cropZoomOf, flaggedMaskOf } from '../data/frameFlags'
+import { slotImages, widthOf, type SlotImages } from '../data/images'
 import type { Video } from '../types'
 
 /** Route slug of a category name (names that collide after slugifying get a suffix). */
 export const slugOfCategory = (name: string) => getCategoryByName(name)?.slug ?? ''
 
-// Pixel width of a YouTube still by its name. Source-site images (og:image) are featured images
-// of at least 1200px, so anything that is not a known small YouTube still counts as large.
-const SMALL = /\/mq(default|[123])\.jpg(\?|$)/
-const WIDTHS: [RegExp, number][] = [
-  [/\/maxres(default|[123])\.jpg(\?|$)/, 1280],
-  [/\/sd(default|[123])\.jpg(\?|$)/, 640],
-  [/\/hq(default|[123])\.jpg(\?|$)/, 480],
-]
-export const widthOf = (url: string) =>
-  SMALL.test(url) ? 320 : (WIDTHS.find(([re]) => re.test(url))?.[1] ?? 1280)
+export { widthOf }
+export type { SlotImages }
 
 export const hasHiRes = (video: Video) => widthOf(video.backdrop) >= 640
 
@@ -46,16 +40,12 @@ export function heroImageOf(video: Video): string | null {
   return [video.poster, fallback, ...video.frames].find((src) => isClean(video, src)) ?? null
 }
 
-// The 640px "sd" version of a 1280px YouTube still (YouTube serves both sizes whenever the large
-// one exists; its 4:3 letterbox bars fall outside a 16:9 slot), for 2x screens and mid-size slots.
-const SD = /\/maxres(default|[123])\.jpg(\?|$)/
-const sdOf = (url: string) => (SD.test(url) ? url.replace('/maxres', '/sd') : null)
-
-export interface SlotImages {
-  small: string
-  large: string
-  srcSet: string | undefined
-}
+/**
+ * Inline style for a 16:9 image whose baked-in black bars a zoom pushes out of its box (see
+ * `cropZoomOf`); `--zoom` also lets a slide shown whole clip the bars it pushes past its edges.
+ */
+export const zoomStyle = (zoom: number): CSSProperties | undefined =>
+  zoom > 1 ? ({ '--zoom': zoom, scale: 'var(--zoom)' } as CSSProperties) : undefined
 
 /**
  * Sources for a 16:9 slot: this page load's pick from the thumbnail set, or with `canonical` the
@@ -76,15 +66,7 @@ export function imagesOf(video: Video, canonical = false): SlotImages | null {
   return slotOf(small, large)
 }
 
-function slotOf(small: string, large: string): SlotImages {
-  const width = widthOf(large)
-  const sd = sdOf(large)
-  const srcSet =
-    width >= 640
-      ? [`${small} 320w`, sd && `${sd} 640w`, `${large} ${width}w`].filter(Boolean).join(', ')
-      : undefined
-  return { small, large, srcSet }
-}
+const slotOf = (small: string, large: string) => slotImages(small, large, cropZoomOf)
 
 /**
  * A video's own picture (its card, list row, featured image): the clean images `imagesOf` picks,

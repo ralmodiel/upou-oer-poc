@@ -165,10 +165,30 @@ describe('WatchPage', () => {
   it('shows the description only when the source published one', () => {
     renderAt([`/watch/${testVideo.id}`])
     expect(screen.getByText(testVideo.description.slice(0, 40), { exact: false })).toBeVisible()
+    // Short: shown whole, nothing to unfold.
+    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
 
     setCatalog([{ ...testVideo, id: 'bare', description: '' }, ...similar])
     renderAt(['/watch/bare'])
     expect(screen.queryByText(/No description/)).not.toBeInTheDocument()
+  })
+
+  it('folds a long description behind Show more, decided by its length, and unfolds it in place', () => {
+    const description = 'Open and distance learning across the Philippines. '.repeat(8).trim()
+    setCatalog([{ ...testVideo, id: 'long-read', description }, ...similar])
+    renderAt(['/watch/long-read'])
+    const text = screen.getByText(description)
+    expect(text).toHaveAttribute('data-folded')
+    const more = screen.getByRole('button', { name: 'Show more' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    expect(more).toHaveAttribute('aria-controls', text.id)
+
+    fireEvent.click(more)
+    expect(text).not.toHaveAttribute('data-folded')
+    const less = screen.getByRole('button', { name: 'Show less' })
+    expect(less).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(less)
+    expect(text).toHaveAttribute('data-folded')
   })
 
   it('lays out breadcrumbs, meta, tags and eight "Up next" videos', () => {
@@ -190,11 +210,15 @@ describe('WatchPage', () => {
     expect(tabs[1]).toHaveClass('watch-tab')
     expect(tabs[1].closest('[data-tone]')).toHaveAttribute('data-tone')
     expect(screen.getByText('Free · CC BY 4.0')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Watch on YouTube/ })).toHaveAttribute(
+    // The page's own actions under the facts; the source links beside the topics.
+    expect(screen.getByRole('button', { name: 'Save to My List' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
+    const source = screen.getByRole('region', { name: 'Source' })
+    expect(within(source).getByRole('link', { name: /Watch on YouTube/ })).toHaveAttribute(
       'href',
       'https://www.youtube.com/watch?v=abcDEF12345',
     )
-    expect(screen.getByRole('link', { name: /View on oer.upou.edu.ph/ })).toHaveAttribute(
+    expect(within(source).getByRole('link', { name: /View on oer.upou.edu.ph/ })).toHaveAttribute(
       'href',
       testVideo.sourceUrl,
     )
@@ -313,9 +337,14 @@ describe('WatchPage', () => {
       const { router } = listed(['pick-0', 'pick-1', 'pick-2'])
       const frame = await toPlayer('pick-0')
       await send(frame, ended)
-      const card = screen.getByRole('group', { name: 'Next, playing in 5 seconds Similar video 1' })
+      const card = screen.getByRole('group', {
+        name: 'Up next, playing in 5 seconds Similar video 1',
+      })
       expect(within(card).getByRole('button', { name: 'Cancel' })).toHaveFocus()
-      await act(() => vi.advanceTimersByTimeAsync(4900))
+      expect(card).toHaveTextContent(/Starting in\s*5/)
+      await act(() => vi.advanceTimersByTimeAsync(1000))
+      expect(card).toHaveTextContent(/Starting in\s*4/)
+      await act(() => vi.advanceTimersByTimeAsync(3900))
       expect(router.state.location.pathname).toBe('/watch/pick-0')
       await act(() => vi.advanceTimersByTimeAsync(200))
       expect(router.state.location.pathname).toBe('/watch/pick-1')

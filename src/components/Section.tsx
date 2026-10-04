@@ -32,7 +32,7 @@ function Section({ row, eager = true }: Props) {
   const items = row.videos.length + (more ? 1 : 0)
   // The row Back returns to renders whole at once, so its card is there to take focus.
   const carousel = useCarousel(near ? items : 0, useReturnRow() === row.id)
-  // The first page at once, the rest of the row (and its See all tile) when the row is used or idle.
+  // The first page at once, the rest of the row (and its See all tile) once the row is used.
   const rest = !carousel.full && items > FIRST_ITEMS
   return (
     <section

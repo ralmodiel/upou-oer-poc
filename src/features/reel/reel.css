@@ -210,6 +210,8 @@
   aspect-ratio: 16 / 9;
   margin-inline: auto;
   object-position: 50% 50%;
+  /* A zoom that pushes baked-in bars out of the 16:9 box (--zoom) clips them at its edges. */
+  clip-path: inset(calc(50% - 50% / var(--zoom, 1)));
 }
 
 /* Behind everything: a blurred copy of the shot on screen, seen beside slides and through the band. */

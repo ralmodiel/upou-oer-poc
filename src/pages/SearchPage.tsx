@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
+import { useSearchSuggestions } from '../components/SearchSuggest'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint, TEXT_LINK } from '../components/browse-ui'
 import { DetailsContext, pageTarget } from '../components/details'
@@ -11,10 +12,17 @@ import Button from '../components/ui/Button'
 import Chip from '../components/ui/Chip'
 import EmptyState from '../components/ui/EmptyState'
 import SectionHeading from '../components/ui/SectionHeading'
-import { getCategories, getCategory, searchVideos, videos } from '../data/catalog'
+import {
+  getCategories,
+  getCategory,
+  searchCatalog,
+  videos,
+  type SearchResults,
+} from '../data/catalog'
 import { useSearchHistory } from '../lib/history'
 import { searchSeo, useSeo } from '../lib/seo'
 import { focusSearch } from '../lib/shortcuts'
+import { searchPath } from '../lib/suggest'
 import { isGenericTag, isOrgTag, POPULAR_SERIES, POPULAR_TOPICS, tagKey } from '../lib/tags'
 
 const PAGE_SIZE = 24
@@ -27,8 +35,13 @@ const expanded = new Map<string, number>()
 // The page title takes focus after a submitted search (this page's field on phones, the header's).
 const RESULTS_HEADING = 'search-results'
 const SUBMITTED = { submitted: true }
+const NO_RESULTS: SearchResults = { videos: [], exact: 0 }
+// "Did you mean" is offered up to this many results as typed, when the fix finds clearly more.
+const FEW_RESULTS = 3
+const clearlyMore = (fixed: number, typed: number) => (typed ? fixed >= 3 * typed : fixed > 0)
 
-const hasResults = (query: string) => searchVideos(query, { limit: 1 }).length > 0
+// As typed: near spellings don't count.
+const hasResults = (query: string) => searchCatalog(query, { limit: 1 }).exact > 0
 
 /**
  * Curated subjects that exist in this catalog, topped up with the most used tags
@@ -78,7 +91,18 @@ export default function SearchPage() {
   const slug = params.get('category') ?? ''
   const category = slug ? getCategory(slug) : undefined
 
-  const all = useMemo(() => (q ? searchVideos(q, { limit: Infinity }) : []), [q])
+  const found = useMemo(() => (q ? searchCatalog(q, { limit: Infinity }) : NO_RESULTS), [q])
+  // A likelier spelling ("nutrition" for "nutritoin"), offered when it finds clearly more.
+  const fix = useMemo(() => {
+    const text = found.correction
+    if (!text || found.exact > FEW_RESULTS) return undefined
+    const fixed = searchCatalog(text, { limit: Infinity })
+    return clearlyMore(fixed.exact, found.exact) ? { text, videos: fixed.videos } : undefined
+  }, [found])
+  // Nothing as typed: the fix's results, under a note saying so.
+  const showingFix = fix !== undefined && found.exact === 0
+  const all = showingFix ? fix.videos : found.videos
+  const searched = showingFix ? fix.text : q
   const results = useMemo(
     () => (category ? all.filter((v) => v.category === category.name) : all),
     [all, category],
@@ -133,14 +157,14 @@ export default function SearchPage() {
   // collection filter or opening a result commits it at once.
   const { record } = useSearchHistory()
   useEffect(() => {
-    if (!q) return
+    if (!searched) return
     if (slug) {
-      record(q)
+      record(searched)
       return
     }
-    const timer = window.setTimeout(() => record(q), COMMIT_MS)
+    const timer = window.setTimeout(() => record(searched), COMMIT_MS)
     return () => clearTimeout(timer)
-  }, [q, slug, record])
+  }, [searched, slug, record])
 
   // The biggest collections first; the rest (and never the active one) wait behind a toggle.
   const [allFacets, setAllFacets] = useState(false)
@@ -172,10 +196,19 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Phones: suggestions under this page's field too; a topic or a fix searches at once.
+  const field = useRef<HTMLInputElement>(null)
+  const fieldSuggestions = useSearchSuggestions(
+    field,
+    (term) => navigate(searchPath(term), { state: SUBMITTED }),
+    'inset-x-0',
+  )
+
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    fieldSuggestions.close()
     const value = String(new FormData(e.currentTarget).get('q') ?? '').trim()
-    navigate(value ? `/search?q=${encodeURIComponent(value)}` : '/search', { state: SUBMITTED })
+    navigate(value ? searchPath(value) : '/search', { state: SUBMITTED })
   }
 
   const count = results.length
@@ -205,11 +238,16 @@ export default function SearchPage() {
         }
       />
       {/* Phones only: from md up the header field is always visible, so one field is enough. */}
-      <form role="search" onSubmit={submit} className="mt-5 flex max-w-2xl gap-2 md:hidden">
+      <form
+        role="search"
+        onSubmit={submit}
+        className="relative mt-5 flex max-w-2xl gap-2 md:hidden"
+      >
         <label htmlFor="search-page-q" className="sr-only">
           Search videos
         </label>
         <input
+          ref={field}
           key={raw}
           id="search-page-q"
           name="q"
@@ -218,20 +256,39 @@ export default function SearchPage() {
           data-search-page=""
           placeholder="Title, topic or tag"
           autoComplete="off"
+          {...fieldSuggestions.fieldProps}
+          onChange={(e) => fieldSuggestions.onType(e.target.value)}
+          onFocus={fieldSuggestions.onFocus}
+          onKeyDown={fieldSuggestions.onKeyDown}
+          onBlur={fieldSuggestions.onBlur}
           className="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface px-5 text-base text-ink placeholder:text-ink-3 focus:border-focus"
         />
         <Button type="submit" icon={<SearchIcon />}>
           Search
         </Button>
+        {fieldSuggestions.list}
       </form>
 
       {q ? (
         <>
           <p role="status" className="mt-5 text-sm text-ink-2">
-            {count === 0
-              ? `No videos${where} match “${q}”`
-              : `${count} ${count === 1 ? 'video' : 'videos'}${where}`}
+            {showingFix
+              ? `No videos match “${q}”. Showing results for “${fix.text}”.`
+              : count === 0
+                ? `No videos${where} match “${q}”`
+                : `${count} ${count === 1 ? 'video' : 'videos'}${where}`}
           </p>
+          {fix && (
+            <p>
+              <Link
+                to={searchPath(fix.text)}
+                state={SUBMITTED}
+                className={`inline-flex min-h-10 items-center text-sm ${TEXT_LINK}`}
+              >
+                Did you mean “{fix.text}”?
+              </Link>
+            </p>
+          )}
           {all.length > 0 && (
             <nav aria-label="Filter by collection" className="mt-2">
               <ul
@@ -282,7 +339,7 @@ export default function SearchPage() {
           )}
           {count > 0 ? (
             <>
-              <div ref={grid} onClickCapture={() => record(q)} className="mt-8">
+              <div ref={grid} onClickCapture={() => record(searched)} className="mt-8">
                 <GridHint />
                 <DetailsContext value={target}>
                   <VideoGrid videos={visible} />

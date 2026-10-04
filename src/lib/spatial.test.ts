@@ -113,14 +113,25 @@ describe('findTarget', () => {
     expect(id(findTarget('down'))).toBe('foot')
   })
 
-  it("visits a card's own controls before the next card", () => {
+  it('leaves a card with one ↓ from its link; ↑ straight after comes back to its Save', () => {
     page()
     focus('#a1-link')
-    expect(id(findTarget('down'))).toBe('a1-save')
-    focus('#a1-save')
+    expect(id(findTarget('down'))).toBe('b1-link')
+    expect(moveFocus('down')).toBe(true)
+    expect(document.activeElement?.id).toBe('b1-link')
+    expect(id(findTarget('up'))).toBe('a1-save')
+    expect(moveFocus('up')).toBe(true)
+    expect(document.activeElement?.id).toBe('a1-save')
+    // From its Save: the link above, the next card beside, the next row below.
     expect(id(findTarget('up'))).toBe('a1-link')
     expect(id(findTarget('right'))).toBe('a2-link')
     expect(id(findTarget('down'))).toBe('b1-link')
+    // Only straight after: after any other move, ↑ lands on the card again.
+    focus('#a1-link')
+    expect(moveFocus('down')).toBe(true)
+    expect(moveFocus('right')).toBe(true)
+    expect(moveFocus('left')).toBe(true)
+    expect(id(findTarget('up'))).toBe('a1-link')
   })
 
   it('reaches a centred "wide" row control straight down from any column', () => {
@@ -540,6 +551,7 @@ describe('cards and the hero', () => {
     // Four lines laid out, two shown: the link's box reaches past the Save button's top.
     place('#c-link', [230, 0, 300, 88])
     place('#c-save', [290, 0, 60, 30])
+    // Nothing lies below the card: ↓ from its link reaches its own Save.
     focus('#c-link')
     expect(id(findTarget('down'))).toBe('c-save')
     focus('#c-save')
@@ -581,6 +593,21 @@ describe('keepsArrow', () => {
     expect(keepsArrow(document.getElementById('ta'), 'right')).toBe(false)
     expect(keepsArrow(document.getElementById('s'), 'up')).toBe(true)
     expect(keepsArrow(null, 'up')).toBe(false)
+  })
+
+  it('lets a search field with its suggestion list open keep up/down, and only then', () => {
+    document.body.innerHTML = '<input id="c" type="search" role="combobox" aria-expanded="true" />'
+    const c = document.getElementById('c') as HTMLInputElement
+    c.value = 'gen'
+    c.setSelectionRange(3, 3)
+    expect(keepsArrow(c, 'down')).toBe(true)
+    expect(keepsArrow(c, 'up')).toBe(true)
+    expect(keepsArrow(c, 'left')).toBe(true)
+    expect(keepsArrow(c, 'right')).toBe(false)
+    c.setAttribute('aria-expanded', 'false')
+    expect(keepsArrow(c, 'down')).toBe(false)
+    expect(keepsArrow(c, 'up')).toBe(false)
+    expect(keepsArrow(c, 'left')).toBe(true)
   })
 })
 

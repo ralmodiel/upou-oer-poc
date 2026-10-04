@@ -3,9 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { fixtureVideos, manyVideos } from '../components/test-fixtures'
+import { videos } from '../data/catalog'
 import { setCatalog } from '../data/testing'
 import SearchPage from './SearchPage'
 
+// The shipped catalog, for the queries a review found failing.
+const shipped = videos
 setCatalog(fixtureVideos)
 
 function renderAt(path: string) {
@@ -121,7 +124,7 @@ describe('SearchPage', () => {
       'href',
       '/collections/research',
     )
-    await userEvent.type(screen.getByRole('searchbox', { name: 'Search videos' }), 'ocean{Enter}')
+    await userEvent.type(screen.getByRole('combobox', { name: 'Search videos' }), 'ocean{Enter}')
     expect(router.state.location.search).toBe('?q=ocean')
     expect(screen.getByRole('status')).toHaveTextContent('1 video')
   })
@@ -141,5 +144,61 @@ describe('SearchPage', () => {
     renderAt('/search?q=zzzz')
     expect(screen.getByRole('heading', { name: 'Nothing matched' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /^Education \(2\)$/ })).toBeInTheDocument()
+  })
+})
+
+describe('SearchPage spelling', () => {
+  it('shows results for the fix under a note when nothing matches as typed', () => {
+    renderAt('/search?q=climte')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'No videos match “climte”. Showing results for “climate”.',
+    )
+    expect(screen.getByRole('link', { name: 'Did you mean “climate”?' })).toHaveAttribute(
+      'href',
+      '/search?q=climate',
+    )
+    expect(screen.getByRole('link', { name: 'Play Climate Change Basics' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Nothing matched' })).not.toBeInTheDocument()
+  })
+
+  it('offers the fix above the few videos that match as typed', () => {
+    const video = (id: string, title: string) => ({ ...fixtureVideos[2], id, title, tags: [] })
+    setCatalog([
+      video('typo', 'Enviroment Day'),
+      video('e1', 'Environment Talk'),
+      video('e2', 'Environment Policy'),
+      video('e3', 'Environment and Science'),
+    ])
+    renderAt('/search?q=enviroment')
+    expect(screen.getByRole('link', { name: 'Did you mean “environment”?' })).toBeInTheDocument()
+    // The video as typed first, then the near spellings.
+    const plays = screen.getAllByRole('link', { name: /^Play / })
+    expect(plays[0]).toHaveAccessibleName('Play Enviroment Day')
+    expect(plays).toHaveLength(4)
+    cleanup()
+    setCatalog(fixtureVideos)
+  })
+
+  it.each([
+    ['nutritoin', 'nutrition', /nutrition/i],
+    ['gendr', 'gender', /gender/i],
+    ['mental helth', 'mental health', /mental health/i],
+    ['climte change', 'climate change', /climate change/i],
+  ])('finds videos for “%s” and offers “%s”', (typed, fixed, topic) => {
+    setCatalog(shipped)
+    renderAt(`/search?q=${encodeURIComponent(typed)}`)
+    expect(screen.getByRole('status')).toHaveTextContent(
+      `No videos match “${typed}”. Showing results for “${fixed}”.`,
+    )
+    expect(screen.getByRole('link', { name: `Did you mean “${fixed}”?` })).toHaveAttribute(
+      'href',
+      `/search?q=${encodeURIComponent(fixed)}`,
+    )
+    const plays = screen.getAllByRole('link', { name: /^Play / })
+    expect(plays.length).toBeGreaterThan(2)
+    // The best matches carry the fixed words in their titles.
+    for (const play of plays.slice(0, 3)) expect(play).toHaveAccessibleName(topic)
+    cleanup()
+    setCatalog(fixtureVideos)
   })
 })

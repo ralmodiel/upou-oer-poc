@@ -7,7 +7,7 @@ import IconButton from './ui/IconButton'
 
 const KEYS: { keys: string[]; text: string }[] = [
   { keys: ['←', '→', '↑', '↓'], text: 'Move the highlight to the nearest card or control' },
-  { keys: ['↓'], text: 'From a card, ↓ reaches its Save and Details before the next row' },
+  { keys: ['↓', '↑'], text: '↓ from a card goes on to the next row; ↑ straight after, to its Save' },
   { keys: ['←', '→'], text: 'Along a row of chips (↑ or ↓ leaves the row)' },
   { keys: ['Enter'], text: 'Open the highlighted video or press the control' },
   { keys: ['Esc', 'Backspace'], text: 'Back: closes an open panel first, then the previous page' },

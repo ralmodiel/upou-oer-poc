@@ -17,7 +17,8 @@ interface Props {
 
 /**
  * The track and its buttons. Pointer devices show the buttons while the row is hovered or holds
- * focus, each at its end only while there is more that way; touch screens swipe instead. The
+ * focus (from 80rem, a quiet outline at rest too: browse.css), each at its end only while there is
+ * more that way; touch screens swipe instead. The
  * remote passes over the buttons (data-spatial="skip"): ← / → walk the cards, the track follows.
  */
 export default function Carousel({ carousel, label, className = '', children }: Props) {
@@ -63,7 +64,7 @@ function RowButton({
       hidden={hidden}
       data-spatial="skip"
       onClick={onClick}
-      className={`row-button row-${side} absolute z-30 hidden size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-pill border border-line bg-surface text-ink opacity-0 shadow-lift transition-[opacity,background-color] duration-200 group-focus-within/row:opacity-100 group-hover/row:opacity-100 hover:bg-surface-2 pointer-fine:grid`}
+      className={`row-button row-${side} absolute z-30 hidden size-11 -translate-y-1/2 cursor-pointer place-items-center rounded-pill border border-line bg-surface text-ink opacity-0 shadow-lift transition-[opacity,background-color,box-shadow,color,scale] duration-200 group-focus-within/row:opacity-100 group-hover/row:opacity-100 hover:bg-surface-2 motion-safe:active:scale-95 pointer-fine:grid`}
     >
       <Icon className="size-5" />
     </button>

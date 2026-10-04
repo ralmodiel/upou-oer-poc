@@ -95,7 +95,8 @@ html:has(dialog[data-details][open]) {
 }
 
 /* Home rows (Carousel): one line of cards that scrolls sideways and snaps to cards, two to a page
-   on phones, three at md, four from lg; on touch screens a little narrower, so the next one peeks.
+   on phones, three at md, five from lg (as in the Featured row); on touch screens a little
+   narrower, so the next one peeks.
    The track runs into the gutter (up to 4rem) so focus rings, hover lifts and the next card are
    not cut off, and its scroll padding keeps the cards in line with the heading. The buttons sit
    in that gutter, centred on the card images. */
@@ -117,7 +118,7 @@ html:has(dialog[data-details][open]) {
 }
 @media (width >= 64rem) {
   .row {
-    --row-cols: 4;
+    --row-cols: 5;
   }
 }
 @media (hover: none), (pointer: coarse) {
@@ -274,13 +275,23 @@ html[data-hero-swap]::view-transition-new(hero-text) {
   }
 }
 
-/* The Featured row: every featured video side by side, five in a line from lg (no arrows, it
-   never pages), the usual row below that. Its rows keep the home row rhythm a touch tighter. */
+/* The hero's picture, as a streaming app's billboard: no frame, ring or shadow, its edges melting
+   into the backdrop, most towards the details beside it (lg) and the row below. A mask, never a
+   tint: the picture keeps its own colours. */
+.hero-still {
+  mask-image:
+    linear-gradient(to right, transparent, #000 4% 96%, transparent),
+    linear-gradient(to bottom, transparent, #000 5% 75%, transparent);
+  mask-composite: intersect;
+}
 @media (width >= 64rem) {
-  .featured-row {
-    --row-cols: 5;
+  .hero-still {
+    mask-image:
+      linear-gradient(to right, transparent, #000 4% 80%, transparent),
+      linear-gradient(to bottom, transparent, #000 5% 75%, transparent);
   }
 }
+/* Also new, under the Featured row, keeps the home row rhythm a touch tighter. */
 [data-featured-block] > section {
   padding-block: 1.25rem 1.5rem;
 }
@@ -302,10 +313,9 @@ html[data-hero-swap]::view-transition-new(hero-text) {
     -webkit-line-clamp: 2;
     min-height: 2lh;
   }
-  [data-hero-media] {
+  .hero-still {
     max-height: calc(100dvh - var(--header-h) - 26rem);
     overflow: hidden;
-    border-radius: var(--radius-card);
   }
   [data-featured-zone] > section {
     padding-block: 1rem;

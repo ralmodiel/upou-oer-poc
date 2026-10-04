@@ -143,7 +143,7 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
         <Hero video={videos[Math.min(index, count - 1)]} priority={index === start} />
         {/* Every featured video, side by side: five in a line from lg, scrolling sideways below. */}
         <section aria-label="Featured videos" className="px-(--gutter) py-6">
-          <div className="row featured-row">
+          <div className="row">
             <div data-spatial="track" className="row-track">
               <VideoGrid videos={videos} layout="row" row="featured" showCategory />
             </div>
@@ -174,7 +174,10 @@ function swapHero(apply: () => void) {
   })
 }
 
-/** The featured video, large: its picture (previews on hover or keyboard focus) and its details. */
+/**
+ * The featured video, large: its picture (previews on hover or keyboard focus) and its details. The
+ * picture has no frame; its edges melt into the backdrop (browse.css, .hero-still).
+ */
 function Hero({ video, priority }: { video: Video; priority: boolean }) {
   const headingId = useId()
   const preview = useCardPreview(video)
@@ -208,7 +211,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
           className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-center"
         >
           {/* Decorative duplicate of the Play button. */}
-          <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="block">
+          <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="hero-still block">
             <Thumbnail
               video={video}
               sizes="(min-width: 64rem) 55vw, 100vw"
@@ -216,7 +219,6 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
               canonical
               loading="eager"
               fetchPriority={priority ? 'high' : undefined}
-              className="rounded-card shadow-lift ring-1 ring-black/10 dark:ring-white/10"
             >
               {preview.overlay}
             </Thumbnail>

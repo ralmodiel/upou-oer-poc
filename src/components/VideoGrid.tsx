@@ -14,12 +14,12 @@ const LAYOUTS = {
       '(min-width: 108rem) 307px, (min-width: 96rem) calc(18.4vw - 13px), (min-width: 64rem) calc(23vw - 12px), (min-width: 48rem) calc(30.7vw - 11px), calc(46vw - 8px)',
     heading: 'h2',
   },
-  // One line in a Carousel track: two cards to a page on phones, three at md, four from lg.
+  // One line in a Carousel track: two cards to a page on phones, three at md, five from lg.
   row: {
     list: 'flex w-max gap-4',
     item: 'w-(--row-card) flex-none snap-start',
     sizes:
-      '(min-width: 108rem) 388px, (min-width: 64rem) calc(23vw - 12px), (min-width: 48rem) calc(30.7vw - 11px), calc(46vw - 8px)',
+      '(min-width: 108rem) 307px, (min-width: 64rem) calc(18.4vw - 13px), (min-width: 48rem) calc(30.7vw - 11px), calc(46vw - 8px)',
     heading: 'h3',
   },
   compact: {

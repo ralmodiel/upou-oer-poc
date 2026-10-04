@@ -71,7 +71,6 @@ function popularTags(limit: number) {
 
 export default function SearchPage() {
   const [params] = useSearchParams()
-  const navigate = useNavigate()
   const raw = params.get('q') ?? ''
   const q = raw.trim()
   // Phones: the Search tab lands with the caret in the field (not when coming Back to results).
@@ -196,21 +195,6 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Phones: suggestions under this page's field too; a topic or a fix searches at once.
-  const field = useRef<HTMLInputElement>(null)
-  const fieldSuggestions = useSearchSuggestions(
-    field,
-    (term) => navigate(searchPath(term), { state: SUBMITTED }),
-    'inset-x-0',
-  )
-
-  const submit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    fieldSuggestions.close()
-    const value = String(new FormData(e.currentTarget).get('q') ?? '').trim()
-    navigate(value ? searchPath(value) : '/search', { state: SUBMITTED })
-  }
-
   const count = results.length
   const where = category ? ` in ${category.name}` : ''
 
@@ -238,36 +222,7 @@ export default function SearchPage() {
         }
       />
       {/* Phones only: from md up the header field is always visible, so one field is enough. */}
-      <form
-        role="search"
-        onSubmit={submit}
-        className="relative mt-5 flex max-w-2xl gap-2 md:hidden"
-      >
-        <label htmlFor="search-page-q" className="sr-only">
-          Search videos
-        </label>
-        <input
-          ref={field}
-          key={raw}
-          id="search-page-q"
-          name="q"
-          type="search"
-          defaultValue={raw}
-          data-search-page=""
-          placeholder="Title, topic or tag"
-          autoComplete="off"
-          {...fieldSuggestions.fieldProps}
-          onChange={(e) => fieldSuggestions.onType(e.target.value)}
-          onFocus={fieldSuggestions.onFocus}
-          onKeyDown={fieldSuggestions.onKeyDown}
-          onBlur={fieldSuggestions.onBlur}
-          className="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface px-5 text-base text-ink placeholder:text-ink-3 focus:border-focus"
-        />
-        <Button type="submit" icon={<SearchIcon />}>
-          Search
-        </Button>
-        {fieldSuggestions.list}
-      </form>
+      <SearchField query={raw} />
 
       {q ? (
         <>
@@ -384,6 +339,54 @@ export default function SearchPage() {
         <Suggestions />
       )}
     </div>
+  )
+}
+
+// The phone field, on its own so typing re-renders only it (with suggestions; a topic or a fix
+// searches at once).
+function SearchField({ query }: { query: string }) {
+  const navigate = useNavigate()
+  const field = useRef<HTMLInputElement>(null)
+  const fieldSuggestions = useSearchSuggestions(
+    field,
+    (term) => navigate(searchPath(term), { state: SUBMITTED }),
+    'inset-x-0',
+  )
+
+  const submit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    fieldSuggestions.close()
+    const value = String(new FormData(e.currentTarget).get('q') ?? '').trim()
+    navigate(value ? searchPath(value) : '/search', { state: SUBMITTED })
+  }
+
+  return (
+    <form role="search" onSubmit={submit} className="relative mt-5 flex max-w-2xl gap-2 md:hidden">
+      <label htmlFor="search-page-q" className="sr-only">
+        Search videos
+      </label>
+      <input
+        ref={field}
+        key={query}
+        id="search-page-q"
+        name="q"
+        type="search"
+        defaultValue={query}
+        data-search-page=""
+        placeholder="Title, topic or tag"
+        autoComplete="off"
+        {...fieldSuggestions.fieldProps}
+        onChange={(e) => fieldSuggestions.onType(e.target.value)}
+        onFocus={fieldSuggestions.onFocus}
+        onKeyDown={fieldSuggestions.onKeyDown}
+        onBlur={fieldSuggestions.onBlur}
+        className="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface px-5 text-base text-ink placeholder:text-ink-3 focus:border-focus"
+      />
+      <Button type="submit" icon={<SearchIcon />}>
+        Search
+      </Button>
+      {fieldSuggestions.list}
+    </form>
   )
 }
 

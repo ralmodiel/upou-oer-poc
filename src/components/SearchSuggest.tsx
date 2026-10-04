@@ -4,6 +4,7 @@
 // highlighted item, Esc closes the list before it means anything else, and a press or tap opens
 // an item. Focus never leaves the field.
 import {
+  startTransition,
   useEffect,
   useId,
   useRef,
@@ -14,13 +15,46 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router'
 import { useSearchHistory } from '../lib/history'
-import { suggest, warmSuggestions, type Suggestion, type SuggestionKind } from '../lib/suggest'
-import { onIdle } from './browse-hooks'
+import {
+  suggestionsWarmup,
+  suggestSteps,
+  type Suggestion,
+  type SuggestionKind,
+} from '../lib/suggest'
 
 // Suggestions follow the typing after this pause.
 const PAUSE_MS = 100
 // A single letter says too little to suggest from.
 const MIN_LENGTH = 2
+// Longest stretch of warm-up or suggestion work at a time, so a key never waits long behind it.
+const SLICE_MS = 4
+
+/** Runs `steps` in slices of about SLICE_MS, letting the browser in between; then `done`. */
+function runSliced<T>(steps: Iterator<void, T>, done: (value: T) => void) {
+  const slice = () => {
+    const end = performance.now() + SLICE_MS
+    for (;;) {
+      const step = steps.next()
+      if (step.done) return done(step.value)
+      if (performance.now() > end) return void window.setTimeout(slice)
+    }
+  }
+  slice()
+}
+
+// Callbacks waiting for the warm-up (search index, vocabulary, topics), which runs in short slices.
+let waiting: (() => void)[] = []
+
+/** Runs `fn` once what suggestions use is built: at once when it is, else after the slices. */
+function whenWarm(fn: () => void) {
+  waiting.push(fn)
+  if (waiting.length > 1) return
+  runSliced(suggestionsWarmup(), () => {
+    const ready = waiting
+    waiting = []
+    for (const f of ready) f()
+  })
+}
 
 const KIND_LABEL: Record<SuggestionKind, string> = {
   search: 'Search',
@@ -65,22 +99,12 @@ export function useSearchSuggestions(
   const [items, setItems] = useState<Suggestion[]>([])
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
-  // Text waiting for the pause; null when nothing is pending.
-  const [pending, setPending] = useState<string | null>(null)
+  // Typing changes no state: the text and the pause live in refs, and each keystroke or close
+  // bumps `turn`, so an older pause or warm-up never opens the list.
   const typed = useRef('')
-
-  useEffect(() => {
-    if (pending === null) return
-    const timer = window.setTimeout(() => {
-      const next = suggest(pending)
-      setPending(null)
-      setItems(next)
-      setActive(-1)
-      // Only into a field that still has focus.
-      setOpen(next.length > 0 && document.activeElement === field.current)
-    }, PAUSE_MS)
-    return () => clearTimeout(timer)
-  }, [pending, field])
+  const timer = useRef(0)
+  const turn = useRef(0)
+  useEffect(() => () => clearTimeout(timer.current), [])
 
   // Keep the highlighted item in view inside the list, never by scrolling the page.
   useEffect(() => {
@@ -96,15 +120,35 @@ export function useSearchSuggestions(
   const shown = open && items.length > 0
 
   const close = () => {
-    setPending(null)
+    turn.current++
+    clearTimeout(timer.current)
     setOpen(false)
     setActive(-1)
   }
 
   const onType = (text: string) => {
-    typed.current = text.trim()
-    if (typed.current.length < MIN_LENGTH) close()
-    else setPending(typed.current)
+    const query = text.trim()
+    typed.current = query
+    if (query.length < MIN_LENGTH) return close()
+    const at = ++turn.current
+    clearTimeout(timer.current)
+    timer.current = window.setTimeout(
+      () =>
+        whenWarm(() => {
+          if (turn.current !== at) return
+          runSliced(suggestSteps(query), (next) => {
+            if (turn.current !== at) return
+            // Only into a field that still has focus; the list renders without holding up keys.
+            const into = next.length > 0 && document.activeElement === field.current
+            startTransition(() => {
+              setItems(next)
+              setActive(-1)
+              setOpen(into)
+            })
+          })
+        }),
+      PAUSE_MS,
+    )
   }
 
   const choose = (item: Suggestion) => {
@@ -173,8 +217,8 @@ export function useSearchSuggestions(
     },
     onType,
     onKeyDown,
-    // The index and vocabulary are built while the browser is idle, before the first keystroke.
-    onFocus: () => void onIdle(warmSuggestions),
+    // The index, vocabulary and topics are built in short slices from here, before the first key.
+    onFocus: () => whenWarm(() => {}),
     onBlur: close,
     close,
     list,

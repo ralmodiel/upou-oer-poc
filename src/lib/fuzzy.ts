@@ -93,22 +93,20 @@ const countBits = (n: number) => {
   return count
 }
 
-/**
- * Collects the words of `docs` (word runs from wordsOf, one string per video) with the number of
- * videos using each; words with digits, shorter than 3 letters or matching `skip` are left out.
- */
-export function buildVocabulary(
-  docs: Iterable<string>,
+/** Adds the words of `doc` (a word run from wordsOf, one per video) to `counts`, once each. */
+export function countWords(counts: Map<string, number>, doc: string): void {
+  const seen = new Set<string>()
+  for (const word of doc.split(' ')) {
+    if (word.length >= MIN_WORD && !seen.has(word) && LETTERS_ONLY.test(word)) seen.add(word)
+  }
+  for (const word of seen) counts.set(word, (counts.get(word) ?? 0) + 1)
+}
+
+/** The counted words (see countWords) as a vocabulary, leaving out those matching `skip`. */
+export function vocabularyOf(
+  counts: ReadonlyMap<string, number>,
   skip: (word: string) => boolean = () => false,
 ): Vocabulary {
-  const counts = new Map<string, number>()
-  for (const doc of docs) {
-    const seen = new Set<string>()
-    for (const word of doc.split(' ')) {
-      if (word.length >= MIN_WORD && !seen.has(word) && LETTERS_ONLY.test(word)) seen.add(word)
-    }
-    for (const word of seen) counts.set(word, (counts.get(word) ?? 0) + 1)
-  }
   const byLength: Bucket[] = []
   for (const [word, count] of counts) {
     if (skip(word)) continue
@@ -118,6 +116,19 @@ export function buildVocabulary(
     bucket.letters.push(letterBits(word))
   }
   return { byLength }
+}
+
+/**
+ * Collects the words of `docs` (word runs from wordsOf, one string per video) with the number of
+ * videos using each; words with digits, shorter than 3 letters or matching `skip` are left out.
+ */
+export function buildVocabulary(
+  docs: Iterable<string>,
+  skip?: (word: string) => boolean,
+): Vocabulary {
+  const counts = new Map<string, number>()
+  for (const doc of docs) countWords(counts, doc)
+  return vocabularyOf(counts, skip)
 }
 
 /** Catalog words within the allowed edits of `word` (see maxEdits): fewest edits, then most used. */

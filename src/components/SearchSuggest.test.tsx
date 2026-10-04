@@ -152,5 +152,11 @@ describe('Header search suggestions', () => {
     await typeAndList('l')
     await userEvent.click(screen.getByRole('button', { name: 'Clear search' }))
     expect(field()).toHaveAttribute('aria-expanded', 'false')
+    // Cleared before the pause ends: the pending suggestions never open.
+    await userEvent.type(field(), 'cl')
+    await userEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    await wait(200)
+    expect(field()).toHaveFocus()
+    expect(field()).toHaveAttribute('aria-expanded', 'false')
   })
 })

@@ -4,11 +4,13 @@ import { formatDate } from '../lib/format'
 import {
   buildVocabulary,
   correctionOf,
+  countWords,
   matchTier,
   maxEdits,
   NEAR,
   nearWords,
   normalize,
+  vocabularyOf,
   wordsOf,
   type Term,
 } from '../lib/fuzzy'
@@ -283,16 +285,15 @@ export function similarTo(video: Video, list: readonly Video[] = videos, limit =
     .map((x) => x.v)
 }
 
-// Built on the first search (or a search field's first focus, see warmSearch).
-const index = () =>
-  cached('index', (): IndexedVideo[] =>
-    videos.map((v) => ({
-      v,
-      title: wordsOf(v.title),
-      meta: wordsOf(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
-      body: wordsOf(v.description),
-    })),
-  )
+const indexed = (v: Video): IndexedVideo => ({
+  v,
+  title: wordsOf(v.title),
+  meta: wordsOf(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
+  body: wordsOf(v.description),
+})
+
+// Built on the first search, or ahead of it (see searchWarmup and warmSearch).
+const index = () => cached('index', () => videos.map(indexed))
 
 // Words of titles, tags, collections and channel, for near spellings; people's names left out.
 const vocabulary = () =>
@@ -388,6 +389,42 @@ export const searchVideos = (query: string, options?: SearchOptions): Video[] =>
 /** Builds the search index and the spelling vocabulary ahead of a first search. */
 export function warmSearch(): void {
   vocabulary()
+}
+
+// Videos per warm-up step: a few hundredths of a millisecond each, so a slice can stop on time.
+const WARM_STEP = 20
+
+/**
+ * warmSearch a few videos per step, for a caller to spread over idle time: it yields between
+ * steps and stops if the catalog is replaced.
+ */
+export function* searchWarmup(): Generator<void, void> {
+  const at = memo
+  // Runs `each` over `list`, a step at a time; false when the catalog was replaced meanwhile.
+  function* steps<T>(list: readonly T[], each: (item: T) => void): Generator<void, boolean> {
+    for (let i = 0; i < list.length; i++) {
+      each(list[i])
+      if (i % WARM_STEP === WARM_STEP - 1) {
+        yield
+        if (memo !== at) return false
+      }
+    }
+    return true
+  }
+  if (!memo.has('index')) {
+    const list: IndexedVideo[] = []
+    if (!(yield* steps(videos, (v) => list.push(indexed(v))))) return
+    cached('index', () => list)
+  }
+  if (!memo.has('vocabulary')) {
+    const counts = new Map<string, number>()
+    if (!(yield* steps(index(), ({ title, meta }) => countWords(counts, title + meta)))) return
+    // The name test is the slow part of the last step, so it gets steps of its own.
+    const names = new Set<string>()
+    const keep = (word: string) => void (isNameToken(word) && names.add(word))
+    if (!(yield* steps([...counts.keys()], keep))) return
+    cached('vocabulary', () => vocabularyOf(counts, (word) => names.has(word)))
+  }
 }
 
 /** Installs a catalog and forgets everything derived from it. Tests: use setCatalog in testing.ts. */

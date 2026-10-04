@@ -630,3 +630,13 @@ Refinement only: same tokens, type and identity (`WatchPage`, `src/features/watc
   4.7:1 on the Now playing wash). Autoplay card (always light): facts 6.5:1, "Starting in" 6.4:1,
   bar 6.9:1 against its track. Focus rings 8.9 / 11.2:1. CLS 0 and sideways overflow 0
   everywhere.
+
+## Round 7: search
+
+- **Search:** typo-tolerant and suggestive (`fuzzy.ts`, `suggest.ts`, `SearchSuggest.tsx`). A word
+  rare as typed also matches more common catalog words an edit or two away, never names ("gendr" →
+  "gender"); the page shows "Did you mean …?", or the fix's results when nothing matches. Both
+  fields are ARIA comboboxes with up to six suggestions (fix, collections, topics, titles) after a
+  100 ms pause; ↑ / ↓ walk them, the first Esc only closes the list. Typing sets no state, and the
+  warm-up and each suggestion run in slices of about 4 ms, so at 4× CPU a key's input delay plus
+  handling matches the page without suggestions.

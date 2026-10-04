@@ -124,7 +124,8 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
   (Newest / Oldest / A–Z), full grid with "Load more" in pages of 24.
 - **Search:** results grid with a category filter chip row and a result count; empty state with
   suggested topics; no results → suggestions.
-- **My List:** grid in saved order, with an empty state linking to Collections.
+- **My List:** grid in saved order, with an empty state linking to Collections (round 7: plus
+  the newest videos to start from, see below).
 - **Quick look dialog (`?v=`):** native `<dialog>`, centered card at ≥ md (image left 5/12,
   text right), full-screen sheet on mobile; title, meta, summary, tags, Play, My List, source
   links, and 6 "More like this" compact cards. Deep-linkable; history behavior as today.
@@ -329,8 +330,9 @@ The arrow keys move focus to the nearest control in that direction; a few marker
   them lands on the hero's Play instead of skipping the block.
 - `list` (round 5): a scrolling list (Up next); ↑ / ↓ walk its items, clipped ones included.
 
-Inside a card, moves use the card's shown boxes (clipped by line clamps), so ↓ from a long title
-reaches its Save / Details.
+Inside a card, moves use the card's shown boxes (clipped by line clamps). ↓ from a card's link leaves
+the card in one press (its own Save / Details only when nothing lies below); an ↑ straight after
+returns to that card's Save, and any other move forgets it (round 7).
 
 Open dialogs scope the walk to their contents, and a sticky dialog header counts as a bar. In
 settings panels the switches and their buttons share one column, so ↑ / ↓ visit them in order.
@@ -534,10 +536,44 @@ collection. Only the behaviour comes from streaming sites; the look stays this s
   Previews play inside the track and stop once their card leaves the view. The hover play glyph
   is a small round badge in the thumbnail's bottom-left corner, off the speaker's face.
 - **Performance:** a row renders its first page and the peeking card at once, the rest when used
-  (hover, focus, touch) or idle, and measures itself on the frame after layout. Images stay lazy;
+  (hover, focus, touch; round 7: no longer on idle), and measures itself on the frame after layout. Images stay lazy;
   using or scrolling a row loads the next page's images ahead. Phone sections are estimated at
   23.5rem. Measured before → after at 1440×900: 8.2 → 8.3 screens, 28 → 28 ↓ presses (with
   history 10.3 → 9.9, 35 → 32); at 360×780 8.5 → 9.1 screens, 24 → 24 presses for 12 rows instead
   of 7 (with history 11.0 → 10.8, 38 → 31). Images after a full scroll at 1440 @2x 1.99 → 2.21 MB
   (each row's peeking card); TBT at 4× CPU at parity (median 425 → 399 ms); CLS 0. The DOM after a
-  full scroll grows from about 1,700 to 4,500 elements.
+  full scroll grows from about 1,700 to 4,500 elements (round 7, render on use only: about 1,970,
+  64 cards).
+
+## Round 7: home and browse polish
+
+Refinement only: same tokens, type and identity.
+
+- **Cards:** every card on the home (rows, Recently viewed, Also new) shares one treatment: 14px
+  radius (10px for the small Also new stills), a hairline ring (`ring-black/5`, `white/10` in dark,
+  so dark stills keep an edge on dark paper), a 2px lift with shadow on hover, a 0.99 press, the
+  round play badge, and on keyboard focus the 3px outline with a 1.02 scale. Without an eyebrow
+  line (collection rows) the title sits 12px under the image, as the eyebrow does, so the focus
+  ring stays clear of it.
+- **How it works chip:** the home intro band carries a "How it works" chip (paper outline on the
+  band, right from md, under the text on phones). It re-shows the strip if dismissed, scrolls to
+  it and focuses its heading; the strip arrives with a gold inset outline that fades (motion-safe).
+- **Quiet row buttons:** from 80rem on fine pointers, where they sit wholly in the gutter, Previous
+  / Next stay in view at rest as a transparent outline with an ink-3 chevron, and come in full
+  while the row is hovered or holds focus. Narrower, they stay hidden until then (they would cover
+  card edges). Page dots count the whole row before its rest renders.
+- **My List empty state:** the empty state goes compact and "Start with the newest" follows under a
+  hairline: the newest videos with a clean poster, one line of cards at every width (2, 3, 4, 5
+  with the page grid's columns, `.starter-picks` in browse.css). The picks stay for the visit, so
+  a Save pressed there keeps its place and focus while the list fills in above (48px above the
+  hairline, 64px from 40rem when the list is above it). Unsaving a card on My List moves focus to
+  the Save of the card that takes its place (the one before at the end; the empty state's first
+  link when none is left), never to the page body.
+- **Bars in stills:** the home backdrop, the mosaic strip and collection covers take the still's
+  bar zoom (`zoomStyle`), like cards; on the blurred backdrop it sits on a wrapper so the drift's
+  own scale adds to it.
+- **Measured** (4× CPU, 1440×900, 4 runs, YouTube images blocked, before → after in the same
+  session): load TBT median 892 → 571 ms, scroll TBT 274 → 216 ms, INP median 528 → 416 ms, DOM
+  after a full scroll 4,592 → 1,973 elements (196 → 64 cards). AA: chip text 10.3:1 (light) /
+  11.3:1 (dark) on the band, its outline 3.1 / 3.3:1; quiet chevron at least 4.6:1 on paper and the
+  maroon-soft and forest-soft bands; play badge 9.3 / 10.0:1.

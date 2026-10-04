@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint } from '../components/browse-ui'
 import { BookmarkIcon } from '../components/icons'
@@ -19,9 +19,29 @@ export default function MyListPage() {
   // Opened with nothing saved: the newest videos stay below for this visit, so a Save pressed there
   // keeps its place (and focus) while the list above fills in.
   const [starter] = useState(() => saved.length === 0)
+  // Unsaving a card here removes it: focus moves to the Save of the card that takes its place (the
+  // one before at the end; the empty state's first link when none is left), never to the body.
+  const lost = useRef(-1)
+  const onClickCapture = (e: MouseEvent) => {
+    const item = (e.target as HTMLElement).closest('button[aria-pressed="true"]')?.closest('li')
+    if (item?.parentElement)
+      lost.current = Array.prototype.indexOf.call(item.parentElement.children, item)
+  }
+  const page = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const at = lost.current
+    lost.current = -1
+    if (at < 0 || !page.current) return
+    const items = page.current.querySelectorAll('.saved-grid [role="list"] > li')
+    const next = items[Math.min(at, items.length - 1)]
+    const target = next
+      ? next.querySelector<HTMLElement>('button[aria-pressed]')
+      : page.current.querySelector<HTMLElement>('a[href]')
+    target?.focus()
+  }, [saved])
 
   return (
-    <div className="px-(--gutter) pt-6 pb-16 sm:pt-8">
+    <div ref={page} className="px-(--gutter) pt-6 pb-16 sm:pt-8">
       <SectionHeading
         as="h1"
         eyebrow="Saved for later"
@@ -35,7 +55,7 @@ export default function MyListPage() {
       {saved.length > 0 ? (
         <>
           <GridHint />
-          <div className="mt-8">
+          <div className="saved-grid mt-8" onClickCapture={onClickCapture}>
             <VideoGrid videos={saved} />
           </div>
         </>
@@ -59,20 +79,20 @@ export default function MyListPage() {
           </p>
         </EmptyState>
       )}
-      {starter && <StarterPicks />}
+      {starter && <StarterPicks below={saved.length > 0} />}
     </div>
   )
 }
 
 /** The newest videos with a clean image, each with its Save: somewhere to start an empty list. */
-function StarterPicks() {
+function StarterPicks({ below }: { below: boolean }) {
   const headingId = useId()
   const picks = useMemo(() => getLatest(24).filter(hasCleanPoster).slice(0, PICKS), [])
   if (picks.length === 0) return null
   return (
     <section
       aria-labelledby={headingId}
-      className="starter-picks mt-4 border-t border-line pt-8 sm:pt-10"
+      className={`starter-picks ${below ? 'mt-12 sm:mt-16' : 'mt-4'} border-t border-line pt-8 sm:pt-10`}
     >
       <SectionHeading id={headingId} title="Start with the newest" />
       <div className="mt-5">

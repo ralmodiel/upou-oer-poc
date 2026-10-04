@@ -1,6 +1,6 @@
 import type { SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { imagesOf } from './media'
+import { imagesOf, zoomStyle } from './media'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
@@ -48,10 +48,14 @@ export function MosaicBackdrop({
         {shown.map((video) => {
           const images = imagesOf(video, true)
           return (
-            <div key={video.id} className="aspect-video h-full shrink-0 bg-surface-2">
+            <div
+              key={video.id}
+              className="aspect-video h-full shrink-0 overflow-hidden bg-surface-2"
+            >
               {images && (
                 <img
                   src={images.small}
+                  style={zoomStyle(images.zoom)}
                   alt=""
                   loading="lazy"
                   decoding="async"
@@ -81,17 +85,20 @@ export default function Backdrop({ video, scrim, className = '' }: Props) {
       aria-hidden="true"
       className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${className}`}
     >
+      {/* The bars zoom sits on a wrapper, so the drift's own scale adds to it. */}
       {images && (
-        <img
-          key={video.id}
-          src={images.large}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onLoad={markLoaded}
-          onError={(e) => retryOrFail(e.currentTarget, images.small)}
-          className="backdrop-img size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-60 data-failed:hidden motion-reduce:transition-none"
-        />
+        <div style={zoomStyle(images.zoom)} className="size-full">
+          <img
+            key={video.id}
+            src={images.large}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onLoad={markLoaded}
+            onError={(e) => retryOrFail(e.currentTarget, images.small)}
+            className="backdrop-img size-full object-cover opacity-0 transition-opacity duration-700 data-loaded:opacity-60 data-failed:hidden motion-reduce:transition-none"
+          />
+        </div>
       )}
       <div className={`absolute inset-0 ${scrim}`} />
     </div>

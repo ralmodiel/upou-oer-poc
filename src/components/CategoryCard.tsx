@@ -4,7 +4,7 @@ import { GENERAL_CATEGORY, getCategoryVideos, type Category } from '../data/cata
 import type { Video } from '../types'
 import { useNear } from './browse-hooks'
 import { ChevronRightIcon } from './icons'
-import { imagesOf, thumbnailOf } from './media'
+import { imagesOf, thumbnailOf, zoomStyle } from './media'
 import { MARK, toneOf } from './tones'
 
 // Covers below the first row load once they come within a quarter screen of the viewport.
@@ -45,7 +45,7 @@ function Tile({
 }) {
   // Canonical stills: a mosaic of three shows any odd rotating frame at once (the least bad image
   // when every image is flagged).
-  const { small, srcSet } = thumbnailOf(video, true)
+  const { small, srcSet, zoom } = thumbnailOf(video, true)
   if (!load) return <div className={`bg-surface-2 ${className}`} />
   return (
     <div className={`overflow-hidden bg-surface-2 ${className}`}>
@@ -58,6 +58,7 @@ function Tile({
         decoding="async"
         onLoad={markLoaded}
         onError={(e) => retryOrHide(e, small)}
+        style={zoomStyle(zoom)}
         className="size-full object-cover opacity-0 transition-opacity duration-300 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
       />
     </div>
@@ -154,7 +155,7 @@ export const CategoryListItem = memo(function CategoryListItem({
   const { slug, name } = category
   const [ref, near] = useNear<HTMLAnchorElement>(eager, NEAR)
   const [cover] = coverVideos(slug, 1)
-  const small = cover && thumbnailOf(cover, true).small
+  const images = cover && thumbnailOf(cover, true)
   return (
     <Link
       ref={ref}
@@ -166,9 +167,10 @@ export const CategoryListItem = memo(function CategoryListItem({
         aria-hidden="true"
         className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
       >
-        {small && near && (
+        {images && near && (
           <img
-            src={small}
+            src={images.small}
+            style={zoomStyle(images.zoom)}
             alt=""
             decoding="async"
             onLoad={markLoaded}

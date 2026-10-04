@@ -219,3 +219,20 @@ html:has(dialog[data-details][open]) {
     }
   }
 }
+
+/* My List starter picks: one line of cards at every width (page grid: 2, 3, 4, then 5 columns). */
+@media (width < 48rem) {
+  .starter-picks [role='list'] > li:nth-child(n + 3) {
+    display: none;
+  }
+}
+@media (48rem <= width < 64rem) {
+  .starter-picks [role='list'] > li:nth-child(n + 4) {
+    display: none;
+  }
+}
+@media (64rem <= width < 96rem) {
+  .starter-picks [role='list'] > li:nth-child(n + 5) {
+    display: none;
+  }
+}

@@ -38,6 +38,11 @@ let keptScroll: number | null = null
 /** How long the list waits, unseen, for the picks before it shows the stand-ins instead. */
 export const REVEAL_WAIT_MS = 1500
 
+// How far back up the viewer scrolls before reaching the end again cues More… again.
+const NUDGE_REARM_PX = 24
+// The viewer's own scrolling (focus alone can come from the page: More… hands it to a row).
+const VIEWER_INPUT = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
+
 // Things the viewer does in the list that end the following of the row now playing (UpNext).
 const TAKE_OVER = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin'] as const
 
@@ -142,6 +147,36 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     if (ol && following.current) centreNowPlaying(ol, glide())
   }, [items, listRef])
 
+  // Scrolled to the end of the list by the viewer (not by a centring or More…), More… gives one
+  // cue (watch.css), again only after they have scrolled back up. Nothing while it loads or is gone.
+  const [nudge, setNudge] = useState(0)
+  const viewerScroll = useRef(false)
+  const cue = useEffectEvent(() => {
+    if (more) setNudge((n) => n + 1)
+  })
+  useEffect(() => {
+    const ol = listRef.current
+    if (!ol) return
+    let armed = true
+    const viewer = () => {
+      viewerScroll.current = true
+    }
+    const onScroll = () => {
+      const gap = ol.scrollHeight - ol.clientHeight - ol.scrollTop
+      if (gap > NUDGE_REARM_PX) armed = true
+      else if (gap <= 2 && armed && viewerScroll.current) {
+        armed = false
+        cue()
+      }
+    }
+    for (const type of VIEWER_INPUT) ol.addEventListener(type, viewer, { passive: true })
+    ol.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      for (const type of VIEWER_INPUT) ol.removeEventListener(type, viewer)
+      ol.removeEventListener('scroll', onScroll)
+    }
+  }, [listRef])
+
   // After More…: focus on the first new row, scrolled to the top of the list (below its edge fade).
   useEffect(() => {
     const from = focusFrom.current
@@ -163,6 +198,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
   const onMore = () => {
     if (!more) return
     following.current = false
+    viewerScroll.current = false
     const before = items.length
     focusFrom.current = list.append().length ? before : before - 1
   }
@@ -170,6 +206,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
   // New picks start at the top of the list; focus stays on the button.
   const onRefresh = () => {
     following.current = false
+    viewerScroll.current = false
     list.refresh?.()
     listRef.current?.scrollTo?.({ top: 0 })
   }
@@ -303,6 +340,8 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
           onPointerEnter={list.prefetch}
           onFocus={list.prefetch}
           aria-disabled={more === null || undefined}
+          // Two names for one cue, so each new one restarts it (watch.css).
+          data-nudge={more && nudge ? (nudge % 2 ? 'a' : 'b') : undefined}
           className="watch-upnext-more mt-3 w-full aria-disabled:cursor-wait aria-disabled:opacity-60"
         >
           {more === null ? 'Loading…' : 'More…'}

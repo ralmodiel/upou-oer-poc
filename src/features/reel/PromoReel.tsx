@@ -253,8 +253,9 @@ interface TimelineProps {
 /**
  * The picture of a video with no clean image: its title in the display serif on the collection's
  * brand band (the TitleTile look), with the collection, channel and date, over a gold glow and a
- * fine grain that drift slowly; a soft light sweeps across once and the type rises in (reel.css).
- * Never an image, so never a flagged frame.
+ * fine grain that drift slowly; a soft light sweeps across once (reel.css). The type shows from the
+ * first frame, loading included, so it never reads as a plain colour tile. Never an image, so never
+ * a flagged frame.
  */
 function TitleCard({ video, plan }: { video: Video; plan: ReelPlan }) {
   const meta = [video.channel, formatDate(video.publishedAt)].filter(Boolean).join(' · ')

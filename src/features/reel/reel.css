@@ -258,14 +258,15 @@
   The TitleTile look (the collection's band, a short rule, the title in the display serif) with
   its collection, channel and date, in pinned light-theme band colours. A gold glow and a fine dot
   grain drift slowly behind the type, which drifts the other way (parallax); a soft light sweeps
-  across once; the type rises in. Never flat (glow, grain and type), never dark (the glow lifts the
-  maroon), and never an image.
+  across once. The type is there from the first frame (loading included): the card never shows as
+  a flat colour or a lone rule. Never dark (the glow lifts the maroon), and never an image.
 */
 .reel-card {
   --card: #7b1113;
   --card-ink: var(--light);
   --card-rule: var(--gold);
   --glow: var(--gold);
+  --haze: color-mix(in srgb, var(--light) 24%, transparent);
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -283,6 +284,8 @@
   --card-ink: var(--ink);
   --card-rule: var(--ink);
   --glow: var(--light);
+  /* A deeper amber low down, so the gold has depth as well as light. */
+  --haze: color-mix(in srgb, #e08a00 55%, transparent);
 }
 
 .reel-card::before {
@@ -296,16 +299,12 @@
       color-mix(in srgb, var(--glow) 78%, transparent),
       transparent 74%
     ),
-    radial-gradient(
-      70% 90% at 4% 108%,
-      color-mix(in srgb, var(--light) 24%, transparent),
-      transparent 72%
-    ),
+    radial-gradient(70% 90% at 4% 108%, var(--haze), transparent 72%),
     linear-gradient(200deg, color-mix(in srgb, var(--light) 16%, transparent), transparent 60%);
   animation: reel-card-drift var(--reel-ms) cubic-bezier(0.3, 0, 0.4, 1) both;
 }
 
-/* The light sweep: once, soon after the type is in. */
+/* The light sweep: once, over the type, after the first second. */
 .reel-card::after {
   content: '';
   position: absolute;
@@ -336,11 +335,9 @@
 
 .reel-card-copy > * {
   max-width: min(100%, 34em);
-  animation: reel-card-rise 1000ms var(--ease) var(--k) both;
 }
 
 .reel-card-rule {
-  --k: 200ms;
   width: min(12cqw, 7rem);
   height: clamp(2px, 0.6cqh, 6px);
   margin-bottom: 4.5cqh;
@@ -349,7 +346,6 @@
 }
 
 .reel-card-kicker {
-  --k: 340ms;
   max-width: 100%;
   margin-bottom: 2.4cqh;
   overflow: hidden;
@@ -363,7 +359,6 @@
 }
 
 .reel-card-title {
-  --k: 480ms;
   display: -webkit-box;
   overflow: hidden;
   padding-bottom: 0.08em;
@@ -377,7 +372,6 @@
 }
 
 .reel-card-meta {
-  --k: 760ms;
   max-width: 100%;
   margin-top: 2.6cqh;
   overflow: hidden;
@@ -396,19 +390,21 @@
 }
 
 /*
-  The end card and the loading ground hold still: no drift, no sweep; loading shows no type yet.
-  On the end card the type keeps above the band, which holds the end card's own title.
+  The end card and the loading card hold still: no drift, no sweep. Both keep the type above the
+  band (the end card's own title sits there; while loading, the band's place stays paper), so the
+  type never jumps when the timeline takes over.
 */
 .reel-end-art .reel-card {
   animation: reel-push calc(var(--reel-ms) - var(--tend)) linear var(--tend) both;
 }
 
-.reel-end-art .reel-card-copy {
+.reel-end-art .reel-card-copy,
+.reel-loading .reel-card {
   bottom: var(--band);
 }
 
 :is(.reel-end-art, .reel-loading) .reel-card::before,
-:is(.reel-end-art, .reel-loading) :is(.reel-card-copy, .reel-card-copy > *) {
+:is(.reel-end-art, .reel-loading) .reel-card-copy {
   animation: none;
 }
 
@@ -416,15 +412,10 @@
   display: none;
 }
 
-.reel-loading .reel-card-copy {
-  visibility: hidden;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .reel-card::before,
   .reel-card::after,
   .reel-card-copy,
-  .reel-card-copy > *,
   .reel-end-art .reel-card {
     animation: none !important;
   }
@@ -1737,35 +1728,22 @@
   }
 }
 
+/* Both start where the still loading card stands, so the hand-over has nothing to move. */
 @keyframes reel-card-drift {
-  from {
-    transform: translate3d(calc(var(--drift) * -2cqw), 1.2cqh, 0) scale(1);
-  }
   to {
-    transform: translate3d(calc(var(--drift) * 2cqw), -1.2cqh, 0) scale(1.07);
+    transform: translate3d(calc(var(--drift) * 4cqw), -2.4cqh, 0) scale(1.07);
   }
 }
 
 @keyframes reel-card-parallax {
-  from {
-    translate: calc(var(--drift) * 0.9cqw) 0;
-  }
   to {
-    translate: calc(var(--drift) * -0.9cqw) 0;
+    translate: calc(var(--drift) * -1.6cqw) 0;
   }
 }
 
 @keyframes reel-card-sweep {
   to {
     transform: translate3d(101%, 0, 0);
-  }
-}
-
-@keyframes reel-card-rise {
-  from {
-    opacity: 0;
-    transform: translate3d(0, calc(var(--motion) * 0.8em), 0);
-    filter: blur(calc(var(--fx) * 6px));
   }
 }
 

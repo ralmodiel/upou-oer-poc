@@ -162,3 +162,42 @@ describe('Up next and the row now playing', () => {
     expect(next).not.toHaveAttribute('data-entrance')
   })
 })
+
+describe('More… at the end of Up next', () => {
+  it('gives one cue when the viewer scrolls to the end, again only after scrolling back up', () => {
+    setCatalog([testVideo, ...lookalikes(30)])
+    warmRecommender()
+    renderWatch()
+    const ol = screen.getByRole('list', { name: 'Up next' })
+    const more = screen.getByRole('button', { name: 'More…' })
+    // Layout, which jsdom lacks: 900px of rows in a 400px list.
+    let top = 0
+    Object.defineProperties(ol, {
+      clientHeight: { get: () => 400 },
+      scrollHeight: { get: () => 900 },
+      scrollTop: { get: () => top, set: (v: number) => (top = v) },
+    })
+    const scrollTo = (to: number) => {
+      top = to
+      fireEvent.scroll(ol)
+    }
+    // A scroll the page made (centring the row now playing) gives no cue.
+    scrollTo(500)
+    expect(more).not.toHaveAttribute('data-nudge')
+    scrollTo(0)
+
+    fireEvent.wheel(ol)
+    scrollTo(300)
+    expect(more).not.toHaveAttribute('data-nudge')
+    scrollTo(500)
+    expect(more).toHaveAttribute('data-nudge', 'a')
+    // Staying at the end, or nearly scrolling back, gives no second cue.
+    scrollTo(490)
+    scrollTo(500)
+    expect(more).toHaveAttribute('data-nudge', 'a')
+    // Back up, then down again: a new cue.
+    scrollTo(200)
+    scrollTo(500)
+    expect(more).toHaveAttribute('data-nudge', 'b')
+  })
+})

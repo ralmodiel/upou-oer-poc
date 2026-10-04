@@ -1270,3 +1270,44 @@ html[data-watch-swap]::view-transition-new(watch-stage) {
     filter: blur(6px);
   }
 }
+
+/*
+  Reached the end of Up next by scrolling: More… gives one cue (UpNext, data-nudge), a soft gold
+  glow that holds a moment and a 3px lift, both settling back (0.9 s), so the way on is noticed.
+  Transform and filter only, so nothing moves around it; none with reduced motion.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  .watch-upnext-more[data-nudge='a'] {
+    animation: watch-nudge-a 900ms ease-in-out;
+  }
+
+  .watch-upnext-more[data-nudge='b'] {
+    animation: watch-nudge-b 900ms ease-in-out;
+  }
+}
+
+@keyframes watch-nudge-a {
+  30% {
+    translate: 0 -3px;
+  }
+  30%,
+  55% {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 60%, transparent));
+  }
+  75% {
+    translate: 0 0;
+  }
+}
+
+@keyframes watch-nudge-b {
+  30% {
+    translate: 0 -3px;
+  }
+  30%,
+  55% {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--gold) 60%, transparent));
+  }
+  75% {
+    translate: 0 0;
+  }
+}

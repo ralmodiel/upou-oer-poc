@@ -47,9 +47,12 @@ describe('PromoReel', () => {
       const { container } = render(<PromoReel video={testVideo} onComplete={onComplete} />)
       const reel = container.querySelector('.reel')!
       expect(reel).toHaveAttribute('data-title-card')
-      // While the fonts settle: the card's ground, not the (flagged) thumbnail.
+      // While the fonts settle: the card with its type already, never the (flagged) thumbnail
+      // and never a plain colour.
       expect(screen.getByRole('status')).toHaveTextContent('Loading preview')
-      expect(reel.querySelector('.reel-loading .reel-card')).not.toBeNull()
+      expect(reel.querySelector('.reel-loading .reel-card-title')).toHaveTextContent(
+        testVideo.title,
+      )
 
       await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
       const card = reel.querySelector('.reel-stage .reel-card')!

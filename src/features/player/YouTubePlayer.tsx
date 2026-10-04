@@ -208,7 +208,7 @@ export default function YouTubePlayer({
       {!loaded && (
         <span
           aria-hidden="true"
-          className="absolute top-1/2 left-1/2 size-10 -translate-1/2 animate-spin rounded-full border-[3px] border-white/30 border-t-amber bg-[#1b1a17]/40"
+          className="absolute top-1/2 left-1/2 size-10 -translate-1/2 animate-spin motion-reduce:animate-none rounded-full border-[3px] border-white/30 border-t-amber bg-[#1b1a17]/40"
         />
       )}
       <iframe

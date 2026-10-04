@@ -430,8 +430,9 @@ export function focusAndReveal(target: HTMLElement, instant = false): boolean {
   const track = card ? shape.closest<HTMLElement>(TRACK) : null
   const left = track ? trackTarget(track, shape) : null
   // A row under a block it belongs to ([data-reveal-whole]: the home hero over the Featured row)
-  // brings that block to the top instead, so the two show whole together.
-  const whole = track?.closest<HTMLElement>('[data-reveal-whole]')
+  // brings that block to the top instead, so the two show whole together. Only when the card still
+  // shows whole from there: on a phone it would sit below the fold, so it is centred as in any row.
+  const whole = topKeeps(track?.closest<HTMLElement>('[data-reveal-whole]'), shape)
   if (track && left !== null && typeof track.scrollTo === 'function') {
     track.scrollTo({ left, behavior })
     if (whole) whole.scrollIntoView?.({ block: 'start', inline: 'nearest', behavior })
@@ -442,6 +443,18 @@ export function focusAndReveal(target: HTMLElement, instant = false): boolean {
     shape.scrollIntoView({ block: card ? 'center' : 'nearest', inline: 'nearest', behavior })
   }
   return true
+}
+
+/** `block` when, brought to the top (under the header's scroll padding), it still shows `item`
+ *  whole above the phone's tab bar; null otherwise. */
+function topKeeps(block: HTMLElement | null | undefined, item: Element): HTMLElement | null {
+  if (!block) return null
+  const root = getComputedStyle(document.documentElement)
+  const tabbar = root.getPropertyValue('--tabbar-h').trim()
+  const rem = tabbar.endsWith('rem') ? parseFloat(root.fontSize) : 1
+  const bottom = innerHeight - (parseFloat(tabbar) || 0) * rem
+  const top = parseFloat(root.scrollPaddingTop) || 0
+  return top + rectOf(item).bottom - rectOf(block).top <= bottom ? block : null
 }
 
 /**

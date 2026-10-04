@@ -699,4 +699,25 @@ describe('focusAndReveal', () => {
     expect(zone.scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
     expect(track.scrollIntoView).not.toHaveBeenCalled()
   })
+
+  it('centres the card instead when the block at the top would leave it below the fold (a phone)', () => {
+    document.body.innerHTML = `
+      <div id="zone" data-reveal-whole>
+        <section id="hero"><a href="/play">Play</a></section>
+        <div data-spatial="track" id="track">
+          <ul><li><article><a id="card" data-card-link href="/watch/a">A</a></article></li></ul>
+        </div>
+      </div>`
+    const zone = document.getElementById('zone')!
+    const article = document.querySelector('article')!
+    article.getBoundingClientRect = () =>
+      ({ top: innerHeight - 99, bottom: innerHeight + 1, left: 0, right: 0 }) as DOMRect
+    zone.scrollIntoView = vi.fn()
+    article.scrollIntoView = vi.fn()
+    expect(focusAndReveal(document.getElementById('card')!, true)).toBe(true)
+    expect(zone.scrollIntoView).not.toHaveBeenCalled()
+    expect(article.scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ block: 'center' }),
+    )
+  })
 })

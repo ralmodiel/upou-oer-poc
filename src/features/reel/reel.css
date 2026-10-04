@@ -1362,6 +1362,12 @@
     animation: none !important;
   }
 
+  /* No growing bar: its fill goes; the quiet track (and the progressbar) stay. */
+  .reel-progress::after {
+    animation: none;
+    content: none;
+  }
+
   /* Stills hold their opening framing, so a repeated one still shows its other crop. */
   .reel-kb {
     transform: translate3d(var(--kx0), var(--ky0), 0) scale(var(--ks0));

@@ -3,6 +3,7 @@ import { zoomStyle } from '../../components/media'
 import { cropZoomOf } from '../../data/frameFlags'
 import type { Video } from '../../types'
 import { reelImages } from '../reel/stills'
+import { useStageCentre } from './useStageCentre'
 import './watch.css'
 
 /**
@@ -35,8 +36,12 @@ function Still({ video, className }: { video: Video; className: string }) {
   )
 }
 
-/** Full-bleed, blurred and dimmed still behind the player column, fading into the page. */
+/**
+ * Full-bleed, blurred and dimmed still behind the player column, fading into the page. The page's
+ * staging lives here too: the stage sits mid-viewport while the preview plays (useStageCentre).
+ */
 export default function WatchBackdrop({ video }: { video: Video }) {
+  useStageCentre()
   return <Still video={video} className="watch-backdrop" />
 }
 

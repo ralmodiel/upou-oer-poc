@@ -469,6 +469,48 @@
 }
 
 /*
+  The list shows once, whole, as one, on arriving from outside the watch page (data-entrance; a
+  row, autoplay, Back or Refresh leave it as it is): unseen (its space kept) until its picks are
+  in, or 1.5 s have passed (UpNext). Then, however fast that was, the same entrance: a short hold (so a quick
+  load never reads as a flicker), then the whole list resolves out of a soft blur. Not row by row,
+  which reads as loading. The rows are kept when the picks replace stand-ins, so nothing fades
+  twice; rows More… adds just appear. Opacity and blur only, so the right column never moves;
+  plain with reduced motion. With focus inside (a keyboard choice kept on the next page) there is
+  no hold.
+*/
+.watch-upnext-frame:has(> .watch-upnext-list[data-entrance]:not([data-ready])) {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-upnext-frame:has(> .watch-upnext-list[data-entrance][data-ready]) {
+    animation: watch-list-in 550ms var(--ease-out-soft, ease-out) 200ms backwards;
+  }
+
+  .watch-upnext-frame:has(> .watch-upnext-list[data-entrance][data-ready]):focus-within {
+    animation-delay: 0ms;
+  }
+}
+
+@keyframes watch-list-in {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+/* The stage's poster fades in once loaded, over the stage's paper (YouTubePlayer). */
+.watch-poster:not([data-loaded]) {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .watch-poster {
+    transition: opacity 500ms var(--ease-out-soft, ease-out);
+  }
+}
+
+/*
   Inside the scroll area the focus ring is drawn inset, so the list's edges never clip it: 3px, as
   on the site's other list rows (the collections list on phones).
 */
@@ -544,9 +586,13 @@
     flex-direction: column;
   }
 
+  /*
+    No taller than the screen under its heading (with More… and a little air below), so the row
+    now playing can always be scrolled into view in the list rather than sit below the fold.
+  */
   .watch-upnext-list {
     min-height: calc(var(--row) * 2.5);
-    max-height: none;
+    max-height: calc(100dvh - var(--header-h, 4rem) - 12.5rem);
   }
 }
 
@@ -663,29 +709,52 @@
 */
 @media (prefers-reduced-motion: no-preference) {
   .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > * {
-    animation: watch-reveal 600ms var(--ease-out-soft, ease-out) 190ms backwards;
+    animation: watch-reveal 600ms var(--ease-out-soft, ease-out) backwards;
+    animation-delay: calc(var(--watch-wait, 0ms) + 190ms);
   }
 
   .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > :first-child {
-    animation-delay: 0ms;
+    animation-delay: var(--watch-wait, 0ms);
   }
 
   .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-title {
-    animation-delay: 50ms;
+    animation-delay: calc(var(--watch-wait, 0ms) + 50ms);
   }
 
   .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-meta {
-    animation-delay: 120ms;
+    animation-delay: calc(var(--watch-wait, 0ms) + 120ms);
   }
 
   .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-about {
-    animation-delay: 260ms;
+    animation-delay: calc(var(--watch-wait, 0ms) + 260ms);
   }
 }
 
 @media (width < 64rem) and (prefers-reduced-motion: no-preference) {
   .watch-page:not(:has(.watch-stage .reel)) .watch-aside {
-    animation: watch-reveal 600ms var(--ease-out-soft, ease-out) 260ms backwards;
+    animation: watch-reveal 600ms var(--ease-out-soft, ease-out) backwards;
+    animation-delay: calc(var(--watch-wait, 0ms) + 260ms);
+  }
+}
+
+/*
+  While the preview plays, the stage sits lower, its centre a little above the middle of the
+  viewport (the optical centre), with its Back row above it (--watch-centre, useStageCentre). Up
+  next, beside it from lg, stays where it is throughout: the stage only moves down its own column.
+  When the preview ends or is skipped the two glide back up into place, eased out, and the page
+  then rises in under them (--watch-wait holds the reveal until the glide is done). Translate
+  only, so nothing reflows and nothing is measured differently; no transition on the way down, as
+  the shift is set before the first frame. None with reduced motion.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  .watch-page :is(.watch-stage-wrap, div:has(> .watch-back:not(.watch-back-float))) {
+    transition: translate 600ms var(--ease-out-soft, ease-out);
+  }
+
+  .watch-page:has(.watch-stage .reel)
+    :is(.watch-stage-wrap, div:has(> .watch-back:not(.watch-back-float))) {
+    translate: 0 var(--watch-centre, 0px);
+    transition: none;
   }
 }
 
@@ -1134,4 +1203,70 @@
   background: color-mix(in srgb, var(--color-surface) 82%, transparent);
   box-shadow: 0 8px 24px -10px rgb(27 26 23 / 0.45);
   backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/*
+  A page change made from the watch page (an Up next row or autoplay; html[data-watch-swap],
+  UpNext) plays as one move in a view transition: the text under the stage fades out into a soft
+  blur while the stage and its Back row glide to the preview place and the new preview fades in on
+  the stage, so the stage is never empty. The header and tab bar, and Up next from lg, stay as they
+  are (the new ones in place at once, Now playing moved). The new page's text is already hidden
+  under its preview, so nothing flashes. Only without reduced motion (UpNext sets the mark then).
+*/
+html[data-watch-swap] .watch-stage-wrap {
+  view-transition-name: watch-stage;
+}
+
+html[data-watch-swap] div:has(> .watch-back:not(.watch-back-float)) {
+  view-transition-name: watch-back;
+}
+
+html[data-watch-swap] header {
+  view-transition-name: watch-header;
+}
+
+html[data-watch-swap] nav[aria-label='Primary'] {
+  view-transition-name: watch-tabs;
+}
+
+@media (width >= 64rem) {
+  html[data-watch-swap] .watch-aside {
+    view-transition-name: watch-aside;
+  }
+}
+
+html[data-watch-swap]::view-transition-old(root) {
+  animation: watch-swap-out 400ms ease both;
+}
+
+html[data-watch-swap]::view-transition-new(root),
+html[data-watch-swap]::view-transition-new(watch-header),
+html[data-watch-swap]::view-transition-new(watch-tabs),
+html[data-watch-swap]::view-transition-new(watch-aside) {
+  animation: none;
+}
+
+html[data-watch-swap]::view-transition-old(watch-header),
+html[data-watch-swap]::view-transition-old(watch-tabs),
+html[data-watch-swap]::view-transition-old(watch-aside) {
+  display: none;
+}
+
+html[data-watch-swap]::view-transition-group(watch-stage),
+html[data-watch-swap]::view-transition-group(watch-back) {
+  animation-duration: 600ms;
+  animation-timing-function: var(--ease-out-soft, ease-out);
+}
+
+html[data-watch-swap]::view-transition-old(watch-stage),
+html[data-watch-swap]::view-transition-new(watch-stage) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-out-soft, ease-out);
+}
+
+@keyframes watch-swap-out {
+  to {
+    opacity: 0;
+    filter: blur(6px);
+  }
 }

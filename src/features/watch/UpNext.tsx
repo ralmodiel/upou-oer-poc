@@ -1,4 +1,12 @@
-import { useEffect, useId, useLayoutEffect, useRef, type MouseEvent } from 'react'
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react'
 import { Link, useLocation } from 'react-router'
 import { prefersReducedMotion } from '../../components/hooks'
 import Thumbnail from '../../components/Thumbnail'
@@ -10,6 +18,7 @@ import { lastInput } from '../../lib/pointer'
 import type { Video } from '../../types'
 import { NowPlayingIcon, RefreshIcon } from './icons'
 import { withPlaylist } from './recommendations'
+import { markWatchSwap } from './useStageCentre'
 import { useAutoplay, type UpNextList } from './useUpNext'
 import './watch.css'
 
@@ -19,6 +28,39 @@ const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 // focus on that row, now playing, rather than handing it to the stage. By video, so a choice that
 // went nowhere (Ctrl+Enter opens a tab) cannot hold focus on some later page.
 let keepFocusOn: string | null = null
+
+// Up next lists on screen. One rendering while another is still mounted is a page change from
+// inside the watch page (a row, autoplay, Back or Forward), where the list just stays as it is.
+let mounted = 0
+
+// The list's scroll as a page change made from the page took it down, for the next one.
+let keptScroll: number | null = null
+/** How long the list waits, unseen, for the picks before it shows the stand-ins instead. */
+export const REVEAL_WAIT_MS = 1500
+
+// Things the viewer does in the list that end the following of the row now playing (UpNext).
+const TAKE_OVER = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin'] as const
+
+/**
+ * Scrolls the list (never the page) so the row now playing is in view, centred when it can be:
+ * at once, or gliding when smooth; with ifHidden, only when it is not wholly in view already.
+ * Returns that row, if the list has one.
+ */
+function centreNowPlaying(ol: HTMLElement, smooth = false, ifHidden = false): HTMLElement | null {
+  const row = ol.querySelector<HTMLElement>('[aria-current="true"]')
+  if (!row) return null
+  // From the boxes, not offsetTop: a row's offsetParent changes while a filter is on it.
+  const box = row.getBoundingClientRect()
+  const list = ol.getBoundingClientRect()
+  if (ifHidden && box.top >= list.top && box.bottom <= list.bottom) return row
+  const at = box.top - list.top + ol.scrollTop
+  const max = Math.max(0, ol.scrollHeight - ol.clientHeight)
+  const top = Math.min(max, Math.max(0, at - (ol.clientHeight - box.height) / 2))
+  if (Math.abs(ol.scrollTop - top) < 1) return row
+  if (smooth && ol.scrollTo) ol.scrollTo({ top, behavior: 'smooth' })
+  else ol.scrollTop = top
+  return row
+}
 
 /**
  * Compact list of recommended videos in its own scroll area, with More… under it and the Autoplay
@@ -32,19 +74,73 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
   const [autoplay, setAutoplay] = useAutoplay()
   const switchId = useId()
   const { items, more, listRef } = list
+  // Unseen (its space kept) until the picks are in, so it shows once, whole, rather than swapping
+  // under the eye; the stand-ins show if the picks take longer than REVEAL_WAIT_MS (watch.css).
+  // Only on arriving from outside the watch page or on a whole page load (the count starts at 0
+  // with the module); never for a page change made from the list, where it stays put.
+  const [entrance] = useState(() => mounted === 0)
+  // Only an arriving list follows the row now playing as it settles; a kept one stays as it was.
+  const following = useRef(entrance)
+  const [waited, setWaited] = useState(false)
+  const ready = list.final || waited
+  useEffect(() => {
+    mounted++
+    return () => {
+      mounted--
+    }
+  }, [])
+  useEffect(() => {
+    const timer = setTimeout(() => setWaited(true), REVEAL_WAIT_MS)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Arriving from a playlist: the row now playing is in view, centred when it can be. Chosen by
   // keyboard or remote, it also keeps focus where the page opens with it in sight (beside the
   // player; under it on narrow screens the stage takes focus, as it does after a click).
+  // A list kept from the page before scrolls where that one was, then brings the row now playing
+  // into view only if it is not in view already, so the column stays still.
   useLayoutEffect(() => {
     const ol = listRef.current
-    const row = ol?.querySelector<HTMLElement>('[aria-current="true"]')
-    if (ol && row) ol.scrollTop = row.offsetTop - (ol.clientHeight - row.offsetHeight) / 2
+    const kept = !entrance && keptScroll !== null
+    if (ol && kept) ol.scrollTop = keptScroll ?? 0
+    keptScroll = null
+    const row = ol ? centreNowPlaying(ol, false, kept) : null
     // Page coordinates: the router has not scrolled the new page to the top yet.
     const inSight = row && row.getBoundingClientRect().bottom + window.scrollY <= innerHeight
     if (keepFocusOn === video.id && inSight) row.focus({ preventScroll: true })
     keepFocusOn = null
-  }, [listRef, video.id])
+    return () => {
+      keptScroll = ol ? ol.scrollTop : null
+    }
+  }, [entrance, listRef, video.id])
+
+  // The list's height settles after the page (from lg the aside follows the main column, which
+  // grows as the citation comes in) and the picks may replace the stand-ins: the row now playing is
+  // kept in view through both, until the viewer scrolls or moves in the list, or uses More… or
+  // Refresh. Gliding once the rows show, unless motion is unwelcome.
+  const glide = useEffectEvent(() => ready && !prefersReducedMotion())
+  useEffect(() => {
+    const ol = listRef.current
+    if (!ol || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      if (following.current) centreNowPlaying(ol, glide())
+    })
+    const done = () => {
+      observer.disconnect()
+      for (const type of TAKE_OVER) ol.removeEventListener(type, stop)
+    }
+    const stop = () => {
+      following.current = false
+      done()
+    }
+    observer.observe(ol)
+    for (const type of TAKE_OVER) ol.addEventListener(type, stop, { passive: true })
+    return done
+  }, [listRef])
+  useEffect(() => {
+    const ol = listRef.current
+    if (ol && following.current) centreNowPlaying(ol, glide())
+  }, [items, listRef])
 
   // After More…: focus on the first new row, scrolled to the top of the list (below its edge fade).
   useEffect(() => {
@@ -66,17 +162,21 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
   // While the picks are still loading it does nothing.
   const onMore = () => {
     if (!more) return
+    following.current = false
     const before = items.length
     focusFrom.current = list.append().length ? before : before - 1
   }
 
   // New picks start at the top of the list; focus stays on the button.
   const onRefresh = () => {
+    following.current = false
     list.refresh?.()
     listRef.current?.scrollTo?.({ top: 0 })
   }
 
   if (!items.length) return null
+  // Rows change the page in a view transition, unless motion is unwelcome.
+  const swaps = !prefersReducedMotion()
   const linkState = withPlaylist(location.state, list.asPlaylist())
   // The row now playing stays where it is; choosing it again goes nowhere.
   const stay = (e: MouseEvent) => e.preventDefault()
@@ -124,6 +224,8 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
           ref={listRef}
           aria-labelledby="up-next-heading"
           data-spatial="list"
+          data-entrance={entrance || undefined}
+          data-ready={ready || undefined}
           className="watch-upnext-list divide-y divide-line"
         >
           {/* Rows are keyed by position, so the picks take over the stand-ins' rows and
@@ -137,11 +239,13 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   to={`/watch/${v.id}`}
                   state={linkState}
                   aria-current={current || undefined}
+                  viewTransition={!current && swaps}
                   onClick={
                     current
                       ? stay
                       : () => {
                           keepFocusOn = lastInput() === 'keyboard' ? v.id : null
+                          markWatchSwap()
                         }
                   }
                   className="watch-next group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2 active:bg-surface-2"
@@ -150,6 +254,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   <Thumbnail
                     video={v}
                     sizes="(min-width: 640px) 144px, 112px"
+                    loading="eager"
                     className="watch-next-thumb w-28 shrink-0 self-start rounded-lg ring-1 ring-black/5 sm:w-36"
                   />
                   <span key={v.id} className="watch-next-text min-w-0 self-center">

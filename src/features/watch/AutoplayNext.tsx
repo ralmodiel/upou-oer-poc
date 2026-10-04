@@ -5,9 +5,12 @@ import Button from '../../components/ui/Button'
 import { formatDate } from '../../lib/format'
 import { isEditable, topDialog } from '../../lib/shortcuts'
 import type { Video } from '../../types'
+import { markWatchSwap } from './useStageCentre'
 import './watch.css'
 
 export const AUTOPLAY_SECONDS = 5
+// The longest the swap to the next page holds the old one on screen.
+const SWAP_WAIT_MS = 1500
 
 interface Props {
   next: Video
@@ -27,7 +30,27 @@ interface Props {
 export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
   const [left, setLeft] = useState(AUTOPLAY_SECONDS)
   const rootRef = useRef<HTMLDivElement>(null)
-  const play = useEffectEvent(onPlay)
+  // The next page comes in as one move, like a row chosen in Up next (markWatchSwap): the
+  // transition holds the old page until the new one has rendered its title (polled by timer: no
+  // animation frames run while a transition holds the page).
+  const go = () => {
+    if (!markWatchSwap()) return onPlay()
+    document.startViewTransition(
+      () =>
+        new Promise<void>((resolve) => {
+          const start = performance.now()
+          onPlay()
+          const wait = () => {
+            const h1 = document.querySelector('.watch-title')
+            if (h1?.textContent === next.title || performance.now() - start > SWAP_WAIT_MS)
+              resolve()
+            else setTimeout(wait, 16)
+          }
+          wait()
+        }),
+    )
+  }
+  const play = useEffectEvent(go)
   const cancel = useEffectEvent(onCancel)
 
   useEffect(() => {
@@ -87,7 +110,7 @@ export default function AutoplayNext({ next, onPlay, onCancel }: Props) {
           </p>
         </div>
         <div className="watch-autoplay-actions">
-          <Button size="sm" icon={<PlayIcon />} onClick={onPlay}>
+          <Button size="sm" icon={<PlayIcon />} onClick={go}>
             Play now
           </Button>
           <Button data-cancel="" variant="secondary" size="sm" onClick={onCancel}>

@@ -36,6 +36,8 @@ interface Rows {
 
 export interface UpNextList {
   items: UpNextItem[]
+  /** Whether the rows are the final ones (the picks or a playlist), not the stand-ins. */
+  final: boolean
   /** Whether More… has rows to add: null while the recommender's index builds, false once none are left. */
   more: boolean | null
   /** The playlist this page was opened from (null when it computed its own list). */
@@ -185,6 +187,7 @@ export function useUpNext(video: Video, profile: Profile): UpNextList {
 
   return {
     items: shown,
+    final: rows.final,
     more,
     playlist: own ? null : playlist,
     asPlaylist: () => asPlaylist(),

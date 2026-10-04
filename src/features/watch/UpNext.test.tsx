@@ -6,6 +6,7 @@ import { warmRecommender } from '../../lib/recommend'
 import WatchPage from '../../pages/WatchPage'
 import { testVideo } from '../reel/testing'
 import { moreUpNext } from './recommendations'
+import { REVEAL_WAIT_MS } from './UpNext'
 
 vi.mock('./recommendations', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./recommendations')>()
@@ -68,5 +69,96 @@ describe('Up next More…', () => {
     expect(rows()).toHaveLength(9)
     expect(screen.queryByRole('button', { name: 'More…' })).not.toBeInTheDocument()
     expect(rows()[8]).toHaveFocus()
+  })
+})
+
+describe('Up next as it shows', () => {
+  afterEach(() => vi.useRealTimers())
+  const list = () => screen.getByRole('list', { name: 'Up next' })
+
+  it('shows at once when the picks are ready on the first render', () => {
+    setCatalog([testVideo, ...lookalikes(12)])
+    warmRecommender()
+    renderWatch()
+    expect(list()).toHaveAttribute('data-ready')
+  })
+
+  it('waits unseen for the picks, and shows the stand-ins if they take too long', async () => {
+    vi.useFakeTimers()
+    setCatalog([testVideo, ...lookalikes(12)])
+    renderWatch()
+    // The stand-ins hold the rows' space, unseen, while the recommender's index builds.
+    expect(rows().length).toBeGreaterThan(0)
+    expect(list()).toHaveAttribute('data-entrance')
+    expect(list()).not.toHaveAttribute('data-ready')
+    await act(() => vi.advanceTimersByTimeAsync(REVEAL_WAIT_MS))
+    expect(list()).toHaveAttribute('data-ready')
+  })
+})
+
+describe('Up next and the row now playing', () => {
+  const observed = new Map<Element, () => void>()
+  beforeEach(() => {
+    observed.clear()
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        callback: () => void
+        constructor(callback: () => void) {
+          this.callback = callback
+        }
+        observe(el: Element) {
+          observed.set(el, this.callback)
+        }
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('keeps it centred in the list when the list settles late, until the viewer scrolls', () => {
+    const picks = lookalikes(12)
+    setCatalog([testVideo, ...picks])
+    const ids = picks.map((v) => v.id)
+    const router = createMemoryRouter([{ path: '/watch/:id', Component: WatchPage }], {
+      initialEntries: [
+        { pathname: '/watch/pick-6', state: { playlist: { from: testVideo.id, ids } } },
+      ],
+    })
+    render(<RouterProvider router={router} />)
+    const ol = screen.getByRole('list', { name: 'Up next' })
+    const row = within(ol)
+      .getAllByRole('link')
+      .find((link) => link.getAttribute('aria-current') === 'true')!
+    expect(row).toHaveTextContent('Similar video 6')
+    // A whole page load, on a playlist page too, plays the list's entrance.
+    expect(ol).toHaveAttribute('data-entrance')
+
+    // Layout, which jsdom lacks: the row 630px down the list, which is first 0px tall, then 300px.
+    let height = 0
+    let top = 0
+    row.getBoundingClientRect = () => ({ top: 630 - top, height: 105 }) as DOMRect
+    Object.defineProperties(ol, {
+      clientHeight: { get: () => height },
+      scrollHeight: { get: () => 1260 },
+      scrollTop: { get: () => top, set: (v: number) => (top = v) },
+    })
+    ol.scrollTo = ((options: ScrollToOptions) => (top = options.top ?? top)) as typeof ol.scrollTo
+    height = 300
+    act(() => observed.get(ol)?.())
+    expect(top).toBe(630 - (300 - 105) / 2)
+
+    // The viewer scrolls the list: it is theirs from then on.
+    fireEvent.wheel(ol)
+    height = 500
+    act(() => observed.get(ol)?.())
+    expect(top).toBe(630 - (300 - 105) / 2)
+
+    // A row chosen in the list: the next page keeps the list as it is, with no entrance.
+    fireEvent.click(within(ol).getByText('Similar video 8'))
+    const next = screen.getByRole('list', { name: 'Up next' })
+    expect(within(next).getByRole('link', { current: true })).toHaveTextContent('Similar video 8')
+    expect(next).not.toHaveAttribute('data-entrance')
   })
 })

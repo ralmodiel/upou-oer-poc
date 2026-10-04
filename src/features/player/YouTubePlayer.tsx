@@ -85,9 +85,10 @@ export function PlayerPoster({ video }: { video: Video }) {
   ]
   const source = sources[tries]
   const fail = () => setTries((n) => n + 1)
-  // YouTube answers a missing still with a 120px placeholder.
+  // YouTube answers a missing still with a 120px placeholder. A real one fades in (watch.css).
   const check = (e: SyntheticEvent<HTMLImageElement>) => {
     if (e.currentTarget.naturalWidth <= 120) fail()
+    else e.currentTarget.dataset.loaded = ''
   }
   if (!isYouTubeId(video.youtubeId)) return null
   return (
@@ -106,7 +107,7 @@ export function PlayerPoster({ video }: { video: Video }) {
           onLoad={check}
           onError={fail}
           style={zoomStyle(cropZoomOf(source.src))}
-          className="size-full object-cover"
+          className="watch-poster size-full object-cover"
         />
       ) : (
         <div className="absolute inset-[20%] overflow-hidden rounded-card shadow-lift">

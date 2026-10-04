@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button'
 import SectionHeading from '../../components/ui/SectionHeading'
 import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
+import { lastInput } from '../../lib/pointer'
 import type { Video } from '../../types'
 import { NowPlayingIcon, RefreshIcon } from './icons'
 import { withPlaylist } from './recommendations'
@@ -13,6 +14,11 @@ import { useAutoplay, type UpNextList } from './useUpNext'
 import './watch.css'
 
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+// The video of a row chosen by keyboard or remote: its page (a new UpNext, keyed by video) keeps
+// focus on that row, now playing, rather than handing it to the stage. By video, so a choice that
+// went nowhere (Ctrl+Enter opens a tab) cannot hold focus on some later page.
+let keepFocusOn: string | null = null
 
 /**
  * Compact list of recommended videos in its own scroll area, with More… under it and the Autoplay
@@ -27,12 +33,18 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
   const switchId = useId()
   const { items, more, listRef } = list
 
-  // Arriving from a playlist: the row now playing is in view, centred when it can be.
+  // Arriving from a playlist: the row now playing is in view, centred when it can be. Chosen by
+  // keyboard or remote, it also keeps focus where the page opens with it in sight (beside the
+  // player; under it on narrow screens the stage takes focus, as it does after a click).
   useLayoutEffect(() => {
     const ol = listRef.current
     const row = ol?.querySelector<HTMLElement>('[aria-current="true"]')
     if (ol && row) ol.scrollTop = row.offsetTop - (ol.clientHeight - row.offsetHeight) / 2
-  }, [listRef])
+    // Page coordinates: the router has not scrolled the new page to the top yet.
+    const inSight = row && row.getBoundingClientRect().bottom + window.scrollY <= innerHeight
+    if (keepFocusOn === video.id && inSight) row.focus({ preventScroll: true })
+    keepFocusOn = null
+  }, [listRef, video.id])
 
   // After More…: focus on the first new row, scrolled to the top of the list (below its edge fade).
   useEffect(() => {
@@ -125,7 +137,13 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
                   to={`/watch/${v.id}`}
                   state={linkState}
                   aria-current={current || undefined}
-                  onClick={current ? stay : undefined}
+                  onClick={
+                    current
+                      ? stay
+                      : () => {
+                          keepFocusOn = lastInput() === 'keyboard' ? v.id : null
+                        }
+                  }
                   className="watch-next group -mx-2 flex gap-3 rounded-card px-2 py-3 transition-colors hover:bg-surface-2 active:bg-surface-2"
                 >
                   {/* Never a flagged frame: a video with no clean image gets its title tile. */}

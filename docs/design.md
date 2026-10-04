@@ -435,7 +435,9 @@ a slide with an image; a title-tile slide stays one press away.
   from lg. More… works out the next picks only when needed: on a click, when autoplay reaches the
   end of the list, or on idle after hover or focus.
 - **Remote:** `data-spatial="list"` walks every row, clipped ones included, before More…; ↓ from
-  the stage goes to the Now playing row.
+  the stage goes to the Now playing row. A row chosen by keyboard or remote keeps focus on the next
+  page, as its Now playing row, where the list sits beside the player; under it (narrow screens)
+  the stage takes focus, as after a click.
 - **Autoplay:** when a video ends, a light "Next" card counts down 5 s with Play now and Cancel
   (Cancel takes focus; Esc cancels instead of going Back), then plays the next row and keeps the
   playlist; at the end of the list it adds the next picks first. The "Autoplay" switch in the Up

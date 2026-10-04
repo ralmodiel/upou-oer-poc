@@ -575,6 +575,20 @@ describe('WatchPage', () => {
       expect(rowsOf()[2]).toHaveAttribute('aria-current', 'true')
     })
 
+    it('keeps focus on a row chosen by keyboard or remote; after a click the stage takes it', async () => {
+      renderAt([`/watch/${testVideo.id}`])
+      fireEvent.keyDown(rowsOf()[2], { key: 'Enter' })
+      await act(() => fireEvent.click(rowsOf()[2]))
+      expect(rowsOf()[2]).toHaveAttribute('aria-current', 'true')
+      expect(rowsOf()[2]).toHaveFocus()
+      // Focus is on Up next, so the stage's "→ for Up next" hint gives way.
+      expect(screen.queryByText('for Up next', { exact: false })).not.toBeInTheDocument()
+
+      fireEvent.pointerDown(rowsOf()[5])
+      await act(() => fireEvent.click(rowsOf()[5]))
+      expect(screen.getByRole('region', { name: 'Preview' })).toHaveFocus()
+    })
+
     it('More… appends the next eight in order, focuses the first and keeps them in history', async () => {
       const { router } = renderAt([`/watch/${testVideo.id}`])
       await act(() => fireEvent.click(rowsOf()[1]))

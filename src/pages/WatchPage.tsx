@@ -81,12 +81,14 @@ function Watch({ video }: { video: Video }) {
 
   // Focus the stage (never the YouTube iframe) when the reel starts and again when the player
   // appears, so the app shell's Esc = Back handler keeps receiving key events. The hand-off leaves
-  // focus where it is if the viewer has moved on meanwhile (to Up next, say).
+  // focus where it is if the viewer has moved on meanwhile (to Up next, say), and on arrival on the
+  // row of Up next chosen by keyboard or remote (UpNext keeps it there).
   const opened = useRef(false)
   useEffect(() => {
     const stage = stageRef.current
     const active = document.activeElement
-    const away = opened.current && active && active !== document.body && !stage?.contains(active)
+    const kept = opened.current || active?.closest('.watch-next')
+    const away = kept && active && active !== document.body && !stage?.contains(active)
     opened.current = true
     if (!away) stage?.focus({ preventScroll: true })
   }, [phase])
@@ -262,7 +264,11 @@ function Watch({ video }: { video: Video }) {
           </div>
 
           {/* From lg its gold rule lines up with the top of the stage, beside the Back row. */}
-          <aside className="watch-aside pt-10 lg:col-span-4 lg:pt-14" onKeyDown={onAsideKeyDown}>
+          <aside
+            className="watch-aside pt-10 lg:col-span-4 lg:pt-14"
+            onKeyDown={onAsideKeyDown}
+            onFocus={() => setOnStage(false)}
+          >
             <UpNext video={video} list={upNext} />
             {category && (
               <Link to={`/collections/${category.slug}`} className="watch-more mt-5">

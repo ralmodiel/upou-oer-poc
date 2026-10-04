@@ -2,14 +2,15 @@ import { use } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import { DetailsContext, detailsSearch } from './details'
 
-type Props = Omit<LinkProps, 'to' | 'replace' | 'state'> & { id: string }
+type Props = Omit<LinkProps, 'to' | 'replace' | 'state'> & { id: string; hash?: string }
 
-/** Opens the detail modal (`?v=<id>`) without resetting the scroll position behind it. */
-export default function DetailsLink({ id, ...props }: Props) {
+/** Opens the detail modal (`?v=<id>`; a `hash` starts it further down) without resetting the
+ * scroll position behind it. */
+export default function DetailsLink({ id, hash, ...props }: Props) {
   const { base, replace = false, state } = use(DetailsContext)
   return (
     <Link
-      to={{ search: detailsSearch(base, id) }}
+      to={{ search: detailsSearch(base, id), hash }}
       replace={replace}
       state={state}
       preventScrollReset

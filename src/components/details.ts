@@ -14,6 +14,9 @@ export const DetailsContext = createContext<DetailsTarget>({ base: '', state: OP
 /** Target for pages that keep extra params (e.g. the search query) behind the modal. */
 export const pageTarget = (base: string): DetailsTarget => ({ base, state: OPENED_IN_APP })
 
+/** Hash for a quick look that starts on its More like this row (the home hero shows the rest). */
+export const MORE_LIKE_THIS = '#more-like-this'
+
 export function detailsSearch(base: string, id: string) {
   const params = new URLSearchParams(base)
   params.set('v', id)

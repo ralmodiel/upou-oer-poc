@@ -48,6 +48,14 @@ export const InfoIcon = (props: IconProps) => (
   </Icon>
 )
 
+// Two stacked frames with a play mark: more videos like this one.
+export const StackIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="8.5" width="14" height="11" rx="2" />
+    <path d="M7 5h11.5A2.5 2.5 0 0 1 21 7.5V16M8.75 11.75v4.5l3.75-2.25z" />
+  </Icon>
+)
+
 export const ChevronLeftIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="m15 5-7 7 7 7" />

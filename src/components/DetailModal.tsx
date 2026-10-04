@@ -20,7 +20,7 @@ import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { useFrozen } from './browse-hooks'
 import { FactsLine, LONG_TITLE, TEXT_LINK } from './browse-ui'
-import { DetailsContext, wasOpenedInApp } from './details'
+import { DetailsContext, MORE_LIKE_THIS, wasOpenedInApp } from './details'
 import { prefersReducedMotion, useDocumentTitle } from './hooks'
 import { CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
 import { stopPreview } from './preview'
@@ -57,7 +57,8 @@ function DetailDialog({ video }: { video: Video }) {
   const pressedBackdrop = useRef(false)
   const titleId = useId()
   const navigate = useNavigate()
-  const { search, state } = useLocation()
+  const { search, hash, state } = useLocation()
+  const similarRef = useRef<HTMLElement>(null)
 
   const base = useMemo(() => {
     const params = new URLSearchParams(search)
@@ -89,12 +90,18 @@ function DetailDialog({ video }: { video: Video }) {
   }, [])
 
   // Each title (the first and any similar one swapped in) starts on its still, grown: Enter
-  // plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by surprise.
+  // plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by surprise. Opened
+  // from More like this (the home hero, which shows the details already), on the first of those.
   useEffect(() => {
     stopPreview()
-    dialog.current?.scrollTo({ top: 0 })
-    dialog.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus({ preventScroll: true })
-  }, [video.id])
+    const more = hash === MORE_LIKE_THIS ? similarRef.current : null
+    if (more) more.scrollIntoView?.({ block: 'start' })
+    else dialog.current?.scrollTo({ top: 0 })
+    const start = more
+      ? more.querySelector<HTMLElement>('[data-card-link]')
+      : dialog.current?.querySelector<HTMLElement>('[data-autofocus]')
+    start?.focus({ preventScroll: true })
+  }, [video.id, hash])
 
   useDocumentTitle(`${video.title} · UPOU OER`)
 
@@ -261,6 +268,7 @@ function DetailDialog({ video }: { video: Video }) {
 
         {similar.length > 0 && (
           <section
+            ref={similarRef}
             aria-labelledby={`${titleId}-similar`}
             className="border-t border-line p-5 md:px-8 md:py-7"
           >

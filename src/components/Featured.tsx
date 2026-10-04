@@ -10,8 +10,9 @@ import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { FactsLine, LONG_TITLE } from './browse-ui'
+import { MORE_LIKE_THIS } from './details'
 import { prefersReducedMotion } from './hooks'
-import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
+import { ChevronDownIcon, PlayIcon, StackIcon } from './icons'
 import { useCardPreview } from './preview'
 import SectionHeading from './ui/SectionHeading'
 import { PRESSED, buttonClass } from './ui/button-styles'
@@ -238,16 +239,21 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
           <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-ink-2">
             {video.description}
           </p>
-          {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves
-              the hero instead of stopping on a wrapped Save. */}
+          {/* One row at every width (More like this and Save as icons on phones): ↓ from Play
+              leaves the hero instead of stopping on a wrapped Save. The details are shown here
+              already, so the quick look opens on what it adds: More like this. */}
           <div className="mt-5 flex items-center gap-3">
             <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
               <PlayIcon />
               Play
             </PlayLink>
-            <DetailsLink id={video.id} className={buttonClass('secondary', 'md', ICON_ON_PHONE)}>
-              <InfoIcon />
-              <span className="max-sm:sr-only">Details</span>
+            <DetailsLink
+              id={video.id}
+              hash={MORE_LIKE_THIS}
+              className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
+            >
+              <StackIcon />
+              <span className="max-sm:sr-only">More like this</span>
             </DetailsLink>
             <MyListButton
               id={video.id}

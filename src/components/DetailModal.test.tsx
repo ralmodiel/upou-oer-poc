@@ -24,3 +24,14 @@ it('opens on the still, which plays and grows while focused, with ↓ leading to
     'entry',
   )
 })
+
+it('opened from More like this, starts on the first of those', async () => {
+  const router = createMemoryRouter([{ path: '/', element: <DetailModal /> }], {
+    initialEntries: ['/?v=climate-basics#more-like-this'],
+  })
+  render(<RouterProvider router={router} />)
+  const similar = screen.getByRole('region', { name: 'More like this' })
+  const first = within(similar).getAllByRole('link')[0]
+  await waitFor(() => expect(first).toHaveFocus())
+  expect(first).toHaveAttribute('data-card-link')
+})

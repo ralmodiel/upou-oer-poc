@@ -164,7 +164,7 @@ describe('VideoGrid keyboard (roving tabindex)', () => {
 })
 
 describe('Featured', () => {
-  it('shows the featured video large with Play and Details, every featured video, then Also new', () => {
+  it('shows the featured video large with Play and More like this, every featured video, then Also new', () => {
     renderAt('/', <Featured videos={research} alsoNew={fixtureVideos.slice(3, 7)} />)
     const region = screen.getByRole('region', { name: 'Featured' })
     expect(within(region).getByRole('heading', { level: 3, name: 'Climate Change Basics' }))
@@ -172,9 +172,10 @@ describe('Featured', () => {
       'href',
       '/watch/climate-basics',
     )
-    expect(within(region).getByRole('link', { name: 'Details' })).toHaveAttribute(
+    // The details are on show, so the quick look opens on what it adds.
+    expect(within(region).getByRole('link', { name: 'More like this' })).toHaveAttribute(
       'href',
-      '/?v=climate-basics',
+      '/?v=climate-basics#more-like-this',
     )
     const row = screen.getByRole('region', { name: 'Featured videos' })
     expect(within(row).getAllByRole('listitem')).toHaveLength(3)

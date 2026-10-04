@@ -88,8 +88,8 @@ function DetailDialog({ video }: { video: Video }) {
     }
   }, [])
 
-  // Each title (the first and any similar one swapped in) starts on Play: Enter plays at once,
-  // ↓ reaches "More like this", and a remote's OK never lands on Close by surprise.
+  // Each title (the first and any similar one swapped in) starts on its still, grown: Enter
+  // plays at once, ↓ reaches Play (over-entry), and OK never lands on Close by surprise.
   useEffect(() => {
     stopPreview()
     dialog.current?.scrollTo({ top: 0 })
@@ -180,20 +180,31 @@ function DetailDialog({ video }: { video: Video }) {
           className="absolute top-3 right-3 z-10 md:top-4 md:right-4"
         />
 
-        <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 md:grid-rows-[auto_auto_1fr] md:p-8">
-          <div className="-mx-5 -mt-5 min-w-0 md:col-span-5 md:col-start-1 md:row-start-1 md:m-0">
-            <Thumbnail
+        <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 md:grid-rows-[auto_auto_1fr] md:gap-y-7 md:p-8 lg:gap-x-10">
+          {/* The still plays too, and grows while focused or hovered (TV style) into the gutters
+              around it, so nothing else moves. The wrapper scales: a focused link drops its
+              transition (index.css). Phones: full bleed, no growth. */}
+          <div className="-mx-5 -mt-5 min-w-0 md:col-span-5 md:col-start-1 md:row-start-1 md:m-0 md:motion-safe:transition-[scale] md:motion-safe:duration-300 md:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:has-[a:focus]:scale-108 lg:col-span-6">
+            <PlayLink
               video={video}
-              sizes="(min-width: 48rem) 400px, 100vw"
-              large
-              canonical
-              loading="eager"
-              className="md:rounded-card md:shadow-lift md:ring-1 md:ring-black/10"
-            />
+              aria-label={`Play ${video.title}`}
+              data-autofocus=""
+              data-spatial="over-entry"
+              className="relative block max-md:focus-visible:outline-none max-md:focus-visible:after:absolute max-md:focus-visible:after:inset-0 max-md:focus-visible:after:shadow-[inset_0_0_0_3px_var(--color-focus)] md:rounded-card"
+            >
+              <Thumbnail
+                video={video}
+                sizes="(min-width: 64rem) 470px, (min-width: 48rem) 260px, 100vw"
+                large
+                canonical
+                loading="eager"
+                className="md:rounded-card md:shadow-lift md:ring-1 md:ring-black/10"
+              />
+            </PlayLink>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 md:col-span-5 md:col-start-1 md:row-start-2">
-            <PlayLink video={video} data-autofocus="" className={buttonClass('primary')}>
+          <div className="flex flex-wrap items-center gap-3 md:col-span-5 md:col-start-1 md:row-start-2 lg:col-span-6">
+            <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
               <PlayIcon />
               Play
             </PlayLink>
@@ -204,7 +215,7 @@ function DetailDialog({ video }: { video: Video }) {
             />
           </div>
 
-          <div className="min-w-0 md:col-span-7 md:col-start-6 md:row-span-3 md:row-start-1 md:pr-8">
+          <div className="min-w-0 md:col-span-7 md:col-start-6 md:row-span-3 md:row-start-1 md:pr-8 lg:col-span-6 lg:col-start-7">
             <h2
               id={titleId}
               className={`font-display leading-tight text-balance text-ink ${
@@ -242,7 +253,7 @@ function DetailDialog({ video }: { video: Video }) {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-5 md:col-start-1 md:row-start-3 md:self-start">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-5 md:col-start-1 md:row-start-3 md:self-start lg:col-span-6">
             <ExternalLink href={watchUrl(video.youtubeId)}>Watch on YouTube</ExternalLink>
             {sourceUrl && <ExternalLink href={sourceUrl}>View on oer.upou.edu.ph</ExternalLink>}
           </div>

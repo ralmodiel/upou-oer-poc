@@ -127,8 +127,8 @@ Routes: `/`, `/collections`, `/collections/:slug`, `/search?q=`, `/my-list`, `/w
 - **My List:** grid in saved order, with an empty state linking to Collections (round 7: plus
   the newest videos to start from, see below).
 - **Quick look dialog (`?v=`):** native `<dialog>`, centered card at ≥ md (image left 5/12,
-  text right), full-screen sheet on mobile; title, meta, summary, tags, Play, My List, source
-  links, and 6 "More like this" compact cards. Deep-linkable; history behavior as today.
+  6/12 from lg, text right), full-screen sheet on mobile; title, meta, summary, tags, Play, My
+  List, source links, and 6 "More like this" compact cards. Deep-linkable; history behavior as today.
 - **Watch (`/watch/:id`):** two-column at `lg` (main 8/12, aside 4/12). Main: the **player
   stage** (16:9, rounded, surface background) where the promo reel plays and then the YouTube
   embed takes over; below it the serif title, meta row (category link · date · "Watch on
@@ -640,3 +640,21 @@ Refinement only: same tokens, type and identity (`WatchPage`, `src/features/watc
   100 ms pause; ↑ / ↓ walk them, the first Esc only closes the list. Typing sets no state, and the
   warm-up and each suggestion run in slices of about 4 ms, so at 4× CPU a key's input delay plus
   handling matches the page without suggestions.
+
+## Round 7: quick look video focus
+
+- **The still is the video:** a link that plays it (`Play <title>`), and the dialog opens with
+  focus on it (`data-autofocus`), so Enter or OK plays at once. ↓ goes to Play
+  (`data-spatial="over-entry"` → `"entry"`, otherwise the centre rule picked Save); → reaches the
+  topics; Esc still closes and returns focus to the card's Details.
+- **Grows on focus or hover:** from md the still's wrapper scales to 1.08 (300 ms
+  `ease-out-soft`, `scale` only) while its link has focus (also after a mouse open, ring only for
+  keyboard) or the pointer rests on it, and settles when focus moves to the buttons, text or tags.
+  The wrapper scales because `:focus-visible` drops transitions (index.css). It grows into gutters
+  set for it (`md:gap-y-7`, `lg:gap-x-10`), so nothing else moves: CLS 0, sideways overflow 0, the
+  ring stays inside the card. No growth with reduced motion, and none on phones (full bleed), where
+  keyboard focus is a 3px inset ring drawn over the picture by `::after` (the image is positioned
+  and would cover an outline).
+- **Bigger at rest from lg:** image 6/12 instead of 5/12. Measured (Chrome, Vite dev): 1440 still
+  381×214 before, 459×258 at rest, 496×279 focused (18px clear of Play, 22px of the text); 768
+  241×136 at rest, 261×147 focused; 360 330×186 either way.

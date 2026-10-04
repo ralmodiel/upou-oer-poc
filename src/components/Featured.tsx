@@ -1,29 +1,34 @@
-import { memo, useEffect, useId, useRef, useState, type FocusEvent, type ReactNode } from 'react'
-import { formatDate } from '../lib/format'
+import { memo, useEffect, useId, useRef, useState, type FocusEvent, type MouseEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayLink from './PlayLink'
+import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
-import { CARD_RING, FactsLine, ITEM_FOCUS, ITEM_LIFT, LONG_TITLE } from './browse-ui'
-import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, PlayIcon } from './icons'
-import { imagesOf } from './media'
+import VideoGrid from './VideoGrid'
+import { FactsLine, LONG_TITLE } from './browse-ui'
+import { prefersReducedMotion } from './hooks'
+import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
 import { useCardPreview } from './preview'
-import IconButton from './ui/IconButton'
+import SectionHeading from './ui/SectionHeading'
 import { PRESSED, buttonClass } from './ui/button-styles'
 
 interface Props {
   videos: readonly Video[]
-  /** Newest titles shown beside the featured one. */
+  /** Newest titles, a row under the Featured row. */
   alsoNew: readonly Video[]
-  /** First slide; by default a random one per page load. */
+  /** The video the hero opens on (the first by default). */
   start?: number
 }
 
-// Drawn once per page load, so a refresh opens on another slide (and backdrop) too.
-const LOAD_PICK = Math.random()
+/** Time the page is left alone before the hero moves on to the next featured video. */
+export const ADVANCE_MS = 7000
+/** A pointer rests this long on a featured card before the hero shows it (no flicker when sweeping). */
+export const HOVER_INTENT_MS = 150
+const TICK_MS = 250
 
 // Fades the blurred still into the page, fully by the bottom edge where the text sits.
 const SCRIM = 'bg-linear-to-b from-paper/70 via-paper/85 via-55% to-paper'
@@ -32,35 +37,146 @@ const SCRIM = 'bg-linear-to-b from-paper/70 via-paper/85 via-55% to-paper'
 const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
 
 /**
- * Editorial opener on a full-bleed backdrop of the featured video: the video with its text,
- * manual prev/next, and an "Also new" list.
+ * The top of the home page: a large hero of one featured video, then every featured video as the
+ * first row of cards (the hero's video marked), then Also new as a row.
  */
 function Featured(props: Props) {
-  return props.videos.length ? <Viewer {...props} /> : null
+  return props.videos.length ? <FeaturedHome {...props} /> : null
 }
 
-// Its hooks run only with a video to show.
-function Viewer({ videos, alsoNew, start }: Props) {
-  const headingId = useId()
+/**
+ * The hero moves on to the next featured video after ADVANCE_MS left alone: no click or key press,
+ * no pointer over the hero or the row, no focus in them, no preview playing, no dialog open (a
+ * hidden tab pauses it). A pointer resting on a card (HOVER_INTENT_MS), or focus on one, shows that
+ * video at once; the count then starts from it. The active card shows the count as a thin line.
+ */
+function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
+  const [index, setIndex] = useState(start)
+  const shown = useRef(index)
+  const zone = useRef<HTMLDivElement>(null)
+  const hovered = useRef(false)
+  const intent = useRef({ timer: 0, to: -1 })
   const count = videos.length
-  // A random slide per load among those with an image: a title tile opens the page only when no
-  // featured video has one (the others stay one press away).
-  const pool = videos.flatMap((v, i) => (imagesOf(v, true) ? [i] : []))
-  const first = start ?? (pool.length ? pool[Math.floor(LOAD_PICK * pool.length)] : 0)
-  const [index, setIndex] = useState(first)
-  const video = videos[Math.min(index, count - 1)]
-  // The viewer previews the video it shows: on keyboard focus anywhere in it, and on each pick with
-  // previous / next (from any input). Hovering the image works as on a card.
-  const preview = useCardPreview(video)
-  const picked = useRef(false)
-  const { start: startPreview } = preview
+
   useEffect(() => {
-    if (picked.current) startPreview()
-  }, [startPreview])
-  const go = (delta: number) => {
-    picked.current = true
-    setIndex((i) => (i + delta + count) % count)
+    let waited = 0
+    const reset = () => (waited = 0)
+    window.addEventListener('pointerdown', reset, true)
+    window.addEventListener('keydown', reset, true)
+    const timer = window.setInterval(() => {
+      const el = zone.current
+      if (document.hidden || !el) return
+      const busy =
+        hovered.current ||
+        el.contains(document.activeElement) ||
+        el.querySelector('.card-preview') ||
+        document.querySelector('dialog[open]')
+      waited = busy ? 0 : waited + TICK_MS
+      el.style.setProperty('--advance', String(waited / ADVANCE_MS))
+      if (waited < ADVANCE_MS) return
+      waited = 0
+      swapHero(() => setIndex((i) => (i + 1) % count))
+    }, TICK_MS)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('pointerdown', reset, true)
+      window.removeEventListener('keydown', reset, true)
+    }
+  }, [count])
+
+  // The active card is marked (browse.css) and, moved on to while the row is not in use, scrolled
+  // into the row's view. ponytail: marked through the DOM, as the row (VideoGrid) knows no
+  // "active"; a prop on VideoGrid if another row ever needs one.
+  useEffect(() => {
+    shown.current = index
+    const el = zone.current
+    const items = el?.querySelectorAll<HTMLElement>('[data-row="featured"] > li') ?? []
+    items.forEach((li, i) => li.toggleAttribute('data-active', i === index))
+    const li = items[index]
+    const track = li?.closest<HTMLElement>('[data-spatial="track"]')
+    if (!li || !track || hovered.current || el?.contains(document.activeElement)) return
+    const pad = parseFloat(getComputedStyle(track).scrollPaddingLeft) || 0
+    const box = track.getBoundingClientRect()
+    const card = li.getBoundingClientRect()
+    if (card.left >= box.left + pad - 1 && card.right <= box.right - pad + 1) return
+    track.scrollTo({
+      left: li.offsetLeft - pad,
+      behavior: prefersReducedMotion() ? 'instant' : 'smooth',
+    })
+  }, [index])
+
+  // A card under the pointer (after the intent delay) or in focus becomes the hero's video.
+  const pick = (target: EventTarget, delay: number) => {
+    const li = (target as Element).closest('[data-row="featured"] > li')
+    const to = li ? Array.prototype.indexOf.call(li.parentElement?.children ?? [], li) : -1
+    if (to < 0 || to === intent.current.to) return
+    clearTimeout(intent.current.timer)
+    intent.current = {
+      to,
+      timer: window.setTimeout(() => {
+        intent.current.to = -1
+        if (to !== shown.current) swapHero(() => setIndex(to))
+      }, delay),
+    }
   }
+  const cancelPick = () => {
+    clearTimeout(intent.current.timer)
+    intent.current.to = -1
+  }
+  useEffect(() => () => clearTimeout(intent.current.timer), [])
+
+  return (
+    <div data-featured-block="">
+      <div
+        ref={zone}
+        data-featured-zone=""
+        data-reveal-whole=""
+        onPointerEnter={() => (hovered.current = true)}
+        onPointerLeave={() => {
+          hovered.current = false
+          cancelPick()
+        }}
+        onPointerOver={(e) => pick(e.target, HOVER_INTENT_MS)}
+        onFocus={(e) => pick(e.target, 0)}
+      >
+        <Hero video={videos[Math.min(index, count - 1)]} priority={index === start} />
+        {/* Every featured video, side by side: five in a line from lg, scrolling sideways below. */}
+        <section aria-label="Featured videos" className="px-(--gutter) py-6">
+          <div className="row featured-row">
+            <div data-spatial="track" className="row-track">
+              <VideoGrid videos={videos} layout="row" row="featured" showCategory />
+            </div>
+          </div>
+        </section>
+      </div>
+      {alsoNew.length > 0 && (
+        <Recommended row="new" title="Also new" videos={alsoNew} cards={alsoNew.length} />
+      )}
+      <MoreBelow />
+    </div>
+  )
+}
+
+/**
+ * Shows the hero's next video: the picture and the text cross-fade (browse.css,
+ * html[data-hero-swap]) where View Transitions run and motion is welcome; elsewhere at once.
+ */
+let swapping: ViewTransition | null = null
+function swapHero(apply: () => void) {
+  if (!document.startViewTransition || prefersReducedMotion() || document.hidden) return apply()
+  const root = document.documentElement
+  root.dataset.heroSwap = ''
+  const transition = document.startViewTransition(() => flushSync(apply))
+  swapping = transition
+  void transition.finished.finally(() => {
+    if (swapping === transition) delete root.dataset.heroSwap
+  })
+}
+
+/** The featured video, large: its picture (previews on hover or keyboard focus) and its details. */
+function Hero({ video, priority }: { video: Video; priority: boolean }) {
+  const headingId = useId()
+  const preview = useCardPreview(video)
   const long = video.title.length > LONG_TITLE
   const onFocus = () => {
     if (lastInput() !== 'pointer') preview.start()
@@ -70,176 +186,150 @@ function Viewer({ videos, alsoNew, start }: Props) {
   }
 
   return (
-    <div className="relative isolate overflow-hidden">
+    <div data-lead={video.id} className="relative isolate overflow-hidden">
       <Backdrop video={video} scrim={SCRIM} />
+      {/* Phones: Featured, the picture, the details. From lg the details sit beside the picture,
+          Featured on top of them. */}
       <section
         aria-labelledby={headingId}
-        className="px-(--gutter) pt-6 pb-8 sm:pt-8 lg:pt-10 lg:pb-10"
+        onFocus={onFocus}
+        onBlur={onBlur}
+        className="grid gap-5 px-(--gutter) pt-6 pb-2 sm:pt-8 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-4 lg:pt-10"
       >
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
-          <div className="min-w-0 lg:col-span-7" onFocus={onFocus} onBlur={onBlur}>
-            <div className="flex items-center justify-between gap-4">
-              <h2 id={headingId} className="eyebrow">
-                Featured
-              </h2>
-              {count > 1 && (
-                <div className="flex items-center gap-2">
-                  <span aria-live="polite" className="text-sm text-ink-3 tabular-nums">
-                    {index + 1} of {count}
-                  </span>
-                  {/* ↓ from these lands on Play (the image between is no stop). */}
-                  <IconButton
-                    label="Previous featured video"
-                    icon={<ChevronLeftIcon />}
-                    variant="secondary"
-                    data-spatial="over-entry"
-                    onClick={() => go(-1)}
-                  />
-                  <IconButton
-                    label="Next featured video"
-                    icon={<ChevronRightIcon />}
-                    variant="secondary"
-                    data-spatial="over-entry"
-                    onClick={() => go(1)}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${count}`}>
-              <Hero
-                video={video}
-                priority={index === first}
-                hostProps={preview.hostProps}
-                overlay={preview.overlay}
-              />
-              <div className="mt-5">
-                <h3
-                  title={video.title}
-                  className={`font-display text-balance text-ink ${
-                    long ? 'line-clamp-4 text-2xl sm:text-3xl' : 'line-clamp-3 text-title'
-                  }`}
-                >
-                  {video.title}
-                </h3>
-                <FactsLine video={video} className="mt-3" passOver />
-                {video.description && (
-                  <p className="mt-3 line-clamp-3 max-w-2xl text-base text-ink-2">
-                    {video.description}
-                  </p>
-                )}
-                {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves
-                    the hero instead of stopping on a wrapped Save. */}
-                <div className="mt-5 flex items-center gap-3">
-                  <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
-                    <PlayIcon />
-                    Play
-                  </PlayLink>
-                  <DetailsLink
-                    id={video.id}
-                    className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
-                  >
-                    <InfoIcon />
-                    <span className="max-sm:sr-only">Details</span>
-                  </DetailsLink>
-                  <MyListButton
-                    id={video.id}
-                    title={video.title}
-                    className={buttonClass('secondary', 'md', `${ICON_ON_PHONE} ${PRESSED}`)}
-                    labelClassName="max-sm:sr-only"
-                  />
-                </div>
-              </div>
-            </div>
+        <SectionHeading
+          id={headingId}
+          title="Featured"
+          className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:self-end"
+        />
+        <div
+          {...preview.hostProps}
+          data-hero-media=""
+          className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-center"
+        >
+          {/* Decorative duplicate of the Play button. */}
+          <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="block">
+            <Thumbnail
+              video={video}
+              sizes="(min-width: 64rem) 55vw, 100vw"
+              large
+              canonical
+              loading="eager"
+              fetchPriority={priority ? 'high' : undefined}
+              className="rounded-card shadow-lift ring-1 ring-black/10 dark:ring-white/10"
+            >
+              {preview.overlay}
+            </Thumbnail>
+          </PlayLink>
+        </div>
+        <div
+          data-hero-text=""
+          className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start"
+        >
+          <p className="eyebrow truncate">{video.category}</p>
+          <h3
+            title={video.title}
+            className={`mt-2 min-h-[2lh] font-display text-balance text-ink ${
+              long ? 'line-clamp-3 text-2xl sm:text-3xl' : 'line-clamp-3 text-title'
+            }`}
+          >
+            {video.title}
+          </h3>
+          <FactsLine video={video} className="hero-facts mt-3" passOver />
+          <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-ink-2">
+            {video.description}
+          </p>
+          {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves
+              the hero instead of stopping on a wrapped Save. */}
+          <div className="mt-5 flex items-center gap-3">
+            <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
+              <PlayIcon />
+              Play
+            </PlayLink>
+            <DetailsLink id={video.id} className={buttonClass('secondary', 'md', ICON_ON_PHONE)}>
+              <InfoIcon />
+              <span className="max-sm:sr-only">Details</span>
+            </DetailsLink>
+            <MyListButton
+              id={video.id}
+              title={video.title}
+              className={buttonClass('secondary', 'md', `${ICON_ON_PHONE} ${PRESSED}`)}
+              labelClassName="max-sm:sr-only"
+            />
           </div>
-
-          {alsoNew.length > 0 && (
-            <aside className="min-w-0 lg:col-span-5" aria-labelledby={`${headingId}-new`}>
-              <h3 id={`${headingId}-new`} className="eyebrow">
-                Also new
-              </h3>
-              {/* One stop for ↑ / ↓ (entered at its first title); ← / → walk the titles. */}
-              <ol data-spatial="group" className="mt-3 divide-y divide-line border-y border-line">
-                {alsoNew.map((v) => (
-                  <li key={v.id}>
-                    <AlsoNewItem video={v} />
-                  </li>
-                ))}
-              </ol>
-            </aside>
-          )}
         </div>
       </section>
     </div>
   )
 }
 
-/** The featured image: clickable (plays) but not a Tab stop; previews on hover like a card. */
-function Hero({
-  video,
-  priority,
-  hostProps,
-  overlay,
-}: {
-  video: Video
-  priority: boolean
-  /** The viewer's preview, so it can also start on focus and on each pick. */
-  hostProps: ReturnType<typeof useCardPreview>['hostProps']
-  overlay: ReactNode
-}) {
-  return (
-    <div {...hostProps} className="mt-3">
-      {/* Decorative duplicate of the Play button. */}
-      <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="block">
-        <Thumbnail
-          video={video}
-          sizes="(min-width: 64rem) 55vw, 100vw"
-          large
-          canonical
-          loading="eager"
-          fetchPriority={priority ? 'high' : undefined}
-          className="rounded-card shadow-lift ring-1 ring-black/10 dark:ring-white/10"
-        >
-          {overlay}
-        </Thumbnail>
-      </PlayLink>
-    </div>
-  )
-}
+/**
+ * A quiet "More video resources below" over a soft fade at the foot of the screen, from the start
+ * until the page footer comes into view (and again once it leaves). Each press glides the next
+ * row of videos below the one at the top up to the top (from a keyboard, its first card takes
+ * focus). It steps aside while it would cover the card in focus. The remote's arrows pass over it
+ * (data-spatial="skip"); the fade never takes a click.
+ */
+function MoreBelow() {
+  const [atFooter, setAtFooter] = useState(false)
+  useEffect(() => {
+    const footer = document.querySelector('footer, [role="contentinfo"]')
+    if (!footer) return
+    const observer = new IntersectionObserver(([entry]) => setAtFooter(entry.isIntersecting))
+    observer.observe(footer)
+    return () => observer.disconnect()
+  }, [])
+  // Out of the way of a card in focus that it would cover (a remote's reveal can leave one there).
+  const pill = useRef<HTMLButtonElement>(null)
+  const [covering, setCovering] = useState(false)
+  useEffect(() => {
+    const check = () => {
+      const card = document.activeElement?.closest('article')?.getBoundingClientRect()
+      const box = pill.current?.getBoundingClientRect()
+      setCovering(!!card && !!box && card.bottom > box.top && card.top < box.bottom)
+    }
+    document.addEventListener('focusin', check)
+    window.addEventListener('scrollend', check)
+    return () => {
+      document.removeEventListener('focusin', check)
+      window.removeEventListener('scrollend', check)
+    }
+  }, [])
 
-function AlsoNewItem({ video }: { video: Video }) {
-  const { hostProps, overlay } = useCardPreview(video)
+  const onClick = (e: MouseEvent<HTMLButtonElement>) => {
+    // The resting place of a row: just below the sticky header (html scroll-padding-top).
+    const rest = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0
+    const next = [...document.querySelectorAll<HTMLElement>('main section')].find(
+      (s) =>
+        (s.matches('.lazy-section') || s.querySelector('[data-row]')) &&
+        s.getBoundingClientRect().top > rest + 8,
+    )
+    if (!next) return
+    const reduced = prefersReducedMotion()
+    next.scrollIntoView?.({ block: 'start', behavior: reduced ? 'instant' : 'smooth' })
+    if (e.detail !== 0) return
+    const focusFirst = () =>
+      next.querySelector<HTMLElement>('[data-card-link]')?.focus({ preventScroll: true })
+    if (reduced) focusFirst()
+    else window.addEventListener('scrollend', focusFirst, { once: true })
+  }
+
   return (
-    <article {...hostProps} className="group/item relative flex gap-4 py-3">
-      {/* Original stills: in a short list one black or flash frame would stand out. */}
-      <Thumbnail
-        video={video}
-        sizes="(min-width: 40rem) 160px, 128px"
-        canonical
-        className={`w-32 shrink-0 rounded-[10px] sm:w-40 ${CARD_RING} ${ITEM_LIFT} ${ITEM_FOCUS}`}
+    <div
+      data-more-below=""
+      data-hidden={atFooter || covering ? '' : undefined}
+      className="more-below pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-linear-to-t from-paper via-paper/70 to-transparent pt-16 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-opacity duration-300 data-hidden:invisible data-hidden:opacity-0 md:pb-6"
+    >
+      <button
+        ref={pill}
+        type="button"
+        data-spatial="skip"
+        onClick={onClick}
+        className="more-below-pill pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink-2 shadow-lift transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
-        {overlay}
-      </Thumbnail>
-      <div className="min-w-0">
-        <p className="eyebrow truncate">{video.category}</p>
-        <h4
-          title={video.title}
-          className="mt-1 line-clamp-2 text-base/snug font-semibold text-ink transition-colors group-hover/item:text-maroon"
-        >
-          <PlayLink
-            video={video}
-            aria-label={`Play ${video.title}`}
-            data-card-link=""
-            className="outline-none after:absolute after:inset-0"
-          >
-            {video.title}
-          </PlayLink>
-        </h4>
-        <p className="mt-1 text-sm text-ink-3">
-          <time dateTime={video.publishedAt}>{formatDate(video.publishedAt)}</time>
-        </p>
-      </div>
-    </article>
+        More video resources below
+        <ChevronDownIcon className="size-4" />
+      </button>
+    </div>
   )
 }
 

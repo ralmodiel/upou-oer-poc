@@ -668,3 +668,14 @@ Refinement only: same tokens, type and identity (`WatchPage`, `src/features/watc
 - **Bigger at rest from lg:** image 6/12 instead of 5/12. Measured (Chrome, Vite dev): 1440 still
   381×214 before, 459×258 at rest, 496×279 focused (18px clear of Play, 22px of the text); 768
   241×136 at rest, 261×147 focused; 360 330×186 either way.
+
+## Round 7: featured hero and row
+
+The flatten/expand idea was dropped. The top of the home page now has a permanent large hero for one featured video, and its content cycles.
+
+- **Hero** (`src/components/Featured.tsx`, `Hero`): the picture is on the left. The detail column on the right opens with the "Featured" heading (gold rule and display h2), followed by the collection eyebrow, the title (h3), the facts line, the summary, and Play, Details and Save. On phones it stacks in this order: Featured, picture, details. It opens on the first featured video.
+- **Featured row**: every featured video is the first row of cards (`VideoGrid` row layout, `aria-label="Featured videos"`). It has no heading and no arrows. From lg all five fit in one line (`.featured-row`, `--row-cols: 5`, about 249px cards at 1440 against 315px in the other rows). Below lg it scrolls sideways at the usual card size. Also new follows as an ordinary row, then the rest of the page.
+- **Cycle**: the hero moves to the next featured video after `ADVANCE_MS` (7 s) of no click or key press. It pauses while the pointer is over the hero or the row, while focus is in them, while a preview plays, while a dialog is open, or while the tab is hidden. A card under a resting pointer (`HOVER_INTENT_MS`, 150 ms) or a card in focus takes over the hero at once. The active card has a gold outline round its picture (no tint), and a thin gold line along its foot counts down to the next video. The line is hidden with reduced motion.
+- **Motion**: a View Transition, `html[data-hero-swap]`. The picture cross-fades in about 500 ms, while the text fades up out and settles back in. Pointer events pass through the transition layer. With reduced motion the swap is instant.
+- **Remote**: a card in the Featured row reveals the whole hero above it rather than centring the row. This uses `data-reveal-whole` in `lib/spatial.ts`. On screens under 56rem tall (laptops), the hero tightens so that hero and row fit together: two-line title and summary, no facts line, and the picture cut at its foot, never the text.
+- **Cue**: "More video resources below" shows from load until the footer comes into view (IntersectionObserver), and again after the footer leaves. It fades in once and nudges once. Each press scrolls the next row below the top one to the resting place, and from a keyboard it also focuses that row's first card. It steps aside while it would cover the card in focus, and it adds to `scroll-padding-bottom` while shown.

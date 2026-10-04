@@ -60,6 +60,12 @@ export const ChevronRightIcon = (props: IconProps) => (
   </Icon>
 )
 
+export const ChevronDownIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5 9 7 7 7-7" />
+  </Icon>
+)
+
 export const SearchIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="11" cy="11" r="6.5" />

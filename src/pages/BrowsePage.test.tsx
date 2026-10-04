@@ -273,4 +273,23 @@ describe('BrowsePage', () => {
     // Nothing else is known about this viewer: no picks either.
     expect(screen.queryByRole('region', { name: 'Recommended for you' })).not.toBeInTheDocument()
   })
+
+  it('puts the Featured row first under the hero, then Also new, with or without history', async () => {
+    const rowNames = () =>
+      [...document.querySelectorAll('main section, section')]
+        .filter((sec) => sec.querySelector(':scope [data-row], :scope [aria-busy]'))
+        .map((sec) => sec.getAttribute('aria-label') ?? sec.querySelector('h2')?.textContent)
+    const { unmount } = render(
+      <RouterProvider router={createMemoryRouter([{ path: '/', Component: BrowsePage }])} />,
+    )
+    expect(rowNames().slice(0, 2)).toEqual(['Featured videos', 'Also new'])
+    unmount()
+    localStorage.setItem('upou:history', JSON.stringify([{ id: 'climate-basics', at: 1 }]))
+    resetStorageCache()
+    renderHome()
+    await screen.findByRole('region', { name: 'Recently viewed' })
+    const names = rowNames()
+    expect(names.slice(0, 2)).toEqual(['Featured videos', 'Also new'])
+    expect(names).toContain('Recently viewed')
+  })
 })

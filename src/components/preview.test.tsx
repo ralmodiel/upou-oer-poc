@@ -180,14 +180,4 @@ describe('featured viewer previews', () => {
     act(() => screen.getByRole('link', { name: 'Play' }).blur())
     expect(previews()).toHaveLength(0)
   })
-
-  it('plays each video picked with previous / next', () => {
-    renderFeatured()
-    fireEvent.click(screen.getByRole('button', { name: 'Next featured video' }))
-    expect(screen.getByText('2 of 3')).toBeInTheDocument()
-    expect(heroPreview()).not.toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Previous featured video' }))
-    expect(screen.getByText('1 of 3')).toBeInTheDocument()
-    expect(heroPreview()).not.toBeNull()
-  })
 })

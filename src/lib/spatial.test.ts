@@ -5,6 +5,7 @@ import {
   distance,
   findSection,
   findTarget,
+  focusAndReveal,
   keepsArrow,
   moveFocus,
   useSpatialNavigation,
@@ -677,5 +678,25 @@ describe('useSpatialNavigation', () => {
       delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
       vi.restoreAllMocks()
     }
+  })
+})
+
+describe('focusAndReveal', () => {
+  it('brings a block to the top whole for a card in its row (data-reveal-whole), not the row centred', () => {
+    document.body.innerHTML = `
+      <div id="zone" data-reveal-whole>
+        <section id="hero"><a href="/play">Play</a></section>
+        <div data-spatial="track" id="track">
+          <ul><li><article><a id="card" data-card-link href="/watch/a">A</a></article></li></ul>
+        </div>
+      </div>`
+    const zone = document.getElementById('zone')!
+    const track = document.getElementById('track')!
+    zone.scrollIntoView = vi.fn()
+    track.scrollIntoView = vi.fn()
+    document.querySelector('article')!.scrollIntoView = vi.fn()
+    expect(focusAndReveal(document.getElementById('card')!, true)).toBe(true)
+    expect(zone.scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
+    expect(track.scrollIntoView).not.toHaveBeenCalled()
   })
 })

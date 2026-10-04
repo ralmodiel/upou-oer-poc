@@ -429,9 +429,15 @@ export function focusAndReveal(target: HTMLElement, instant = false): boolean {
   // down as a whole.
   const track = card ? shape.closest<HTMLElement>(TRACK) : null
   const left = track ? trackTarget(track, shape) : null
+  // A row under a block it belongs to ([data-reveal-whole]: the home hero over the Featured row)
+  // brings that block to the top instead, so the two show whole together.
+  const whole = track?.closest<HTMLElement>('[data-reveal-whole]')
   if (track && left !== null && typeof track.scrollTo === 'function') {
     track.scrollTo({ left, behavior })
-    track.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior })
+    if (whole) whole.scrollIntoView?.({ block: 'start', inline: 'nearest', behavior })
+    else track.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior })
+  } else if (whole) {
+    whole.scrollIntoView?.({ block: 'start', inline: 'nearest', behavior })
   } else if (typeof shape.scrollIntoView === 'function') {
     shape.scrollIntoView({ block: card ? 'center' : 'nearest', inline: 'nearest', behavior })
   }

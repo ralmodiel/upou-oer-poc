@@ -164,8 +164,8 @@ describe('VideoGrid keyboard (roving tabindex)', () => {
 })
 
 describe('Featured', () => {
-  it('shows the featured video with Play and Details, and steps with prev/next', async () => {
-    renderAt('/', <Featured videos={research} alsoNew={fixtureVideos.slice(3, 7)} start={0} />)
+  it('shows the featured video large with Play and Details, every featured video, then Also new', () => {
+    renderAt('/', <Featured videos={research} alsoNew={fixtureVideos.slice(3, 7)} />)
     const region = screen.getByRole('region', { name: 'Featured' })
     expect(within(region).getByRole('heading', { level: 3, name: 'Climate Change Basics' }))
     expect(within(region).getByRole('link', { name: 'Play' })).toHaveAttribute(
@@ -176,29 +176,14 @@ describe('Featured', () => {
       'href',
       '/?v=climate-basics',
     )
-    expect(within(region).getByText('1 of 3')).toBeInTheDocument()
-    const alsoNew = within(region).getByRole('complementary', { name: 'Also new' })
+    const row = screen.getByRole('region', { name: 'Featured videos' })
+    expect(within(row).getAllByRole('listitem')).toHaveLength(3)
+    const alsoNew = screen.getByRole('region', { name: 'Also new' })
     expect(within(alsoNew).getAllByRole('listitem')).toHaveLength(4)
     expect(within(alsoNew).getByRole('link', { name: 'Play Digital Art Studio' })).toHaveAttribute(
       'href',
       '/watch/digital-art',
     )
-
-    await userEvent.click(within(region).getByRole('button', { name: 'Next featured video' }))
-    expect(within(region).getByText('2 of 3')).toBeInTheDocument()
-    expect(within(region).getByRole('link', { name: 'Play' })).toHaveAttribute(
-      'href',
-      '/watch/climate-policy',
-    )
-    await userEvent.click(within(region).getByRole('button', { name: 'Previous featured video' }))
-    await userEvent.click(within(region).getByRole('button', { name: 'Previous featured video' }))
-    expect(within(region).getByText('3 of 3')).toBeInTheDocument()
-  })
-
-  it('opens on one of its slides chosen per page load unless told where to start', () => {
-    renderAt('/', <Featured videos={research} alsoNew={[]} />)
-    const region = screen.getByRole('region', { name: 'Featured' })
-    expect(within(region).getByText(/^[1-3] of 3$/)).toBeInTheDocument()
   })
 
   it('does not mark the featured image as a Tab stop', () => {

@@ -42,9 +42,20 @@
   pointer-events: none;
 }
 
+/*
+  Beside the player the band belongs to the stage: it fades out across the column gap, so Up next
+  reads on plain paper (its smaller text failed AA over a still). --stage-end is the right edge of
+  the 8-of-12 column (gap-10) inside the gutter.
+*/
 @media (width >= 64rem) {
   .watch-backdrop {
+    --stage-end: calc(var(--gutter) + (100% - 2 * var(--gutter) - 27.5rem) * 2 / 3 + 17.5rem);
     height: min(calc(37.5vw + 8rem), 46rem);
+    mask-image: linear-gradient(
+      to right,
+      #000 calc(var(--stage-end) - 1rem),
+      transparent calc(var(--stage-end) + 2.5rem)
+    );
   }
 }
 
@@ -363,20 +374,9 @@
   outline-offset: -3px;
 }
 
-/* The row now playing: a forest wash with a crisp bar at its leading edge. */
+/* The row now playing: a forest wash; its "Now playing" label names the state. */
 .watch-next[aria-current='true'] {
-  position: relative;
   background: var(--color-forest-soft);
-}
-
-.watch-next[aria-current='true']::before {
-  content: '';
-  position: absolute;
-  inset-block: 0.875rem;
-  left: 0;
-  width: 3px;
-  border-radius: 999px;
-  background: var(--color-forest);
 }
 
 @media (min-width: 40rem) {

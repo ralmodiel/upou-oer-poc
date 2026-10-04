@@ -283,8 +283,10 @@ the existing tokens:
 
 ## Round 3 addendum: reels and stills
 
-- **Frame filter:** candidate stills that catch a face not smiling, mid-word or looking angry are
-  flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation,
+- **Frame filter:** candidate stills that catch a face not smiling, mid-word, looking angry or
+  with the mouth wide open (even in a laugh: jawOpen above 0.25 or the lips' gap over the mouth's
+  width above 0.30), or a face the landmarker cannot read (a turned, tilted or blurred head that a
+  second detector, YuNet, still finds; drawn faces excepted) are flagged at build time (`src/data/frame-flags.json`) and never used in the thumbnail rotation,
   the reel or the canonical slots (hero, quick look, poster), where the first clean still stands
   in for a flagged original. When every candidate is flagged, the video's own picture (card,
   list row, poster) is its least bad one; reels and previews still never use a flagged frame.
@@ -479,7 +481,18 @@ a slide with an image; a title-tile slide stays one press away.
   cinematic and kinetic); the split ident's block is gold, never a dark bar.
 - **One still:** a seeded slow push-in about a point in the upper middle that drifts to one side.
   It opens on the full frame, so the card image or loading cover it follows hands over without a
-  jump.
+  jump. Card previews move more, about what the still must keep in view (its faces; a slide's or
+  title card's text, from frame-flags bits 25-41): a push-in to 1.18-1.26 on photos with a lateral
+  drift, 1.10 on slides and cards with none, always keeping that box and the frame's edges covered.
+  No box (or text across the whole frame): the reel's own move. Reduced motion stays static.
+- **Baked-in bars:** stills with black bars on every side are zoomed just enough to push the bars
+  out of the 16:9 slot (`frame-crops.json`), on cards, the player poster and every reel image,
+  cutting at most 2% of the picture; pillarbox-only, letterbox-only and larger cuts stay as they
+  are.
+- **Best faces first:** the ranking favours a smiling, professional-looking speaker: a genuine
+  smile with the mouth closed or lightly parted, open eyes toward the camera, a frontal and sharp
+  face, a moderate share of the frame near the middle, even light. Open mouths, glances away,
+  blur, harsh or dim light and awkward crops rank down.
 - **Natural colour:** stills keep their own colours, with no grayscale, dimming, vignette or grain
   over imagery and only light, local gradients behind type. The end card and the player poster
   are undimmed.
@@ -577,3 +590,43 @@ Refinement only: same tokens, type and identity.
   after a full scroll 4,592 → 1,973 elements (196 → 64 cards). AA: chip text 10.3:1 (light) /
   11.3:1 (dark) on the band, its outline 3.1 / 3.3:1; quiet chevron at least 4.6:1 on paper and the
   maroon-soft and forest-soft bands; play badge 9.3 / 10.0:1.
+
+## Round 7: watch page polish
+
+Refinement only: same tokens, type and identity (`WatchPage`, `src/features/watch/`).
+
+- **Facts:** one wrapping list under the title: collection tab, date, channel, licence. The dots
+  are clipped leads (`.watch-meta li::before` in a 1.25rem box), so a line never starts with one.
+  Phones get 2 clean lines instead of 3 ragged ones.
+- **Actions and Source:** only Save and Share stay as pills. The source links ("Watch on YouTube",
+  "View on oer.upou.edu.ph") moved to a labelled **Source** row beside Topics. Both rows use
+  `.watch-row`: the label sits above on phones and in a 4.5rem column from 40rem.
+- **Description:** set at 33rem (median 65 to 70 characters a line, 76 at most from 768 up).
+  Descriptions over 320 characters (`FOLD_AT`) open folded to 4 lines, with the last line trailing
+  off, and get a "Show more / Show less" button (`aria-expanded`). Whether it folds depends only on
+  length, so the toggle never turns up late (CLS 0). The height eases open only where the browser
+  can animate to `auto`, and only when motion is allowed.
+- **Up next:** where more rows lie beyond the scroll edge, that edge fades out (a scroll-driven
+  mask; no fade where the browser cannot do it). Keyed rows stop clear of the fade
+  (`scroll-padding-block`). Now playing is the forest wash plus its labelled "Now playing" line.
+  There is no coloured edge bar. The hover frame appears only for `(hover: hover)`. Keyboard focus
+  is the 3px inset ring.
+- **Autoplay card:** set like the reel's end card. A spaced "UP NEXT" eyebrow, the serif title,
+  facts (collection, date), "Starting in" with the seconds in a ring, then Play now (primary) and
+  Cancel (secondary, which takes focus). A progress bar runs along the bottom edge (none with
+  reduced motion). Picture at 44% beside the copy. Under a 30rem container the facts drop out and
+  the buttons span the width. On stages wider than about 876px the body grows to 84cqi and the
+  buttons go to the large size, so at 1920 the proportions match 1440 and the title is no longer
+  clipped.
+- **Backdrop:** takes the poster's crop zoom (`zoomStyle(cropZoomOf(src))`). It grows about the
+  band's centre (`--shift`), so baked-in bars leave every side equally: measured overscan is equal
+  left/right and top/bottom, and zoom-1 pages are unchanged. From 64rem the band fades out across
+  the gap between the stage and Up next (a mask ending at `--stage-end`, the edge of the 8-of-12
+  column), so the aside reads on plain paper. Over a still its 13px facts measured 2.97:1 (light)
+  and 3.89:1 (dark). In dark the band mixes in more paper (72% / 84%).
+- **Aside:** `lg:pt-14`, so the gold rule lines up with the top of the stage.
+- **Measured** (Chrome; 360, 768, 1440 and 1920; both themes): AA all pass. Description 6.5:1
+  light / 10.3:1 dark. Show more and Source links 8.9 / 11.2:1. Up next facts 5.2 / 6.0:1 (4.7 /
+  4.7:1 on the Now playing wash). Autoplay card (always light): facts 6.5:1, "Starting in" 6.4:1,
+  bar 6.9:1 against its track. Focus rings 8.9 / 11.2:1. CLS 0 and sideways overflow 0
+  everywhere.

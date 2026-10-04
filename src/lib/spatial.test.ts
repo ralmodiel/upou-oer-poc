@@ -114,6 +114,23 @@ describe('findTarget', () => {
     expect(id(findTarget('down'))).toBe('foot')
   })
 
+  it('reaches a button inside a text field’s right padding (Clear search) both ways', () => {
+    document.body.innerHTML = `
+      <input id="q" type="search" value="gender" style="padding-right: 40px" />
+      <button id="clear">Clear</button>
+      <button id="theme">Theme</button>`
+    place('#q', [12, 1294, 320, 40])
+    place('#clear', [16, 1578, 32, 32])
+    place('#theme', [12, 1626, 40, 40])
+    const q = document.querySelector<HTMLInputElement>('#q')!
+    q.focus()
+    q.setSelectionRange(6, 6)
+    expect(id(findTarget('right'))).toBe('clear')
+    focus('#clear')
+    expect(id(findTarget('left'))).toBe('q')
+    expect(id(findTarget('right'))).toBe('theme')
+  })
+
   it('leaves a card with one ↓ from its link; ↑ straight after comes back to its Save', () => {
     page()
     focus('#a1-link')

@@ -14,7 +14,7 @@ export default function WatchSource({ video }: { video: Video }) {
   return (
     <section aria-labelledby="source-heading" className="watch-row">
       <h2 id="source-heading" className="eyebrow">
-        Source
+        Original source
       </h2>
       <ul className="flex flex-wrap gap-x-6">
         {links.map(({ href, label }) => (

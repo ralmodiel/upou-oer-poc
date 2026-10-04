@@ -176,10 +176,12 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
 }
 
 /**
- * Shows the hero's next video: the picture and the text cross-fade (browse.css,
- * html[data-hero-swap]) where View Transitions run and motion is welcome; elsewhere at once. The
- * text is a new copy per video (Hero), so a control in focus there (a pointer resting on a card
- * while Play holds focus) takes focus again in the new copy: the same button, counted from the end.
+ * Shows the hero's next video: the picture and the text cross-fade (browse.css, [data-hero-swap])
+ * where View Transitions run and motion is welcome; elsewhere at once. Scoped to the featured zone
+ * where the browser can: a document-wide transition restyled the whole page twice per swap (about
+ * 1,600 elements, 20-30 ms each, Chrome 154). The text is a new copy per video (Hero), so a
+ * control in focus there (a pointer resting on a card while Play holds focus) takes focus again in
+ * the new copy: the same button, counted from the end.
  */
 let swapping: ViewTransition | null = null
 let refocusing = false
@@ -196,9 +198,13 @@ function swapHero(apply: () => void) {
     refocusing = false
   }
   if (!document.startViewTransition || prefersReducedMotion() || document.hidden) return show()
-  const root = document.documentElement
+  const zone = document.querySelector<HTMLElement & Partial<Pick<Document, 'startViewTransition'>>>(
+    '[data-featured-zone]',
+  )
+  const scoped = zone?.startViewTransition ? zone : undefined
+  const root = scoped ?? document.documentElement
   root.dataset.heroSwap = ''
-  const transition = document.startViewTransition(show)
+  const transition = scoped?.startViewTransition?.(show) ?? document.startViewTransition(show)
   swapping = transition
   void transition.finished.finally(() => {
     if (swapping === transition) delete root.dataset.heroSwap
@@ -255,47 +261,50 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
             </Thumbnail>
           </PlayLink>
         </div>
-        {/* A new copy per video: text that changes in place would shift (CLS). */}
+        {/* A new copy per video: text that changes in place would shift (CLS). The copy goes inside
+            a lasting [data-hero-text]: a scoped View Transition (swapHero) is skipped when a named
+            element itself is replaced (Chrome 154, "Prepaint layout check failed"). */}
         <div
-          key={video.id}
           data-hero-text=""
           className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start"
         >
-          <p className="eyebrow truncate tracking-[0.14em]">{video.category}</p>
-          <h3
-            title={video.title}
-            className={`mt-2 min-h-[2lh] font-display text-balance text-ink ${
-              long ? 'line-clamp-3 text-2xl sm:text-3xl' : 'line-clamp-3 text-title'
-            }`}
-          >
-            {video.title}
-          </h3>
-          <FactsLine video={video} className="hero-facts mt-3" passOver />
-          <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-pretty text-ink-2">
-            {video.description}
-          </p>
-          {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves the
+          <div key={video.id}>
+            <p className="eyebrow truncate tracking-[0.14em]">{video.category}</p>
+            <h3
+              title={video.title}
+              className={`mt-2 min-h-[2lh] font-display text-balance text-ink ${
+                long ? 'line-clamp-3 text-2xl sm:text-3xl' : 'line-clamp-3 text-title'
+              }`}
+            >
+              {video.title}
+            </h3>
+            <FactsLine video={video} className="hero-facts mt-3" passOver />
+            <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-pretty text-ink-2">
+              {video.description}
+            </p>
+            {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves the
               hero instead of stopping on a wrapped Save. Details opens the quick look on the
               video's details (title, facts and citation). */}
-          <div className="mt-5 flex items-center gap-3">
-            <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
-              <PlayIcon />
-              Play
-            </PlayLink>
-            <DetailsLink
-              id={video.id}
-              hash={AT_DETAILS}
-              className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
-            >
-              <InfoIcon />
-              <span className="max-sm:sr-only">Details</span>
-            </DetailsLink>
-            <MyListButton
-              id={video.id}
-              title={video.title}
-              className={buttonClass('secondary', 'md', `${ICON_ON_PHONE} ${PRESSED}`)}
-              labelClassName="max-sm:sr-only"
-            />
+            <div className="mt-5 flex items-center gap-3">
+              <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
+                <PlayIcon />
+                Play
+              </PlayLink>
+              <DetailsLink
+                id={video.id}
+                hash={AT_DETAILS}
+                className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
+              >
+                <InfoIcon />
+                <span className="max-sm:sr-only">Details</span>
+              </DetailsLink>
+              <MyListButton
+                id={video.id}
+                title={video.title}
+                className={buttonClass('secondary', 'md', `${ICON_ON_PHONE} ${PRESSED}`)}
+                labelClassName="max-sm:sr-only"
+              />
+            </div>
           </div>
         </div>
       </section>

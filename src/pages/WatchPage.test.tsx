@@ -213,7 +213,7 @@ describe('WatchPage', () => {
     // The page's own actions under the facts; the source links beside the topics.
     expect(screen.getByRole('button', { name: 'Save to My List' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument()
-    const source = screen.getByRole('region', { name: 'Source' })
+    const source = screen.getByRole('region', { name: 'Original source' })
     expect(within(source).getByRole('link', { name: /Watch on YouTube/ })).toHaveAttribute(
       'href',
       'https://www.youtube.com/watch?v=abcDEF12345',

@@ -749,6 +749,10 @@
   visibility: hidden;
   opacity: 0;
 }
+/* The page keeps its h1 for screen readers during the preview (the article's opacity still hides it). */
+.watch-page:has(.watch-stage .reel) .watch-stage-wrap ~ article h1 {
+  visibility: visible;
+}
 
 @media (width < 64rem) {
   .watch-page:has(.watch-stage .reel) .watch-aside {

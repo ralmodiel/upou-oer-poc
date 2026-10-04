@@ -84,7 +84,12 @@ export function boxOf(el: HTMLElement): Box {
     : el.dataset.spatial === 'wide'
       ? (el.parentElement ?? el)
       : el
-  return toBox(shape.getBoundingClientRect())
+  const box = toBox(shape.getBoundingClientRect())
+  // A text field ends where its text does: a button inside its right padding (the header's Clear
+  // search) then lies to its right, reached by → at the caret's end and left by ←.
+  if (shape instanceof HTMLInputElement)
+    box.right -= parseFloat(getComputedStyle(shape).paddingRight) || 0
+  return box
 }
 
 // Rotates a box so that `dir` reads as "down": near/far run along the direction of travel,

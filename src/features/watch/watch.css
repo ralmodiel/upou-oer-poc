@@ -395,23 +395,15 @@
 
 /* Up next: the hovered or focused row's thumbnail takes a gold frame. */
 /*
-  Up next scrolls on its own and never grows the page: about five and a half rows on phones (the
-  cut-off row hints at more), beside the player no taller than the player's column (the aside is
-  size-contained there, so the column sets the height). More… sits under the list, always in sight.
+  Under the stage (below lg) Up next is part of the page: one swipe scrolls the rows and the page
+  together, so it never holds a swipe back up to the video. Beside the player it scrolls on its own
+  and never grows the page (lg, below). More… sits under the list.
 */
 .watch-upnext-list {
   --row: calc(6.4375rem + 1px);
   --fade: 1.5rem;
   position: relative;
-  max-height: calc(var(--row) * 5.5);
   margin-inline: -0.5rem;
-  overflow: hidden auto;
-  overscroll-behavior: contain;
-  /* Rows brought into view by keys stop clear of the edge fades. */
-  scroll-padding-block: var(--fade);
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-ink-3) 60%, transparent) transparent;
 }
 
 /*
@@ -432,26 +424,28 @@
 }
 
 @supports (animation-timeline: scroll()) {
-  .watch-upnext-list {
-    /* Eased stops, so a row melts into the edge rather than meeting a straight ramp. */
-    mask-image: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(0 0 0 / 0.3) calc(var(--upnext-top) * 0.35),
-      rgb(0 0 0 / 0.75) calc(var(--upnext-top) * 0.7),
-      #000 var(--upnext-top),
-      #000 calc(100% - var(--upnext-bottom)),
-      rgb(0 0 0 / 0.75) calc(100% - var(--upnext-bottom) * 0.7),
-      rgb(0 0 0 / 0.3) calc(100% - var(--upnext-bottom) * 0.35),
-      transparent
-    );
-    animation:
-      watch-upnext-top linear both,
-      watch-upnext-bottom linear both;
-    animation-timeline: scroll(self), scroll(self);
-    animation-range:
-      0 var(--fade),
-      calc(100% - var(--fade)) 100%;
+  @media (width >= 64rem) {
+    .watch-upnext-list {
+      /* Eased stops, so a row melts into the edge rather than meeting a straight ramp. */
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        rgb(0 0 0 / 0.3) calc(var(--upnext-top) * 0.35),
+        rgb(0 0 0 / 0.75) calc(var(--upnext-top) * 0.7),
+        #000 var(--upnext-top),
+        #000 calc(100% - var(--upnext-bottom)),
+        rgb(0 0 0 / 0.75) calc(100% - var(--upnext-bottom) * 0.7),
+        rgb(0 0 0 / 0.3) calc(100% - var(--upnext-bottom) * 0.35),
+        transparent
+      );
+      animation:
+        watch-upnext-top linear both,
+        watch-upnext-bottom linear both;
+      animation-timeline: scroll(self), scroll(self);
+      animation-range:
+        0 var(--fade),
+        calc(100% - var(--fade)) 100%;
+    }
   }
 }
 
@@ -643,12 +637,20 @@
   }
 
   /*
-    No taller than the screen under its heading (with More… and a little air below), so the row
-    now playing can always be scrolled into view in the list rather than sit below the fold.
+    Its own scroll area, no taller than the screen under its heading (with More… and a little air
+    below), so the row now playing can always be scrolled into view in the list rather than sit
+    below the fold.
   */
   .watch-upnext-list {
     min-height: calc(var(--row) * 2.5);
     max-height: calc(100dvh - var(--header-h, 4rem) - 12.5rem);
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    /* Rows brought into view by keys stop clear of the edge fades. */
+    scroll-padding-block: var(--fade);
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-ink-3) 60%, transparent) transparent;
   }
 }
 
@@ -658,6 +660,23 @@
 */
 .watch-next {
   transition: background-color 0.25s var(--ease-out-soft, ease);
+}
+
+/*
+  Upright phones: the rows' text one step up, easier to read at arm's length: the reason (or
+  eyebrow, or Now playing) and the facts at 13px, the title at 16px, still two lines at most.
+*/
+@media (width < 40rem) and (orientation: portrait) {
+  .watch-next-text > :first-child,
+  .watch-next-text > :last-child {
+    font-size: 0.8125rem;
+    line-height: 1.375;
+  }
+
+  .watch-next-text > .line-clamp-2 {
+    font-size: 1rem;
+    line-height: 1.375;
+  }
 }
 
 .watch-next:focus-visible:not([aria-current='true']) {
@@ -1263,6 +1282,77 @@
   background: color-mix(in srgb, var(--color-surface) 82%, transparent);
   box-shadow: 0 8px 24px -10px rgb(27 26 23 / 0.45);
   backdrop-filter: blur(12px) saturate(1.2);
+}
+
+/*
+  Upright phones and tablets, where Up next sits under the stage: the Back row and the stage stay
+  under the header while the page scrolls beneath them, so the video stays in sight while the viewer
+  browses Up next (so Back stays in reach and the floating one never shows). The column is
+  display: contents, so the two stick down the whole page, Up next included, not just their column.
+  Not on short screens (a phone on its side), where they would leave little room. During the
+  preview the pose's translate applies on top, so the stage keeps its pose wherever it sticks.
+*/
+@media (width < 64rem) and (orientation: portrait) and (height >= 37.5rem) {
+  .watch-main {
+    display: contents;
+  }
+
+  .watch-back-row,
+  .watch-stage-wrap {
+    position: sticky;
+    z-index: 20;
+  }
+
+  .watch-back-row {
+    top: var(--header-h);
+  }
+
+  .watch-stage-wrap {
+    top: calc(var(--header-h) + 3.5rem);
+  }
+
+  /*
+    Paper behind the two, out to the screen's edges, once the page has moved (within 20px), so
+    nothing scrolled under them shows through beside the stage or around Back. At the top the
+    backdrop shows as before.
+  */
+  .watch-back-row::before,
+  .watch-stage-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(-1 * var(--gutter));
+    z-index: -1;
+    background: var(--color-paper);
+    pointer-events: none;
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .watch-back-row::before,
+    .watch-stage-wrap::before {
+      animation: watch-paper-in linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 1.25rem;
+    }
+  }
+
+  /* Focus and anchors land clear of them: the stage is 16:9, edge to edge below md. */
+  html:has(.watch-page):not(:has(header :focus)) {
+    scroll-padding-top: calc(
+      var(--header-h) + 3.5rem + (100vw - 2 * var(--gutter)) * 9 / 16 + 1rem
+    );
+  }
+}
+
+@media (width < 48rem) and (orientation: portrait) and (height >= 37.5rem) {
+  html:has(.watch-page):not(:has(header :focus)) {
+    scroll-padding-top: calc(var(--header-h) + 3.5rem + 100vw * 9 / 16 + 1rem);
+  }
+}
+
+@keyframes watch-paper-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /*

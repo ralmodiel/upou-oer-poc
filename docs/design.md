@@ -431,8 +431,8 @@ a slide with an image; a title-tile slide stays one press away.
   videos in the same order, with that row marked "Now playing" in place. The list travels with the
   history entry, so Back, Forward and reload keep each list.
 - **More…** under the list adds the next eight picks without reordering and focuses the first new
-  row. The list scrolls inside its own area: about 5.5 rows on phones, the player column's height
-  from lg. More… works out the next picks only when needed: on a click, when autoplay reaches the
+  row. From lg the list scrolls inside its own area, the player column's height; under the stage
+  it is part of the page (see "Phones upright: Up next and the stage"). More… works out the next picks only when needed: on a click, when autoplay reaches the
   end of the list, or on idle after hover or focus.
 - **Remote:** `data-spatial="list"` walks every row, clipped ones included, before More…; ↓ from
   the stage goes to the Now playing row. A row chosen by keyboard or remote keeps focus on the next
@@ -918,3 +918,11 @@ Paint only. Shadows move to the var form (`shadow-(--shadow-elev-N)`), because T
 - **Collection cards:** under focus they now take the browse cards' neutral glow in light (`--shadow-glow`, through `--tv-card-glow`). Dark keeps the R8 gold bloom.
 - **Privacy head:** the sticky glass head's rule becomes a fading hairline (ink at 16%, 10-90%). It is drawn as a 1 px bottom background over a transparent border, so the box doesn't change.
 - **Collection covers:** a still's well (`.page-tile`, `.page-row-cover`) shimmers (`--animate-shimmer`, the Skeleton recipe) only while its image is loading. It stops once the image is in or has failed, never runs before the image is requested, and is off under reduced motion.
+
+## Phones upright: Up next and the stage (user bug)
+
+- **No scroll trap.** Under the stage (below lg) Up next is no longer its own scroll area: no cap, overflow, overscroll containment, scroll padding or edge fades there. One swipe scrolls the rows and the page together, so swiping back up past the first row carries on to the video. From lg it scrolls on its own, as before.
+- **The video stays in sight.** Upright phones and tablets (`(width < 64rem) and (orientation: portrait) and (height >= 37.5rem)`): the Back row sticks under the header and the stage under it, for the whole page, Up next included (the column div, `.watch-main`, is `display: contents` there). Paper fades in behind both, out to the screen edges, over the first 20px of scroll (scroll-driven; always on without support), so nothing that has scrolled under them shows through. The html scroll padding clears the header, Back and the 16:9 stage, so a focused row never sits under the stage. Back stays in view, so the floating Back does not show there; on short or sideways screens nothing sticks and it works as before.
+- **Preview:** the pose's translate applies on top of the sticky place, so scrolling during the preview leaves the stage in its pose; when it ends the stage glides back up under Back. A row chosen while down at Up next now glides the stage (it is in view), rather than cross-fading.
+- **Script:** `centreNowPlaying` and Refresh only ever scroll the list, so they leave the page alone under the stage. There, the More… cue comes when the viewer's own scrolling brings More… wholly into view above the tab bar (again only after scrolling back by 24px), and More… brings the first new row up under the stage (`scrollIntoView`, smooth unless motion is reduced). A row chosen by keyboard is far below the fold there, so the stage takes focus, as designed.
+- **Bigger row text on upright phones** (below 40rem, portrait): the reason, eyebrow or Now playing line and the facts at 13px, the title at 16px, still clamped to 2 lines. From sm up nothing changes.

@@ -201,3 +201,76 @@ describe('More… at the end of Up next', () => {
     expect(more).toHaveAttribute('data-nudge', 'b')
   })
 })
+
+// Under the stage (below lg) the list is part of the page: it does not scroll on its own.
+describe('Up next scrolled with the page', () => {
+  const pageList = () => {
+    const ol = screen.getByRole('list', { name: 'Up next' })
+    ol.style.overflowY = 'visible'
+    return ol
+  }
+
+  it('cues More… when the viewer scrolls it wholly into view, again only after scrolling back', () => {
+    setCatalog([testVideo, ...lookalikes(30)])
+    warmRecommender()
+    renderWatch()
+    const ol = pageList()
+    const more = screen.getByRole('button', { name: 'More…' })
+    // Layout, which jsdom lacks: More… is the foot of the list's section; the screen is 768px.
+    let bottom = 0
+    ol.closest('section')!.getBoundingClientRect = () => ({ bottom }) as DOMRect
+    const scrollTo = (to: number) => {
+      bottom = to
+      fireEvent.scroll(window)
+    }
+    // A scroll the page made (the router, More…) gives no cue.
+    scrollTo(700)
+    expect(more).not.toHaveAttribute('data-nudge')
+    scrollTo(1200)
+
+    fireEvent.touchStart(document.body)
+    scrollTo(900)
+    expect(more).not.toHaveAttribute('data-nudge')
+    scrollTo(760)
+    expect(more).toHaveAttribute('data-nudge', 'a')
+    scrollTo(740)
+    expect(more).toHaveAttribute('data-nudge', 'a')
+    scrollTo(900)
+    scrollTo(700)
+    expect(more).toHaveAttribute('data-nudge', 'b')
+  })
+
+  it('leaves the page alone where the list scrolls on its own', () => {
+    setCatalog([testVideo, ...lookalikes(30)])
+    warmRecommender()
+    renderWatch()
+    const ol = screen.getByRole('list', { name: 'Up next' })
+    ol.style.overflowY = 'auto'
+    ol.closest('section')!.getBoundingClientRect = () => ({ bottom: 500 }) as DOMRect
+    fireEvent.touchStart(document.body)
+    fireEvent.scroll(window)
+    expect(screen.getByRole('button', { name: 'More…' })).not.toHaveAttribute('data-nudge')
+  })
+
+  it('brings the first new row up in the page after More…, not the list', () => {
+    setCatalog([testVideo, ...lookalikes(30)])
+    warmRecommender()
+    renderWatch()
+    const ol = pageList()
+    const listScroll = vi.fn()
+    ol.scrollTo = listScroll as typeof ol.scrollTo
+    const intoView = vi.fn()
+    Element.prototype.scrollIntoView = intoView
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'More…' }))
+      expect(rows()[9]).toHaveFocus()
+      expect(intoView).toHaveBeenCalledTimes(1)
+      expect(intoView.mock.contexts[0]).toBe(rows()[9])
+      expect(intoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
+      expect(listScroll).not.toHaveBeenCalled()
+    } finally {
+      // @ts-expect-error jsdom has none of its own
+      delete Element.prototype.scrollIntoView
+    }
+  })
+})

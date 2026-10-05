@@ -57,10 +57,14 @@ function choose(e: MouseEvent, id: string, go: () => void) {
   if (swapWatchPage(go)) e.preventDefault()
 }
 
+/** Whether the list scrolls on its own (beside the stage, from lg); under the stage the page does. */
+const scrollsItself = (ol: HTMLElement) => getComputedStyle(ol).overflowY !== 'visible'
+
 /**
  * Scrolls the list (never the page) so the row now playing is in view, centred when it can be:
  * at once, or gliding when smooth; with ifHidden, only when it is not wholly in view already.
- * Returns that row, if the list has one.
+ * A list that does not scroll on its own (under the stage) stays as it is. Returns that row, if
+ * the list has one.
  */
 function centreNowPlaying(ol: HTMLElement, smooth = false, ifHidden = false): HTMLElement | null {
   const row = ol.querySelector<HTMLElement>('[aria-current="true"]')
@@ -171,6 +175,8 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
 
   // Scrolled to the end of the list by the viewer (not by a centring or More…), More… gives one
   // cue (watch.css), again only after they have scrolled back up. Nothing while it loads or is gone.
+  // Beside the stage that is the end of the list's own scroll; under it, where the page scrolls the
+  // list, it is More… coming wholly into view above the tab bar.
   const [nudge, setNudge] = useState(0)
   const viewerScroll = useRef(false)
   const cue = useEffectEvent(() => {
@@ -180,26 +186,45 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     const ol = listRef.current
     if (!ol) return
     let armed = true
-    const viewer = () => {
-      viewerScroll.current = true
-    }
-    const onScroll = () => {
-      const gap = ol.scrollHeight - ol.clientHeight - ol.scrollTop
+    const reached = (gap: number) => {
       if (gap > NUDGE_REARM_PX) armed = true
       else if (gap <= 2 && armed && viewerScroll.current) {
         armed = false
         cue()
       }
     }
-    for (const type of VIEWER_INPUT) ol.addEventListener(type, viewer, { passive: true })
+    const viewer = () => {
+      viewerScroll.current = true
+    }
+    const onScroll = () => reached(ol.scrollHeight - ol.clientHeight - ol.scrollTop)
+    // The page's own scrolling counts only where the list does not scroll on its own.
+    const pageViewer = () => {
+      if (!scrollsItself(ol)) viewer()
+    }
+    const onPageScroll = () => {
+      if (scrollsItself(ol)) return
+      const html = getComputedStyle(document.documentElement)
+      const end = innerHeight - (parseFloat(html.scrollPaddingBottom) || 0)
+      reached((ol.closest('section') ?? ol).getBoundingClientRect().bottom - end)
+    }
+    for (const type of VIEWER_INPUT) {
+      ol.addEventListener(type, viewer, { passive: true })
+      document.addEventListener(type, pageViewer, { passive: true })
+    }
     ol.addEventListener('scroll', onScroll, { passive: true })
+    addEventListener('scroll', onPageScroll, { passive: true })
     return () => {
-      for (const type of VIEWER_INPUT) ol.removeEventListener(type, viewer)
+      for (const type of VIEWER_INPUT) {
+        ol.removeEventListener(type, viewer)
+        document.removeEventListener(type, pageViewer)
+      }
       ol.removeEventListener('scroll', onScroll)
+      removeEventListener('scroll', onPageScroll)
     }
   }, [listRef])
 
-  // After More…: focus on the first new row, scrolled to the top of the list (below its edge fade).
+  // After More…: focus on the first new row, scrolled to the top of the list (below its edge fade);
+  // under the stage, the page brings it up to just under the stage (html scroll padding).
   useEffect(() => {
     const from = focusFrom.current
     const ol = listRef.current
@@ -208,11 +233,13 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     const row = ol.querySelectorAll<HTMLElement>('.watch-next')[from]
     if (!row) return
     row.focus({ preventScroll: true })
+    const behavior = prefersReducedMotion() ? 'auto' : 'smooth'
+    if (!scrollsItself(ol)) {
+      row.scrollIntoView?.({ block: 'start', behavior })
+      return
+    }
     const pad = parseFloat(getComputedStyle(ol).scrollPaddingTop) || 0
-    ol.scrollTo?.({
-      top: row.offsetTop - pad,
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-    })
+    ol.scrollTo?.({ top: row.offsetTop - pad, behavior })
   }, [items, more, listRef])
 
   // Focus moves to the first new row; with nothing left to add, More… goes and the last row takes it.
@@ -357,7 +384,7 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
           })}
         </ol>
       </div>
-      {/* Under the scroll area, so it is always in sight; gone once nothing more is left. */}
+      {/* Under the list; gone once nothing more is left. */}
       {more !== false && (
         <Button
           variant="secondary"

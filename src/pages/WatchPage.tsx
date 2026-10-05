@@ -196,8 +196,11 @@ function Watch({ video }: { video: Video }) {
           top of it would take the gutter twice and shrink the player (1280 px of 1920, 640 of 2560). */}
       <div className="w-full px-(--gutter)">
         <div className="lg:grid lg:grid-cols-12 lg:gap-10">
-          <div className="lg:col-span-8">
-            <div ref={backRow} className="flex min-h-14 items-center justify-between gap-3 py-2">
+          <div className="watch-main lg:col-span-8">
+            <div
+              ref={backRow}
+              className="watch-back-row flex min-h-14 items-center justify-between gap-3 py-2"
+            >
               <Button
                 variant="secondary"
                 size="sm"

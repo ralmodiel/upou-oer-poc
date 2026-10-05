@@ -25,7 +25,11 @@ const REPLAY_MS = 2000
 const SAVE_EVERY_MS = 5000
 // How long "Resumed at 1:15 · Start over" stays, counted again once focus or the pointer leaves it.
 const RESUMED_MS = 8000
-const command = (func: 'playVideo' | 'pauseVideo' | 'seekTo', args: unknown[] = []) =>
+// A player loaded behind the preview is told to play this often once revealed, until it does. If
+// it has not started (or begun buffering) within START_MS, it loads afresh with autoplay instead.
+const RETRY_MS = 500
+const START_MS = 1500
+const command = (func: 'playVideo' | 'pauseVideo' | 'seekTo' | 'unMute', args: unknown[] = []) =>
   JSON.stringify({ event: 'command', func, args, id: 1, channel: 'widget' })
 
 type Message = { event?: unknown; info?: unknown }
@@ -130,14 +134,23 @@ export function PlayerPoster({ video }: { video: Video }) {
  * takes focus by itself: the watch page keeps focus on the stage so Esc = Back keeps working. For
  * keyboards and remotes, the stage's own Play / Pause key (shown only while focused) drives the
  * video through the embed's messages, so focus never has to go into the iframe.
+ *
+ * `warm` loads it behind the preview: unseen, inert, without its controls, saving nothing. It
+ * starts muted (muted autoplay needs no activation), and on its first frame is paused, put back at
+ * its start and unmuted, so its first seconds and the rest of YouTube's code are loaded while the
+ * preview plays (unmuting only once revealed would buffer again, about a second). When `warm` turns
+ * false it is played, and shows only once it plays: the poster stays until the first frame.
  */
 export default function YouTubePlayer({
   video,
   onEnded,
+  warm = false,
 }: {
   video: Video
   /** Called when the video plays to its end. */
   onEnded?: () => void
+  /** Loading behind the preview, not yet shown. */
+  warm?: boolean
 }) {
   const { state: navState } = useLocation()
   // Where this browser left the video, read once: the embed starts there (`start`), unless the page
@@ -152,17 +165,29 @@ export default function YouTubePlayer({
   const resumeRef = useRef<HTMLDivElement>(null)
   const keyRef = useRef<HTMLButtonElement>(null)
   const [loaded, setLoaded] = useState(false)
+  // Mounted warm: primed muted and paused, so it has to be told to play.
+  const [primed, setPrimed] = useState(warm)
+  // A primed player has played since it was revealed.
+  const [started, setStarted] = useState(false)
+  // A primed player has been paused, put back and unmuted.
+  const heldRef = useRef(false)
+  // The player is ready (onReady, or a state it reports): it takes commands.
+  const [ready, setReady] = useState(false)
   const [state, setState] = useState<number | undefined>()
   // Whole seconds, so the many deliveries a second bring a re-render at most once a second.
   const [at, setAt] = useState(0)
   const [length, setLength] = useState<number | undefined>()
   const frameRef = useRef<HTMLIFrameElement>(null)
   const ended = useEffectEvent(() => onEnded?.())
+  const live = useEffectEvent(() => !warm)
+  const stateNow = useEffectEvent(() => state)
   const playing = state === 1 || state === 3
+  const shown = loaded && !warm && (!primed || started)
   const resumedClock = resumeAt === undefined ? '' : clockOf(resumeAt)
   // Once the player answers, and only for a place inside the video (YouTube starts a `start` past
   // the end at 0).
-  const showResumed = resumed && resumeAt !== undefined && length !== undefined && resumeAt < length
+  const showResumed =
+    !warm && resumed && resumeAt !== undefined && length !== undefined && resumeAt < length
 
   useEffect(() => {
     if (!showResumed || holding) return
@@ -174,10 +199,10 @@ export default function YouTubePlayer({
   useEffect(() => {
     const player = frameRef.current?.contentWindow
     if (!loaded || !player) return
-    let heard = false
+    let answered = false
     let tries = 0
     const listen = () => {
-      if (heard || ++tries > LISTEN_TRIES) clearInterval(timer)
+      if (answered || ++tries > LISTEN_TRIES) clearInterval(timer)
       else player.postMessage(LISTENING, PLAYER_ORIGIN)
     }
     const timer = setInterval(listen, LISTEN_EVERY_MS)
@@ -194,16 +219,17 @@ export default function YouTubePlayer({
     let total: number | undefined
     let savedAt = -Infinity
     const keep = () => {
-      if (place !== undefined) savePosition(video.id, place, total)
+      if (place !== undefined && live()) savePosition(video.id, place, total)
     }
     const keepIfHidden = () => {
       if (document.visibilityState === 'hidden') keep()
     }
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== PLAYER_ORIGIN || e.source !== player) return
-      heard = true
+      answered = true
       const message = messageOf(e.data)
       if (!message) return
+      if (message.event === 'onReady' || stateOf(message) !== undefined) setReady(true)
       const time = timeOf(message)
       if (time.at !== undefined) {
         place = time.at
@@ -220,6 +246,13 @@ export default function YouTubePlayer({
       const next = stateOf(message)
       if (next === undefined || next === last) return
       setState(next)
+      // Primed: held at its start until revealed, then shown as it plays.
+      if (next === 1 && !live()) {
+        player.postMessage(command('pauseVideo'), PLAYER_ORIGIN)
+        player.postMessage(command('seekTo', [resumeAt ?? 0, true]), PLAYER_ORIGIN)
+        player.postMessage(command('unMute'), PLAYER_ORIGIN)
+        heldRef.current = true
+      } else if (next === 1) setStarted(true)
       if (next === 2) keep()
       // Played to the end: the next play starts fresh.
       if (next === 0) {
@@ -244,10 +277,38 @@ export default function YouTubePlayer({
       document.removeEventListener('visibilitychange', keepIfHidden)
       keep()
     }
-  }, [loaded, video.id])
+  }, [loaded, video.id, resumeAt])
 
   const send = (message: string) =>
     frameRef.current?.contentWindow?.postMessage(message, PLAYER_ORIGIN)
+
+  // Revealed: a primed player is played once ready (unmuted first, if revealed before its first
+  // frame), and asked again until it plays.
+  // Still not started (nor buffering) after START_MS, it reloads as an unprimed player, with
+  // autoplay, so preloading never costs the automatic start.
+  useEffect(() => {
+    if (!primed || warm || !ready) return
+    const player = frameRef.current?.contentWindow
+    const since = performance.now()
+    const tick = () => {
+      const now = stateNow()
+      if (now === 1) {
+        clearInterval(timer)
+        setStarted(true)
+      } else if (performance.now() - since < START_MS) {
+        player?.postMessage(command('playVideo'), PLAYER_ORIGIN)
+      } else if (now !== 3) {
+        clearInterval(timer)
+        setPrimed(false)
+        setLoaded(false)
+        setReady(false)
+      }
+    }
+    if (!heldRef.current) player?.postMessage(command('unMute'), PLAYER_ORIGIN)
+    const timer = setInterval(tick, RETRY_MS)
+    tick()
+    return () => clearInterval(timer)
+  }, [primed, warm, ready])
   // Back to 0:00. Focus in the note goes on to the Play / Pause key, as the note leaves.
   const startOver = () => {
     send(command('seekTo', [0, true]))
@@ -274,9 +335,10 @@ export default function YouTubePlayer({
     )
   }
 
+  const src = `${embedUrl(video.youtubeId)}${primed ? '&mute=1' : ''}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${resumeAt ? `&start=${resumeAt}` : ''}`
   return (
     <>
-      {!loaded && (
+      {!shown && !warm && (
         <span
           aria-hidden="true"
           className="absolute top-1/2 left-1/2 size-10 -translate-1/2 animate-spin motion-reduce:animate-none rounded-full border-[3px] border-white/30 border-t-amber bg-[#1b1a17]/40"
@@ -284,13 +346,15 @@ export default function YouTubePlayer({
       )}
       <iframe
         ref={frameRef}
-        src={`${embedUrl(video.youtubeId)}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${resumeAt ? `&start=${resumeAt}` : ''}`}
+        src={src}
         title={`${video.title} (YouTube video)`}
         allow={ALLOW}
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
         onLoad={() => setLoaded(true)}
-        className={`absolute inset-0 size-full border-0 transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        inert={warm}
+        aria-hidden={warm || undefined}
+        className={`absolute inset-0 size-full border-0 transition-opacity duration-700 ${shown ? 'opacity-100' : 'opacity-0'}`}
       />
       {/* Said once to screen readers; the note's own text is for the eyes and describes its button. */}
       <p role="status" className="sr-only">
@@ -324,25 +388,27 @@ export default function YouTubePlayer({
       )}
       {/* The key and, beside it while it has focus, the time and how far along (seen only). */}
       {/* Paused or ended: Up next's Now playing bars hold still (watch.css). */}
-      <div className="watch-player-keys" data-paused={state === 2 || state === 0 || undefined}>
-        <button
-          ref={keyRef}
-          type="button"
-          className="watch-player-key"
-          onClick={() => send(command(playing ? 'pauseVideo' : 'playVideo'))}
-        >
-          {playing ? <PauseIcon /> : <PlayIcon className="size-4" />}
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        {length !== undefined && (
-          <span className="watch-player-time" aria-hidden="true">
-            {clockOf(Math.min(at, length))} / {clockOf(length)}
-            <span className="watch-player-track">
-              <span style={{ scale: `${Math.min(at / length, 1)} 1` }} />
+      {!warm && (
+        <div className="watch-player-keys" data-paused={state === 2 || state === 0 || undefined}>
+          <button
+            ref={keyRef}
+            type="button"
+            className="watch-player-key"
+            onClick={() => send(command(playing ? 'pauseVideo' : 'playVideo'))}
+          >
+            {playing ? <PauseIcon /> : <PlayIcon className="size-4" />}
+            {playing ? 'Pause' : 'Play'}
+          </button>
+          {length !== undefined && (
+            <span className="watch-player-time" aria-hidden="true">
+              {clockOf(Math.min(at, length))} / {clockOf(length)}
+              <span className="watch-player-track">
+                <span style={{ scale: `${Math.min(at / length, 1)} 1` }} />
+              </span>
             </span>
-          </span>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </>
   )
 }

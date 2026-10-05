@@ -28,6 +28,7 @@ import { useProfile } from '../lib/history'
 import { pageTitle, useSeo, videoSeo } from '../lib/seo'
 import { useGoBack } from '../lib/shortcuts'
 import { useWatchHistory } from '../lib/storage'
+import { mayPreload } from '../lib/youtube'
 import type { Video } from '../types'
 
 const ORIGINS = [
@@ -48,6 +49,7 @@ export default function WatchPage() {
 function Watch({ video }: { video: Video }) {
   // Every video opens on its reel (with no clean image, a type-only title card).
   const [phase, setPhase] = useState<'reel' | 'player'>('reel')
+  const [preload] = useState(mayPreload)
   const goBack = useGoBack()
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)
@@ -259,11 +261,11 @@ function Watch({ video }: { video: Video }) {
                 className="watch-stage relative aspect-video overflow-hidden bg-surface md:rounded-card"
               >
                 <PlayerPoster video={video} />
-                {phase === 'reel' ? (
-                  <PromoReel video={video} onComplete={startPlayer} />
-                ) : (
-                  <YouTubePlayer video={video} onEnded={onEnded} />
+                {/* Loads unseen under the preview, so the video starts as it ends (YouTubePlayer). */}
+                {(phase === 'player' || preload) && (
+                  <YouTubePlayer video={video} onEnded={onEnded} warm={phase === 'reel'} />
                 )}
+                {phase === 'reel' && <PromoReel video={video} onComplete={startPlayer} />}
                 {queued && autoplay && (
                   <AutoplayNext next={queued.next} onPlay={playNext} onCancel={cancelNext} />
                 )}

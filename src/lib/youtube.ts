@@ -15,3 +15,11 @@ export function embedUrl(youtubeId: string, autoplay = true): string {
 
 export const watchUrl = (youtubeId: string) =>
   `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}`
+
+/**
+ * Whether the player may load behind the preview: not when the viewer asks to save data (Save-Data,
+ * or prefers-reduced-data where a browser supports it).
+ */
+export const mayPreload = () =>
+  !(navigator as { connection?: { saveData?: boolean } }).connection?.saveData &&
+  !matchMedia('(prefers-reduced-data: reduce)').matches

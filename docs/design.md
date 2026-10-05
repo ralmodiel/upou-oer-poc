@@ -450,7 +450,19 @@ a slide with an image; a title-tile slide stays one press away.
 - **Player messages:** the end and the play state come from the embed's widget messages
   (`enablejsapi=1`), so there is no YouTube script and the CSP is unchanged. Only messages from
   `https://www.youtube-nocookie.com` and from this player's own frame count, and they are parsed
-  defensively; commands go to that origin only, on a press of the Play / Pause key.
+  defensively; commands go to that origin only (the Play / Pause key, Start over, and the
+  preloaded player's own commands below).
+- **Preloaded player:** the embed loads unseen under the preview (`warm`: opacity 0, `inert`,
+  `aria-hidden`, no spinner, keys, note or saving). It autoplays muted (`mute=1`, which needs no
+  activation), and on its first frame is paused, put back at its start (or resume point) and
+  unmuted, so its first seconds and the rest of YouTube's code load while the preview plays. When
+  the preview ends or is skipped it is played, asked again every 500 ms until it plays, and shown
+  only then, so the poster stays until the first frame. Not playing (nor buffering) 1.5 s after the
+  reveal, it reloads as before (`autoplay=1`, no mute), so preloading never costs the automatic
+  start. Measured in Chrome: reel end or Skip to playing 0.1–0.3 s (it was 1.2–2.5 s). YouTube is
+  now contacted during the preview rather than after it (the same hosts) and logs a muted start
+  even when the viewer leaves during the preview. Save-Data or `prefers-reduced-data` keeps the
+  old behaviour: no player until the preview ends.
 - **Layout:** from lg the watch page holds the viewport height, so Up next filling in never pulls
   the footer into view (CLS 0 at 1024, 1440 and 1920).
 

@@ -61,13 +61,23 @@ describe('WatchPage', () => {
     const stage = screen.getByRole('region', { name: 'Preview' })
     expect(stage).toHaveFocus()
     expect(within(stage).getByRole('group', { name: `Preview: ${testVideo.title}` })).toBeVisible()
-    expect(screen.queryByTitle(`${testVideo.title} (YouTube video)`)).not.toBeInTheDocument()
+    // The player loads unseen under the preview, out of reach.
+    const warm = screen.getByTitle(`${testVideo.title} (YouTube video)`)
+    expect(warm).toHaveAttribute('inert')
+    expect(warm).toHaveAttribute('aria-hidden', 'true')
+    expect(warm).toHaveClass('opacity-0')
+    expect(warm.compareDocumentPosition(within(stage).getByRole('group'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
     expect(document.title).toBe(`${testVideo.title} · UPOU OER`)
 
     await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
     await act(() => vi.advanceTimersByTimeAsync(REEL_MS))
 
+    // The same frame, not a new one.
     const frame = screen.getByTitle(`${testVideo.title} (YouTube video)`)
+    expect(frame).toBe(warm)
+    expect(frame).not.toHaveAttribute('inert')
     expect(frame).toHaveAttribute(
       'src',
       expect.stringMatching(/^https:\/\/www\.youtube-nocookie\.com\/embed\/abcDEF12345\?/),

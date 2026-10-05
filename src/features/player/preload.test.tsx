@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { readPosition, savePosition } from '../../lib/storage'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { readPosition, savePosition, setPrefs } from '../../lib/storage'
 import { mayPreload } from '../../lib/youtube'
 import { testVideo } from '../reel/testing'
 import YouTubePlayer from './YouTubePlayer'
@@ -32,6 +32,8 @@ function warmPlayer() {
     post.mock.calls.map(([m]) => JSON.parse(String(m))).filter((m) => m.event === 'command')
   return { ...view, frame, send, commands, reveal: () => view.rerender(player(false)) }
 }
+
+beforeEach(() => setPrefs({ resume: true }))
 
 describe('a player loaded behind the preview', () => {
   afterEach(() => vi.useRealTimers())

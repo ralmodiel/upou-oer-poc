@@ -32,6 +32,22 @@ describe('PrivacyDialog', () => {
     expect(toggle('Recently viewed')).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('keeps no saved places until "Remember where I stopped" is on, and deletes them when off', () => {
+    render(<PrivacyDialog />)
+    act(() => openPrivacy())
+    const resume = toggle('Remember where I stopped')
+    expect(resume).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(resume)
+    expect(readPrefs().resume).toBe(true)
+    localStorage.setItem('upou:positions', JSON.stringify([{ id: 'a', t: 60, at: 1 }]))
+    fireEvent.click(resume)
+    expect(readPrefs().resume).toBe(false)
+    expect(JSON.parse(localStorage.getItem('upou:positions')!)).toEqual([])
+    // It rides on the saved watch history.
+    fireEvent.click(toggle('Save watch history'))
+    expect(resume).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('deletes watch history when saving it is switched off', () => {
     localStorage.setItem('upou:history', JSON.stringify([{ id: 'a', at: 1 }]))
     render(<PrivacyDialog />)

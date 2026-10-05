@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fromStart, readPosition, savePosition, setPrefs } from '../../lib/storage'
 import { testVideo } from '../reel/testing'
 import YouTubePlayer from './YouTubePlayer'
@@ -30,6 +30,9 @@ function play(state?: unknown) {
 }
 
 const note = (container: HTMLElement) => container.querySelector('.player-resumed')
+
+// Saved places are off by default; the viewer turns on "Remember where I stopped".
+beforeEach(() => setPrefs({ resume: true }))
 
 describe('resuming where this browser left a video', () => {
   afterEach(() => vi.useRealTimers())

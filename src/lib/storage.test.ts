@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   forgetPosition,
   fromStart,
@@ -103,6 +103,8 @@ describe('storage hooks', () => {
 describe('saved places (resume)', () => {
   const stored = () =>
     JSON.parse(localStorage.getItem('upou:positions') ?? '[]') as { id: string }[]
+  // Off by default; the viewer turns on "Remember where I stopped".
+  beforeEach(() => setPrefs({ resume: true }))
 
   it('keeps nothing in the first 10 s, then the whole second, newest first and once', () => {
     savePosition('a', 9.9, 600)
@@ -143,12 +145,24 @@ describe('saved places (resume)', () => {
     expect(readPosition('v5')).toBe(60)
   })
 
+  it('is off until the viewer turns it on, and turning it off deletes the places', () => {
+    setPrefs({ resume: false })
+    savePosition('a', 60, 600)
+    expect(stored()).toEqual([])
+    setPrefs({ resume: true })
+    savePosition('a', 60, 600)
+    expect(readPosition('a')).toBe(60)
+    setPrefs({ resume: false })
+    expect(readPosition('a')).toBeUndefined()
+    expect(stored()).toEqual([])
+  })
+
   it('goes with watch history: off saves and resumes nothing, and clearing deletes it', () => {
     savePosition('a', 60, 600)
+    // Suggestions are another matter: the place stays in use.
     setPrefs({ useHistory: false })
-    expect(readPosition('a')).toBeUndefined()
-    setPrefs({ useHistory: true })
     expect(readPosition('a')).toBe(60)
+    setPrefs({ useHistory: true })
     setPrefs({ history: false })
     expect(stored()).toEqual([])
     savePosition('a', 60, 600)

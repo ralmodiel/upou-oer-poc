@@ -4,11 +4,18 @@ import { readProfile, useProfile, useSearchHistory } from './history'
 import { historyAllowed, readPrefs, resetStorageCache, setPrefs, useWatchHistory } from './storage'
 
 describe('privacy prefs', () => {
-  it('defaults to everything on and ignores malformed values', () => {
-    expect(Object.values(readPrefs()).every(Boolean)).toBe(true)
-    localStorage.setItem('upou:prefs', '{"history":"no","searches":false}')
+  it('defaults to everything on but saved places, and ignores malformed values', () => {
+    const { resume, ...rest } = readPrefs()
+    expect(resume).toBe(false)
+    expect(Object.values(rest).every(Boolean)).toBe(true)
+    localStorage.setItem('upou:prefs', '{"history":"no","searches":false,"resume":"yes"}')
     resetStorageCache()
-    expect(readPrefs()).toMatchObject({ history: true, searches: false, recentlyViewed: true })
+    expect(readPrefs()).toMatchObject({
+      history: true,
+      searches: false,
+      recentlyViewed: true,
+      resume: false,
+    })
   })
 
   it('turning watch history off deletes it and stops recording', () => {

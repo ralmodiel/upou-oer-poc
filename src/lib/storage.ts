@@ -98,7 +98,7 @@ export interface HistoryEntry {
 }
 
 const HISTORY_KEY = 'upou:history'
-// Where each video stopped (savePosition below); kept and deleted with the watch history.
+// Where each video stopped (savePosition below); kept only with "Remember where I stopped" on.
 const POSITIONS_KEY = 'upou:positions'
 export const SEARCHES_KEY = 'upou:searches'
 
@@ -116,6 +116,8 @@ export interface Prefs {
   becauseYouWatched: boolean
   /** Save committed searches (they seed recommendations); off deletes them. */
   searches: boolean
+  /** Remember where each video stopped and resume there; off by default, off deletes the places. */
+  resume: boolean
 }
 
 const PREFS_KEY = 'upou:prefs'
@@ -126,19 +128,28 @@ const PREF_KEYS = [
   'recentlyViewed',
   'becauseYouWatched',
   'searches',
+  'resume',
 ] as const
-const DEFAULT_PREFS = Object.fromEntries(PREF_KEYS.map((k) => [k, true])) as unknown as Prefs
+// Everything is on until the viewer says otherwise, except saved places (bookmarks), which they
+// opt into.
+const DEFAULT_PREFS: Prefs = {
+  ...(Object.fromEntries(PREF_KEYS.map((k) => [k, true])) as unknown as Prefs),
+  resume: false,
+}
 
 const toPrefs = (value: unknown): Prefs => {
   if (typeof value !== 'object' || value === null) return DEFAULT_PREFS
   const v = value as Record<string, unknown>
   return Object.fromEntries(
-    PREF_KEYS.map((k) => [k, typeof v[k] === 'boolean' ? v[k] : true]),
+    PREF_KEYS.map((k) => [k, typeof v[k] === 'boolean' ? v[k] : DEFAULT_PREFS[k]]),
   ) as unknown as Prefs
 }
 
 /** Whether anything may draw on watch history. */
 export const historyAllowed = (p: Prefs) => p.history && p.useHistory
+
+/** Whether videos remember where they stopped (it rides on the saved watch history). */
+export const resumeAllowed = (p: Prefs) => p.resume && p.history
 
 /** Current choices outside React. */
 export const readPrefs = (): Prefs => toPrefs(read<unknown>(PREFS_KEY, DEFAULT_PREFS))
@@ -150,6 +161,7 @@ export function setPrefs(patch: Partial<Prefs>) {
     write(HISTORY_KEY, [])
     write(POSITIONS_KEY, [])
   }
+  if (patch.resume === false) write(POSITIONS_KEY, [])
   if (patch.searches === false) write(SEARCHES_KEY, [])
 }
 
@@ -205,9 +217,9 @@ const toPositions = (value: unknown): Position[] =>
     ? value.filter((e) => typeof e?.id === 'string' && Number.isFinite(e.t) && e.t > 0)
     : NO_POSITIONS
 
-/** Where this browser left video `id`, in whole seconds, while watch history may be used. */
+/** Where this browser left video `id`, in whole seconds, while saved places are on. */
 export function readPosition(id: string): number | undefined {
-  if (!historyAllowed(readPrefs())) return undefined
+  if (!resumeAllowed(readPrefs())) return undefined
   return toPositions(read<unknown>(POSITIONS_KEY, NO_POSITIONS)).find((e) => e.id === id)?.t
 }
 
@@ -222,10 +234,10 @@ export const useSavedPosition = (id: string) =>
 /**
  * Keeps where video `id` stopped (`t` of `length` seconds), newest first, the last 200. Under
  * RESUME_FROM_S nothing changes; near the end (see END_S) the place is forgotten, so a finished
- * video starts fresh. Nothing is kept while watch history is off.
+ * video starts fresh. Nothing is kept unless saved places are on.
  */
 export function savePosition(id: string, t: number, length?: number) {
-  if (!readPrefs().history || t < RESUME_FROM_S) return
+  if (!resumeAllowed(readPrefs()) || t < RESUME_FROM_S) return
   if (length !== undefined && t >= length - Math.max(length * END_SHARE, END_S))
     return forgetPosition(id)
   const rest = toPositions(read<unknown>(POSITIONS_KEY, NO_POSITIONS)).filter((e) => e.id !== id)

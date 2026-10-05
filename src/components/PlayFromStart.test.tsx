@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { testVideo } from '../features/reel/testing'
 import { savePosition, setPrefs } from '../lib/storage'
 import PlayFromStart from './PlayFromStart'
@@ -24,6 +24,8 @@ const renderButton = () =>
   )
 
 describe('Play from start', () => {
+  beforeEach(() => setPrefs({ resume: true }))
+
   it('shows only while a place is saved, and opens the video asking it to start over', () => {
     renderButton()
     expect(screen.queryByRole('link')).toBeNull()
@@ -37,12 +39,13 @@ describe('Play from start', () => {
     ).toBeVisible()
   })
 
-  it('is gone while watch history is not used', () => {
+  it('is gone once "Remember where I stopped" is off, with the place deleted', () => {
     savePosition(testVideo.id, 75, 600)
-    setPrefs({ useHistory: false })
     renderButton()
-    expect(screen.queryByRole('link')).toBeNull()
-    act(() => setPrefs({ useHistory: true }))
     expect(screen.getByRole('link', { name: 'Play from start' })).toBeVisible()
+    act(() => setPrefs({ resume: false }))
+    expect(screen.queryByRole('link')).toBeNull()
+    act(() => setPrefs({ resume: true }))
+    expect(screen.queryByRole('link')).toBeNull()
   })
 })

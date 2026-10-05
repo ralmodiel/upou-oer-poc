@@ -941,6 +941,6 @@ Paint only. Shadows move to the var form (`shadow-(--shadow-elev-N)`), because T
 
 ## Resume where the viewer left off (user request)
 
-- **Saved place:** per video in `upou:positions` (`[{id, t, at}]`, newest first, at most 200), every 5 s while playing, on pause, `pagehide`, a hidden tab and unmount. Under 10 s changes nothing; the last 5% or 30 s (whichever is longer) or the end deletes it. Only while history is allowed; history off or Clear history deletes all positions.
+- **Saved place:** per video in `upou:positions` (`[{id, t, at}]`, newest first, at most 200), every 5 s while playing, on pause, `pagehide`, a hidden tab and unmount. Under 10 s changes nothing; the last 5% or 30 s (whichever is longer) or the end deletes it. Off by default: only once the viewer turns on "Remember where I stopped" (Privacy panel, under Save watch history, which it needs). Turning it off, history off or Clear history deletes all positions.
 - **Resume:** the embed gets `&start=N`; a "Resumed at m:ss · Start over" note shows for about 8 s (longer while focused or hovered), placed by the stage's size so it never covers YouTube's controls. Start over seeks to 0 and focuses the Play / Pause key.
 - **Play from start:** beside Play in the hero and the quick look while a place is saved (icon-only when crowded). It passes `{ fromStart: { id, t } }`, which plays that video from 0 with no note, only while the saved place is still `t`.

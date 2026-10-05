@@ -1,15 +1,16 @@
-// Who speaks in a video, only where the source states it: the page's "Resource Persons" field, a
-// credit in the title ("… | Prof. Alipio T. Garcia"), the How to cite author, or a curated name
-// tag (written by scripts/speakers.mjs). Small, so it ships with the catalog; catalog.ts hands
-// the names to tags.ts so they never show as topics.
+// Who speaks in a video, only where a source states it: the page's "Resource Persons" field, a
+// credit in the title ("… | Prof. Alipio T. Garcia"), the How to cite author, then the YouTube
+// title and description ("Speaker: Dr. X", a titled name under the title). Written by
+// scripts/speakers.mjs, keyed by YouTube id (a third the size of the slugs). Small, so it ships
+// with the catalog; catalog.ts hands the names to tags.ts so they never show as topics.
 import table from './speakers.json'
 
 const speakers: Readonly<Record<string, readonly string[]>> = table
 const NONE: readonly string[] = []
 
 /** The video's speakers as the source writes them (honorifics kept); none when it names none. */
-export const speakersOf = (id: string): readonly string[] =>
-  Object.hasOwn(speakers, id) ? speakers[id] : NONE
+export const speakersOf = (youtubeId: string): readonly string[] =>
+  Object.hasOwn(speakers, youtubeId) ? speakers[youtubeId] : NONE
 
 /** Every speaker named in the catalog. */
 export const allSpeakers = (): string[] => Object.values(speakers).flat()

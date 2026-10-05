@@ -1490,9 +1490,26 @@ html:has(.watch-page) {
     }
   }
 
-  /* Focus and anchors land clear of them: the header, the Back row, the stage as stuck. */
+  /*
+    Focus and anchors land clear of them: the header, the Back row, the stage as stuck, with 1rem
+    of air (--focus-air). On a phone on its side the room between the stuck stage and the tab bar
+    is about a row of Up next (6.5rem with a two-line title): the air there is what the room has to
+    spare, so a row brought into view by keys or More… shows whole rather than 8px under the bar.
+  */
+  html:has(.watch-page) {
+    --focus-air: clamp(
+      0px,
+      (
+          100svh - var(--header-h) - var(--stack) - var(--stuck-h) - var(--tabbar-h) -
+            env(safe-area-inset-bottom, 0px) - 6.5rem
+        ) /
+        2,
+      1rem
+    );
+  }
+
   html:has(.watch-page):not(:has(header :focus)) {
-    scroll-padding-top: calc(var(--header-h) + var(--stack) + var(--stuck-h) + 1rem);
+    scroll-padding-top: calc(var(--header-h) + var(--stack) + var(--stuck-h) + var(--focus-air));
   }
 }
 
@@ -1503,7 +1520,9 @@ html:has(.watch-page) {
 */
 @media (width < 48rem) {
   html:has(.watch-page) {
-    scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+    scroll-padding-bottom: calc(
+      var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--focus-air, 1rem)
+    );
   }
 }
 
@@ -1691,11 +1710,18 @@ html[data-watch-swap]::view-transition-new(watch-stage) {
 /*
   The stage's own buttons are scaled with it while it is stuck (a screen on its side, scrolled): their
   tap areas are drawn out by the inverse, so they stay 44px on the screen. At rest, and from lg, the
-  scale (--stage-s, animated with the stage's own) is 1, so nothing changes there.
+  scale (--stage-s, animated with the stage's own) is 1, so nothing changes there. The preview's
+  buttons sit a few pixels off the stage's clipped foot (3cqh on a narrow stage), which cut their
+  share below to 40-42px: theirs grows upward, over the band's text, which takes no taps.
 */
 @media (pointer: coarse) {
-  .watch-stage :is(.reel-btn, .watch-autoplay-actions > button)::after {
+  .watch-stage .watch-autoplay-actions > button::after {
     inset: min(0px, calc((100% - 44px / var(--stage-s, 1)) / 2));
+  }
+
+  .watch-stage .reel-btn::after {
+    inset: min(0px, calc(100% - 44px / var(--stage-s, 1)))
+      min(0px, calc((100% - 44px / var(--stage-s, 1)) / 2)) 0;
   }
 }
 

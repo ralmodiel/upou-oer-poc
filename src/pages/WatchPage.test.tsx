@@ -50,6 +50,7 @@ const withFinePointer = () => {
 beforeEach(() => setCatalog([testVideo, ...similar]))
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
   window.matchMedia = matchMedia
 })
 
@@ -170,6 +171,40 @@ describe('WatchPage', () => {
     right.mockReturnValue({ right: 800 } as DOMRect)
     expect(fireEvent.keyDown(next, { key: 'ArrowLeft' })).toBe(false)
     expect(player).toHaveFocus()
+  })
+
+  it('leaves the stuck stage by ↓ for the page under it and by ↑ for Back, never a hidden control', () => {
+    renderAt([`/watch/${testVideo.id}`])
+    fireEvent.keyDown(screen.getByRole('region', { name: 'Preview' }), { key: 'Enter' })
+    const stage = screen.getByRole('region', { name: 'Video player' })
+    const key = within(stage).getByRole('button', { name: 'Play' })
+    const crumb = screen.getByRole('link', { name: 'Browse' })
+    const box = (el: Element, top: number, bottom: number) =>
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+        top,
+        bottom,
+        left: 16,
+        right: 116,
+        width: 100,
+        height: bottom - top,
+      } as DOMRect)
+    // Sticky, as below lg: spatial navigation counts only what is on screen from it.
+    stage.closest<HTMLElement>('.watch-stage-wrap')!.style.position = 'sticky'
+    // A phone on its side, at the top: the stage fills the screen, the first crumb is just below it.
+    vi.stubGlobal('innerHeight', 390)
+    box(stage, 121, 383)
+    box(key, 333, 373)
+    box(crumb, 403, 443)
+    key.focus()
+    expect(fireEvent.keyDown(key, { key: 'ArrowDown' })).toBe(false)
+    expect(crumb).toHaveFocus()
+    // Scrolled, upright: the stage stuck at the top, the crumb scrolled under it. ↑ goes to Back.
+    box(stage, 112, 331)
+    box(key, 283, 323)
+    box(crumb, 209, 249)
+    key.focus()
+    expect(fireEvent.keyDown(key, { key: 'ArrowUp' })).toBe(false)
+    expect(screen.getByRole('button', { name: 'Back' })).toHaveFocus()
   })
 
   it('shows the description only when the source published one', () => {

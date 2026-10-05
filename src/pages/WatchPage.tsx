@@ -27,6 +27,7 @@ import '../features/watch/watch.css'
 import { useProfile } from '../lib/history'
 import { pageTitle, useSeo, videoSeo } from '../lib/seo'
 import { useGoBack } from '../lib/shortcuts'
+import { candidates, findTarget, focusAndReveal } from '../lib/spatial'
 import { useWatchHistory } from '../lib/storage'
 import { mayPreload } from '../lib/youtube'
 import type { Video } from '../types'
@@ -123,9 +124,12 @@ function Watch({ video }: { video: Video }) {
   // "Up next" where it sits beside the stage (spatial navigation measures from the stage's left edge
   // and would pick Back). Anything else is left to the shell.
   const onStageKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || e.defaultPrevented) return
-    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
     const stage = e.currentTarget
+    if (e.target !== stage) {
+      if (e.target instanceof HTMLElement) leaveStage(e, stage, e.target)
+      return
+    }
     if (e.key === 'Enter') {
       const skip = stage.querySelector<HTMLButtonElement>('.reel-skip')
       const control = stage.querySelector('button')
@@ -324,6 +328,35 @@ function Watch({ video }: { video: Video }) {
       </div>
     </div>
   )
+}
+
+/**
+ * ↑ / ↓ from a control on the stage, out of it. Below lg the stage sticks under the header, and
+ * spatial navigation takes it for a pinned bar, from which only what is on screen counts: ↓ with
+ * the stage filling a screen on its side found the tab bar (or nothing: the page just scrolled), ↑
+ * from the stuck stage found a control scrolled under it and scrolled the page back up to it. ↓
+ * goes on to the first control below the stage instead, ↑ to Back. Moves within the stage, and
+ * those spatial navigation gets right, are left to it.
+ */
+function leaveStage(e: KeyboardEvent, stage: HTMLElement, from: HTMLElement) {
+  const down = e.key === 'ArrowDown'
+  if (!down && e.key !== 'ArrowUp') return
+  const target = findTarget(down ? 'down' : 'up', from)
+  if (target && stage.contains(target)) return
+  const box = stage.getBoundingClientRect()
+  const pinned = (el: Element) => el.closest('header, nav[aria-label="Primary"]') !== null
+  const below = (el: Element) => el.getBoundingClientRect().top >= box.bottom - 1
+  let next: HTMLElement | null | undefined
+  if (down) {
+    if (target && !pinned(target) && below(target)) return
+    next = candidates().find((el) => !stage.contains(el) && !pinned(el) && below(el))
+  } else {
+    if (!target || target.getBoundingClientRect().bottom <= box.top + 1) return
+    next =
+      document.querySelector<HTMLElement>('.watch-back-float') ??
+      document.querySelector<HTMLElement>('.watch-back')
+  }
+  if (next && focusAndReveal(next)) e.preventDefault()
 }
 
 function WatchNotFound() {

@@ -1,5 +1,6 @@
+import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { centreShift, swapWatchPage } from './useStageCentre'
+import { centreShift, swapWatchPage, useStageCentre } from './useStageCentre'
 
 // A 1366x768 laptop: a 64px header, the stage 464px tall under the 56px Back row.
 const laptop = { viewport: 768, top: 64, bottom: 0, stageTop: 121, stageHeight: 464, skip: false }
@@ -23,6 +24,45 @@ describe('centreShift', () => {
     expect(centreShift({ ...laptop, viewport: 390, stageHeight: 262 })).toBe(0)
     expect(centreShift({ ...laptop, viewport: 600, stageHeight: 400 })).toBe(0)
     expect(centreShift({ ...laptop, skip: true })).toBe(0)
+  })
+})
+
+describe('useStageCentre', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    document.body.innerHTML = ''
+  })
+
+  it('keeps the reveal in step with a turn of the phone during the preview, then never again', async () => {
+    document.body.innerHTML =
+      '<div class="watch-page"><div class="watch-stage-wrap"><div class="watch-stage"><div class="reel"></div></div></div></div>'
+    const page = document.querySelector<HTMLElement>('.watch-page')!
+    const wrap = document.querySelector<HTMLElement>('.watch-stage-wrap')!
+    const stage = document.querySelector<HTMLElement>('.watch-stage')!
+    // Widths no other test uses: the shift is kept per width for the visit.
+    const screen = (width: number, height: number, stageTop: number, stageHeight: number) => {
+      vi.stubGlobal('innerWidth', width)
+      vi.stubGlobal('innerHeight', height)
+      Object.defineProperty(wrap, 'offsetTop', { value: stageTop, configurable: true })
+      Object.defineProperty(stage, 'offsetHeight', { value: stageHeight, configurable: true })
+    }
+    const wait = () => page.style.getPropertyValue('--watch-wait')
+    // Opened on its side: the stage fills the screen, so no glide and no wait.
+    screen(1844, 390, 121, 262)
+    renderHook(() => useStageCentre())
+    await act(() => Promise.resolve())
+    expect(page.style.getPropertyValue('--watch-centre')).toBe('0px')
+    expect(wait()).toBe('0ms')
+    // Turned upright during the preview: the stage sits lower and will glide, so the reveal waits.
+    screen(1390, 844, 112, 219)
+    act(() => void window.dispatchEvent(new Event('resize')))
+    expect(page.style.getPropertyValue('--watch-centre')).not.toBe('0px')
+    expect(wait()).toBe('600ms')
+    // Once the preview is over the reveal has started: turning again leaves its wait alone.
+    stage.replaceChildren()
+    screen(1844, 390, 121, 262)
+    act(() => void window.dispatchEvent(new Event('resize')))
+    expect(wait()).toBe('600ms')
   })
 })
 

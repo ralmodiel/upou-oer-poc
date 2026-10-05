@@ -127,8 +127,10 @@ export function useStageCentre() {
           }))
       if (!skip) shifts.set(innerWidth, shift)
       page.style.setProperty('--watch-centre', `${shift}px`)
-      // Once: a later change would move the reveal's start, replaying a reveal already done.
-      if (first) page.style.setProperty('--watch-wait', `${shift ? GLIDE_MS : 0}ms`)
+      // Kept in step while the preview plays (a phone turned on its side or back: a glide, or none),
+      // then never again: a later change would move the reveal's start, replaying a reveal done.
+      if (first || stage.querySelector('.reel'))
+        page.style.setProperty('--watch-wait', `${shift ? GLIDE_MS : 0}ms`)
       first = false
     }
     queueMicrotask(measure)

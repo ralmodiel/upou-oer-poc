@@ -1,5 +1,5 @@
+import pack from 'virtual:catalog-pack'
 import crops from './frame-crops.json'
-import data from './frame-flags.json'
 import {
   beautyBitsOf,
   duplicatePairsOf,
@@ -13,6 +13,7 @@ import {
   zoomFrom,
   type Box,
 } from './images'
+import { tableOf } from './pack'
 
 /**
  * What the frame analysis (scripts/faces) knows about each video's thumbnail candidates, keyed by
@@ -31,13 +32,13 @@ import {
  *   4 bits each. Values pass 2^31 here, so these bits are read with arithmetic.
  *
  * Videos with nothing to say (0) are absent. Decoders live in images.ts, which the SEO generator
- * shares.
+ * shares. The browser gets the values of catalog videos only, packed with the catalog (pack.ts).
  *
  * frame-crops.json (same pipeline) holds, for stills with black bars baked in on every side, the
  * zoom per candidate that pushes the bars out of a 16:9 slot, cutting at most 2% of the picture:
  * one number, or [zoom for the 16:9 sizes, zoom for the 4:3 ones] when they differ.
  */
-let table: Record<string, number> = data as Record<string, number>
+let table: Record<string, number> = tableOf(pack, pack.flags)
 let cropTable: Record<string, unknown> = crops
 
 /** The packed value of a video (0 when nothing is known). */

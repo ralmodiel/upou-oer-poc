@@ -1,5 +1,5 @@
+import pack from 'virtual:catalog-pack'
 import catalogNames from 'virtual:catalog-names'
-import records from './catalog.json'
 import { formatDate } from '../lib/format'
 import {
   buildVocabulary,
@@ -26,6 +26,7 @@ import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 import { frameFlagsOf } from './frameFlags'
 import { isCleanImage } from './images'
+import { unpackRecords } from './pack'
 import { allSpeakers } from './speakers'
 
 /** Whether the video's canonical image passes the frame filter (it fails only when all do). */
@@ -442,5 +443,5 @@ export function replaceCatalog(list: readonly Video[], names?: LearnedNames): vo
   memo = new Map()
 }
 
-replaceCatalog(expandCatalog(records), catalogNames)
+replaceCatalog(expandCatalog(unpackRecords(pack)), catalogNames)
 registerSpeakers(allSpeakers())

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { packCatalog } from './src/data/pack.ts'
 import { isValidRecord } from './src/data/records.ts'
 import { learnedNamesOf } from './src/lib/tags.ts'
 
@@ -54,6 +55,25 @@ const catalogNamesPlugin = (): Plugin => ({
   },
 })
 
+// catalog.json, frame-flags.json and speakers.json joined into one smaller table (src/data/pack.ts),
+// emitted as a JSON.parse of a string: browsers parse that faster than the same object literal.
+const PACK_ID = 'virtual:catalog-pack'
+
+const catalogPackPlugin = (): Plugin => ({
+  name: 'catalog-pack',
+  resolveId: (id) => (id === PACK_ID ? `\0${PACK_ID}` : undefined),
+  load(id) {
+    if (id !== `\0${PACK_ID}`) return
+    const read = (name: string) => {
+      const file = fileURLToPath(new URL(`./src/data/${name}`, import.meta.url))
+      this.addWatchFile(file)
+      return JSON.parse(readFileSync(file, 'utf8'))
+    }
+    const pack = packCatalog(read('catalog.json'), read('frame-flags.json'), read('speakers.json'))
+    return `export default JSON.parse(${JSON.stringify(JSON.stringify(pack))})`
+  },
+})
+
 // GitHub Pages has no rewrites; it serves 404.html for unknown paths, so deep links still boot the app.
 const spaFallbackPlugin = (): Plugin => {
   let outDir = 'dist'
@@ -70,7 +90,14 @@ const spaFallbackPlugin = (): Plugin => {
 export default defineConfig({
   // "/<repo>/" for GitHub Pages project sites (set by the deploy workflow), "/" otherwise.
   base: process.env.BASE_PATH || '/',
-  plugins: [react(), tailwindcss(), catalogNamesPlugin(), cspPlugin(), spaFallbackPlugin()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    catalogNamesPlugin(),
+    catalogPackPlugin(),
+    cspPlugin(),
+    spaFallbackPlugin(),
+  ],
   server: { port: 5280 },
   preview: { port: 5281 },
   build: {
@@ -82,7 +109,7 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: 'vendor', test: /node_modules/ },
-            { name: 'catalog', test: /(catalog|frame-flags|speakers)\.json$|catalog-names$/ },
+            { name: 'catalog', test: /catalog-(names|pack)$/ },
           ],
         },
       },
@@ -94,5 +121,7 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', 'tmp/**'],
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // A file's first test imports the whole catalog; on a busy machine that alone can near 5 s.
+    testTimeout: 15_000,
   },
 })

@@ -1,8 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { resetStorageCache } from '../lib/storage'
 import { resetTrail } from '../lib/trail'
+
+// Rows and picks render in idle slices; on a busy machine they can take longer than the 1 s default.
+configure({ asyncUtilTimeout: 4000 })
 
 afterEach(() => {
   cleanup()

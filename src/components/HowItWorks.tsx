@@ -41,11 +41,42 @@ const STEPS = [
   },
 ]
 
+// The rows above it compact while the page scrolls there (they render the rest of their cards only
+// in use), so the first scroll overshoots. Once scrolling stops, land the heading where scroll
+// padding puts it; give up after 2.5 s or as soon as the viewer scrolls or presses anything.
+function settleOn(heading: HTMLElement) {
+  const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
+  const started = performance.now()
+  let lastY = -1
+  let still = 0
+  let frame = 0
+  const stop = () => {
+    cancelAnimationFrame(frame)
+    for (const type of inputs) window.removeEventListener(type, stop, true)
+  }
+  const check = () => {
+    if (performance.now() - started > 2500) return stop()
+    still = window.scrollY === lastY ? still + 1 : 0
+    lastY = window.scrollY
+    if (still >= 4) {
+      const pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0
+      const off = heading.getBoundingClientRect().top - pad
+      if (Math.abs(off) <= 2) return stop()
+      window.scrollBy({ top: off, behavior: 'instant' })
+      still = 0
+    }
+    frame = requestAnimationFrame(check)
+  }
+  for (const type of inputs) window.addEventListener(type, stop, { capture: true, passive: true })
+  frame = requestAnimationFrame(check)
+}
+
 // Brought into view (smoothly unless reduced motion), its heading focused and the strip briefly
 // outlined in gold (browse.css), so a press of Help or the intro chip shows where it landed.
 function reveal(section: HTMLElement | null, heading: HTMLElement) {
   heading.focus({ preventScroll: true })
   heading.scrollIntoView?.({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  settleOn(heading)
   if (!section) return
   delete section.dataset.arrived
   void section.offsetWidth

@@ -17,7 +17,7 @@ const URL_RE = /(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)\]'"])/
 
 /**
  * How to cite the video, always shown in full (never folded, clamped or hidden): the source
- * page's own citation, or one generated from the video's details with a quiet note saying so, as
+ * page's own citation, or one generated from the video's details, as
  * selectable text with its link, and a Copy citation button.
  */
 export default function WatchCite({ video, as = 'h2', className = '' }: Props) {
@@ -41,7 +41,7 @@ export default function WatchCite({ video, as = 'h2', className = '' }: Props) {
 }
 
 function CitationBox({
-  citation: { text: cite, generated },
+  citation: { text: cite },
   as,
   className,
 }: {
@@ -115,7 +115,6 @@ function CitationBox({
           ),
         )}
       </p>
-      {generated && <p className="mt-1 text-xs text-ink-3">Generated from this video's details</p>}
     </section>
   )
 }

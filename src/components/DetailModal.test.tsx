@@ -40,7 +40,7 @@ it('shows How to cite whole, below the picture and its buttons', async () => {
   expect(cite).toHaveTextContent(
     'UP Open University. (2026, May 1). Climate Change Basics [Video]. UPOU Networks, University of the Philippines Open University. https://oer.upou.edu.ph/climate-basics/',
   )
-  expect(cite).toHaveTextContent("Generated from this video's details")
+  expect(cite).not.toHaveTextContent('Generated')
   // nothing around it folds, clamps or hides it
   for (let node: Element | null = cite; node; node = node.parentElement) {
     expect(node.tagName).not.toBe('DETAILS')

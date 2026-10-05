@@ -22,10 +22,10 @@ const without = (ids: readonly string[], id: string) => ids.filter((x) => x !== 
 // Rows More… adds at a time.
 const MORE = 8
 
-/** Whether the next video plays when one ends: on unless turned off (only a stored false is off). */
+/** Whether the next video plays when one ends: off unless turned on (only a stored true is on). */
 export function useAutoplay() {
   const [stored, setStored] = usePersistentState<unknown>('upou:autoplay', true)
-  return [stored !== false, (on: boolean) => setStored(on)] as const
+  return [stored === true, (on: boolean) => setStored(on)] as const
 }
 
 interface Rows {

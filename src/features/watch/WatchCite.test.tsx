@@ -35,7 +35,7 @@ describe('WatchCite', () => {
     await renderCite(undefined)
     const section = screen.getByRole('region', { name: 'How to cite' })
     expect(section).toHaveTextContent(generateCite(video))
-    expect(section).toHaveTextContent(/^How to cite.+Generated from this video's details/)
+    expect(section).not.toHaveTextContent('Generated')
     expect(screen.getByRole('link', { name: `${URL} (opens in a new tab)` })).toBeInTheDocument()
   })
 

@@ -41,7 +41,7 @@ describe('WatchCite', () => {
 
   it('shows the whole crawled citation under its heading, its URL as a link, no note', async () => {
     await renderCite(CITE)
-    expect(screen.getByRole('heading', { level: 2, name: 'How to cite' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /How to cite/ })).toBeInTheDocument()
     const section = screen.getByRole('region', { name: 'How to cite' })
     expect(section).toHaveTextContent(CITE)
     expect(screen.queryByText(/Generated from/)).toBeNull()
@@ -50,6 +50,20 @@ describe('WatchCite', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.queryByRole('button', { name: /show more/i })).toBeNull()
+  })
+
+  it('on portrait phones, opens from its link: citation and Copy shown on a tap', async () => {
+    await renderCite(CITE)
+    const toggle = screen.getByRole('button', { name: 'How to cite' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    const shut = (el: Element) => el.className.includes('max-sm:portrait:hidden')
+    const text = [...document.querySelectorAll('p')].find((p) => p.textContent === CITE)!
+    expect(shut(text)).toBe(true)
+    expect(shut(screen.getByRole('button', { name: 'Copy citation' }))).toBe(true)
+    act(() => toggle.click())
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(shut(text)).toBe(false)
+    expect(shut(screen.getByRole('button', { name: 'Copy citation' }))).toBe(false)
   })
 
   it('never folds, clamps or hides the citation', async () => {
@@ -83,7 +97,7 @@ describe('WatchCite', () => {
 
   it('takes a heading level for the quick look', async () => {
     await renderCite(CITE, 'h3')
-    expect(screen.getByRole('heading', { level: 3, name: 'How to cite' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: /How to cite/ })).toBeInTheDocument()
   })
 
   it('copies the citation and says Copied for two seconds', async () => {

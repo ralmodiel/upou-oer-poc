@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { CheckIcon } from '../../components/icons'
+import { CheckIcon, ChevronDownIcon } from '../../components/icons'
 import IconButton from '../../components/ui/IconButton'
 import { citeOf, peekCite, type Citation } from '../../data/cites'
 import type { Video } from '../../types'
@@ -70,22 +70,36 @@ function CitationBox({
   }
 
   const copied = state === 'copied'
+  // Phones in portrait start with just the label; a tap opens the citation and Copy.
+  const [open, setOpen] = useState(false)
+  const shut = open ? '' : 'max-sm:portrait:hidden'
   return (
     <section
-      aria-labelledby={headingId}
+      aria-label="How to cite"
       className={`max-w-2xl rounded-card border border-glass-border bg-surface px-3.5 py-3 shadow-(--shadow-elev-1) sm:px-4 ${className}`}
     >
       {/* A quiet label, not a display heading: the citation is the content. */}
       {/* The label, with Copy beside it as an icon (named and titled "Copy citation"). */}
       <div className="-my-1.5 flex items-center gap-1">
         <Heading id={headingId} className="eyebrow">
-          How to cite
+          <span className="max-sm:portrait:hidden">How to cite</span>
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+            className="hidden min-h-11 cursor-pointer items-center gap-1 text-maroon underline underline-offset-4 max-sm:portrait:inline-flex"
+          >
+            How to cite
+            <ChevronDownIcon
+              className={`size-4 transition-transform motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+            />
+          </button>
         </Heading>
         <IconButton
           label={copied ? 'Copied' : 'Copy citation'}
           icon={copied ? <CheckIcon /> : <CopyIcon />}
           onClick={() => void copy()}
-          className={copied ? 'text-forest' : 'text-ink-2'}
+          className={`${copied ? 'text-forest' : 'text-ink-2'} ${shut}`}
         />
         {/* Always in the tree (empty, it has no width), so screen readers hear what it says. */}
         <span role="status" className="text-xs text-ink-2">
@@ -95,7 +109,7 @@ function CitationBox({
       </div>
       <p
         ref={textRef}
-        className="mt-1.5 text-sm leading-normal wrap-anywhere whitespace-pre-line text-ink-2 select-text"
+        className={`mt-1.5 text-sm leading-normal wrap-anywhere whitespace-pre-line text-ink-2 select-text ${shut}`}
       >
         {cite.split(URL_RE).map((part, i) =>
           i % 2 ? (

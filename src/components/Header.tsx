@@ -35,8 +35,9 @@ import { buttonClass, iconButtonClass } from './ui/button-styles'
 
 // Active section: a maroon underline on paper (gold in dark mode) with a soft glow. Hover: a glass
 // pill, as the chips and breadcrumbs.
+// Touch: the underline is its ::after (the global 44px hit area skips it), so the area is its ::before.
 const NAV_LINK =
-  'relative inline-flex h-10 items-center rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-[background-color,color,box-shadow] hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:shadow-glow aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:shadow-[0_0_10px_1px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
+  'relative inline-flex h-10 items-center pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-0.5 rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-[background-color,color,box-shadow] hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:shadow-glow aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:shadow-[0_0_10px_1px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
 
 // Saved ids that still exist in the catalog.
 function useSavedCount() {
@@ -301,7 +302,7 @@ function SearchBox() {
     <form
       role="search"
       onSubmit={onSubmit}
-      className={`${expanded ? 'flex' : 'hidden md:flex'} order-last min-w-0 basis-full pb-2.5 md:order-none md:ml-auto md:w-40 md:basis-auto md:pb-0 lg:w-56 xl:w-80`}
+      className={`${expanded ? 'flex' : 'hidden md:flex'} order-last min-w-0 basis-full pb-2.5 md:order-none md:ml-auto md:w-40 md:basis-auto md:max-lg:land:w-48 md:pb-0 lg:w-56 xl:w-80`}
     >
       <label htmlFor={inputId} className="sr-only">
         Search videos
@@ -372,7 +373,7 @@ export function TabBar() {
       aria-label="Primary"
       // Glass like the header; surface at 92% so the ink-3 labels keep AA over a black picture.
       // A faint lift on paper, a deeper one in dark.
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-glass-border bg-surface/92 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-18px_rgb(27_26_23/0.18)] dark:shadow-[0_-12px_32px_-16px_rgb(0_0_0/0.6)] backdrop-blur-lg backdrop-saturate-150 md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-glass-border bg-surface/92 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] shadow-[0_-8px_24px_-18px_rgb(27_26_23/0.18)] dark:shadow-[0_-12px_32px_-16px_rgb(0_0_0/0.6)] backdrop-blur-lg backdrop-saturate-150 md:hidden"
     >
       <ul className="flex h-(--tabbar-h)">
         <li className="flex flex-1">

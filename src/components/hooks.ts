@@ -9,6 +9,9 @@ import { useLocation, useNavigationType } from 'react-router'
 
 export { useMediaQuery } from './browse-hooks'
 
+/** A phone on its side: the same screens as the land: variant in index.css. */
+export const LAND = '(max-height: 30rem) and (min-aspect-ratio: 3 / 2)'
+
 // Where to come back to on each page of this visit, by location key: the control the page was left
 // from (a card, its Details link, a chip, or the last control focused in it before the search
 // field), found again by its row and place there, never by its video alone: Recently viewed may

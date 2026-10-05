@@ -52,11 +52,13 @@ describe('WatchCite', () => {
     expect(screen.queryByRole('button', { name: /show more/i })).toBeNull()
   })
 
-  it('on portrait phones, opens from its link: citation and Copy shown on a tap', async () => {
+  it('on phones (upright or on their side), opens from its link: citation and Copy shown on a tap', async () => {
     await renderCite(CITE)
     const toggle = screen.getByRole('button', { name: 'How to cite' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    const shut = (el: Element) => el.className.includes('max-sm:portrait:hidden')
+    // Upright (max-sm:portrait:) and on their side (land:, a short screen).
+    const shut = (el: Element) =>
+      el.className.includes('max-sm:portrait:hidden') && el.className.includes('land:hidden')
     const text = [...document.querySelectorAll('p')].find((p) => p.textContent === CITE)!
     expect(shut(text)).toBe(true)
     expect(shut(screen.getByRole('button', { name: 'Copy citation' }))).toBe(true)

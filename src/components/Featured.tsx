@@ -14,7 +14,7 @@ import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { FactsLine, LONG_TITLE } from './browse-ui'
 import { AT_DETAILS } from './details'
-import { prefersReducedMotion } from './hooks'
+import { LAND, prefersReducedMotion } from './hooks'
 import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
 import { useCardPreview } from './preview'
 import SectionHeading from './ui/SectionHeading'
@@ -240,23 +240,23 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
   return (
     <div data-lead={video.id} className="relative isolate overflow-hidden">
       <Backdrop video={video} scrim={SCRIM} />
-      {/* Phones: Featured, the picture, the details. From lg the details sit beside the picture,
-          Featured on top of them. */}
+      {/* Phones: Featured, the picture, the details. From lg, and on a phone on its side (land:),
+          the details sit beside the picture, Featured on top of them. */}
       <section
         aria-labelledby={headingId}
         onFocus={onFocus}
         onBlur={onBlur}
-        className="grid gap-5 px-(--gutter) pt-6 pb-2 sm:pt-8 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-4 lg:pt-10"
+        className="grid gap-5 px-(--gutter) pt-6 pb-2 sm:pt-8 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-4 lg:pt-10 land:grid-cols-12 land:gap-x-6 land:gap-y-2 land:pt-4"
       >
         <SectionHeading
           id={headingId}
           title="Featured"
-          className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:self-end"
+          className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:self-end land:col-span-6 land:col-start-7 land:row-start-1 land:self-end"
         />
         <div
           {...preview.hostProps}
           data-hero-media=""
-          className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-center"
+          className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-center land:col-span-6 land:col-start-1 land:row-span-2 land:row-start-1 land:self-center"
         >
           {/* Decorative duplicate of the Play button. */}
           <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="hero-still block">
@@ -277,7 +277,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
             element itself is replaced (Chrome 154, "Prepaint layout check failed"). */}
         <div
           data-hero-text=""
-          className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start"
+          className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:self-start land:col-span-6 land:col-start-7 land:row-start-2 land:self-start"
         >
           <div key={video.id}>
             <p className="eyebrow truncate tracking-[0.14em]">{video.category}</p>
@@ -348,19 +348,34 @@ function MoreBelow() {
     return () => observer.disconnect()
   }, [])
   // Out of the way of a card in focus that it would cover (a remote's reveal can leave one there).
+  // On a phone on its side (a short screen) also of the hero's Play, Details and Save, which the
+  // pill would otherwise sit on at some scroll positions.
   const pill = useRef<HTMLButtonElement>(null)
   const [covering, setCovering] = useState(false)
   useEffect(() => {
+    const over = (a: DOMRect, b: DOMRect) =>
+      a.bottom > b.top && a.top < b.bottom && a.right > b.left && a.left < b.right
     const check = () => {
       const card = document.activeElement?.closest('article')?.getBoundingClientRect()
       const box = pill.current?.getBoundingClientRect()
-      setCovering(!!card && !!box && card.bottom > box.top && card.top < box.bottom)
+      const land = matchMedia(LAND).matches
+      setCovering(
+        !!box &&
+          ((!!card && card.bottom > box.top && card.top < box.bottom) ||
+            (land &&
+              [...document.querySelectorAll(HERO_CONTROLS)].some((e) =>
+                over(e.getBoundingClientRect(), box),
+              ))),
+      )
     }
+    check()
     document.addEventListener('focusin', check)
     window.addEventListener('scrollend', check)
+    window.addEventListener('resize', check)
     return () => {
       document.removeEventListener('focusin', check)
       window.removeEventListener('scrollend', check)
+      window.removeEventListener('resize', check)
     }
   }, [])
 
@@ -386,7 +401,7 @@ function MoreBelow() {
     <div
       data-more-below=""
       data-hidden={atFooter || covering ? '' : undefined}
-      className="more-below pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pt-16 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-opacity duration-300 data-hidden:invisible data-hidden:opacity-0 md:pb-6"
+      className="more-below pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pt-16 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-opacity duration-300 data-hidden:invisible data-hidden:opacity-0 md:pb-6 land:pb-[calc(var(--tabbar-h)+0.5rem+env(safe-area-inset-bottom))]"
     >
       <button
         ref={pill}

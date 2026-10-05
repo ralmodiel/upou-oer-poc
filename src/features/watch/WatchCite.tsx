@@ -70,9 +70,10 @@ function CitationBox({
   }
 
   const copied = state === 'copied'
-  // Phones in portrait start with just the label; a tap opens the citation and Copy.
+  // Phones, upright or on their side (land: short windows), start with just the label; a tap
+  // opens the citation and Copy.
   const [open, setOpen] = useState(false)
-  const shut = open ? '' : 'max-sm:portrait:hidden'
+  const shut = open ? '' : 'max-sm:portrait:hidden land:hidden'
   return (
     <section
       aria-label="How to cite"
@@ -82,12 +83,12 @@ function CitationBox({
       {/* The label, with Copy beside it as an icon (named and titled "Copy citation"). */}
       <div className="-my-1.5 flex items-center gap-1">
         <Heading id={headingId} className="eyebrow">
-          <span className="max-sm:portrait:hidden">How to cite</span>
+          <span className="max-sm:portrait:hidden land:hidden">How to cite</span>
           <button
             type="button"
             aria-expanded={open}
             onClick={() => setOpen(!open)}
-            className="hidden min-h-11 cursor-pointer items-center gap-1 text-maroon underline underline-offset-4 max-sm:portrait:inline-flex"
+            className="hidden min-h-11 cursor-pointer items-center gap-1 text-maroon underline underline-offset-4 max-sm:portrait:inline-flex land:inline-flex"
           >
             How to cite
             <ChevronDownIcon

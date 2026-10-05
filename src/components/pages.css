@@ -37,7 +37,8 @@ html dialog.tv-sheet::backdrop {
 .tv-sheet {
   background-image: linear-gradient(to bottom, var(--page-sheen), transparent 14rem);
 }
-@media (width < 48rem) {
+/* A phone on its side (land:) gets the wide, rounded panel. */
+@media (width < 48rem) and (not ((max-height: 30rem) and (min-aspect-ratio: 3 / 2))) {
   .ql-panel {
     box-shadow: none;
   }
@@ -65,6 +66,18 @@ html dialog.tv-sheet::backdrop {
     z-index: 10;
     margin: -1.25rem -1.25rem -0.5rem;
     padding: 1.25rem 1.25rem 0.5rem;
+    background-color: color-mix(in oklab, var(--color-surface) 86%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+/* The same on a phone on its side (index.css land:), where the sheet (p-6 from sm) scrolls too. */
+@media (width >= 40rem) and (max-height: 30rem) and (min-aspect-ratio: 3 / 2) {
+  .tv-sheet-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: -1.5rem -1.5rem -0.5rem;
+    padding: 1.5rem 1.5rem 0.5rem;
     background-color: color-mix(in oklab, var(--color-surface) 86%, transparent);
     backdrop-filter: blur(12px);
   }
@@ -97,7 +110,7 @@ html dialog.tv-sheet::backdrop {
 .ql-still {
   mask-image: linear-gradient(to bottom, #000 78%, transparent);
 }
-@media (width >= 48rem) {
+@media (width >= 48rem), ((max-height: 30rem) and (min-aspect-ratio: 3 / 2)) {
   .ql-still {
     mask-image:
       linear-gradient(to right, transparent, #000 7% 93%, transparent),
@@ -108,7 +121,7 @@ html dialog.tv-sheet::backdrop {
 :focus-visible > .ql-still {
   mask-image: none;
 }
-@media (width >= 48rem) {
+@media (width >= 48rem), ((max-height: 30rem) and (min-aspect-ratio: 3 / 2)) {
   :focus-visible > .ql-still {
     border-radius: var(--radius-card);
     box-shadow: 0 24px 50px -18px rgb(0 0 0 / 0.55);

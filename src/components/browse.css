@@ -22,6 +22,19 @@ html:has(dialog[data-details][open]) {
     contain-intrinsic-size: auto 29rem;
   }
 }
+/* A phone on its side (index.css land:). The size here is the content's; the section's padding (80px
+   from sm) comes on top. Rows measured 437px (667 wide), 455 (740), 411 (844), 420 (896) and 426 (932)
+   in all, so the glide to a lower row lands where it should. */
+@media (width < 48rem) and (max-height: 30rem) and (min-aspect-ratio: 3 / 2) {
+  .lazy-section {
+    contain-intrinsic-size: auto calc(25vw + 12rem);
+  }
+}
+@media (48rem <= width < 80rem) and (max-height: 30rem) and (min-aspect-ratio: 3 / 2) {
+  .lazy-section {
+    contain-intrinsic-size: auto calc(17vw + 11.75rem);
+  }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   /* Quick look: the backdrop fades in and out; data-closing plays the exit before the URL changes. */
@@ -672,6 +685,35 @@ html:has(dialog[data-details][open]) {
     padding-block: 1rem;
   }
 }
+/* A phone on its side (index.css land:): the picture beside the details (the grid is on the hero's
+   classes), a two-line title and summary and no facts line, so Play, Details and Save are on
+   screen as soon as the hero is. */
+@media (max-height: 30rem) and (min-aspect-ratio: 3 / 2) {
+  [data-featured-zone] > [data-lead] > section {
+    padding-bottom: 0.25rem;
+  }
+  [data-hero-text] h3 {
+    font-size: 1.5rem;
+    -webkit-line-clamp: 2;
+  }
+  [data-hero-text] h3 + .hero-facts {
+    display: none;
+  }
+  [data-hero-text] p.text-base {
+    -webkit-line-clamp: 2;
+    min-height: 2lh;
+    font-size: 0.875rem;
+  }
+  [data-hero-text] .mt-5 {
+    margin-top: 0.75rem;
+  }
+}
+/* The shortest (about 400px or less): no summary either; it is in Details. */
+@media (max-height: 25rem) and (min-aspect-ratio: 3 / 2) {
+  [data-hero-text] p.text-base {
+    display: none;
+  }
+}
 /* The hero's video in the row: a gold ring round its picture (never a tint over it), and a thin
    gold line along its foot counting down to the next one. */
 [data-row='featured'] > li[data-active]:not(:has(:focus-visible)) article > .aspect-video {
@@ -735,6 +777,16 @@ html:has(dialog[data-details][open]) {
 /* It fades in once, nudges once, then rests. Focus and anchor scrolls keep clear of it. */
 html:has([data-more-below]:not([data-hidden])) {
   scroll-padding-bottom: calc(var(--tabbar-h) + 5.5rem);
+}
+/* A phone on its side (index.css land:): the pill hugs the tab bar (or the screen's foot), so it
+   leaves more of a short screen to the content. */
+@media (max-height: 30rem) and (min-aspect-ratio: 3 / 2) {
+  .more-below {
+    --more-foot: calc(var(--tabbar-h) + 0.5rem + env(safe-area-inset-bottom));
+  }
+  html:has([data-more-below]:not([data-hidden])) {
+    scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 3.5rem);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .more-below {

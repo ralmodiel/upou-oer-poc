@@ -134,12 +134,19 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 /* Mouse / trackpad devices: keyboard hints ("press / to search") only make sense there. */
 @custom-variant pointer-fine (@media (hover: hover) and (pointer: fine));
+/* A phone on its side (or any window that short): about 480px or less of height. Utilities here
+   come after md: and lg:, so a land: twin of an md: or lg: class applies the same layout there. */
+/* A screen denser than 1x: the browser may pick a 4:3 still (640px) over the 16:9 320px one. */
+@custom-variant hidpi (@media (min-resolution: 1.1dppx));
+@custom-variant land (@media (max-height: 30rem) and (min-aspect-ratio: 3 / 2));
 
 @layer base {
   :root {
     color-scheme: light;
     /* Page gutter; beyond 1600px of content it grows, so the site stays centred at that width. */
-    --gutter: max(clamp(1rem, 4vw, 4rem), (100vw - 100rem) / 2);
+    /* A phone on its side with a notch: content keeps 1rem clear of the sensor and home-bar insets. */
+    --inset-x: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
+    --gutter: max(clamp(1rem, 4vw, 4rem), (100vw - 100rem) / 2, var(--inset-x) + 1rem);
     --header-h: 3.5rem;
     --tabbar-h: 3.75rem;
   }

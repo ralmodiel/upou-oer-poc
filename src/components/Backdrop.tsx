@@ -26,11 +26,13 @@ const hide = (e: SyntheticEvent<HTMLImageElement>) => {
 /**
  * Decorative strip of a few videos' original stills in their own colours: 16:9 tiles the height of
  * its positioned parent, as many as fit. It sits beside a brand band, never under one, so no type
- * covers it and it needs no scrim.
+ * covers it and it needs no scrim. The tiles past `FIRST` show only from sm up to md (a phone on
+ * its side), where four (142px each at the band's 80px) would stop short of the screen's edge.
  */
+const FIRST = 4
 export function MosaicBackdrop({
   videos,
-  count = 4,
+  count = 8,
   className = '',
 }: {
   videos: readonly Video[]
@@ -45,12 +47,12 @@ export function MosaicBackdrop({
       className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
     >
       <div className="flex h-full gap-0.5">
-        {shown.map((video) => {
+        {shown.map((video, i) => {
           const images = imagesOf(video, true)
           return (
             <div
               key={video.id}
-              className="aspect-video h-full shrink-0 overflow-hidden bg-surface-2"
+              className={`aspect-video h-full shrink-0 overflow-hidden bg-surface-2 ${i < FIRST ? '' : 'hidden sm:max-md:block'}`}
             >
               {images && (
                 <img

@@ -27,7 +27,7 @@ import VideoGrid from './VideoGrid'
 import { useFrozen } from './browse-hooks'
 import { FactsLine, LONG_TITLE, TEXT_LINK } from './browse-ui'
 import { AT_DETAILS, DetailsContext, detailsShortfall, wasOpenedInApp } from './details'
-import { prefersReducedMotion, useDocumentTitle } from './hooks'
+import { LAND, prefersReducedMotion, useDocumentTitle, useMediaQuery } from './hooks'
 import { ChevronDownIcon, CloseIcon, ExternalLinkIcon, PlayIcon } from './icons'
 import { stopPreview } from './preview'
 import { CardReasons, moreLikeThis, reasonsFor } from './recs'
@@ -42,7 +42,8 @@ const EXIT_MS = 200
 const SIMILAR = 6
 // The foot of the view the More like this pill floats in (scroll-pb-24).
 const PILL_ZONE = 96
-// Below md the quick look is a full-screen sheet.
+// Below md the quick look is a full-screen sheet; a phone on its side (LAND, index.css land:)
+// gets the wide layout, picture beside the details, whatever its width.
 const PHONE = '(width < 48rem)'
 // Soft glow of the video's still behind the image column, gone by the time the text starts.
 const SCRIM = 'bg-linear-to-b from-surface/40 via-surface/80 via-60% to-surface'
@@ -145,7 +146,10 @@ function DetailDialog({ video }: { video: Video }) {
     const heading = similarHeading.current
     const root = dialog.current
     if (!heading || !root) return
-    const sources = window.matchMedia(PHONE).matches ? sourcesRef.current : null
+    const sources =
+      window.matchMedia(PHONE).matches && !window.matchMedia(LAND).matches
+        ? sourcesRef.current
+        : null
     const reach = sources
       ? heading.getBoundingClientRect().top - sources.getBoundingClientRect().top
       : 0
@@ -178,7 +182,16 @@ function DetailDialog({ video }: { video: Video }) {
   // Phones: How to cite spans the panel, so the pill steps aside while the citation is in the
   // bottom band it floats in, or within the pill's zone below it (then the facts line above the
   // citation would be under the pill). From md it sits beside the citation, never over it.
+  const land = useMediaQuery(LAND)
   const [citeLow, setCiteLow] = useState(false)
+  // Beside the picture (a phone on its side) the pill floats in the details column, where the
+  // citation is only when there is no description.
+  const aside =
+    citeLow && (land ? !video.description : true)
+      ? land
+        ? 'not-focus:invisible not-focus:opacity-0'
+        : 'max-md:not-focus:invisible max-md:not-focus:opacity-0'
+      : ''
   useEffect(() => {
     const cite = citeRef.current
     const root = dialog.current
@@ -298,31 +311,32 @@ function DetailDialog({ video }: { video: Video }) {
         if (pressedBackdrop.current && e.target === e.currentTarget) close()
       }}
       // While the pill shows, focus and anchor scrolls stop short of it.
-      className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10 ${showPill ? 'scroll-pb-24' : 'scroll-pb-4'}`}
+      className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] text-ink outline-none backdrop:bg-overlay md:py-10 land:py-4 land:pb-[max(1rem,env(safe-area-inset-bottom))] ${showPill ? 'scroll-pb-24' : 'scroll-pb-4'}`}
     >
-      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface pb-[env(safe-area-inset-bottom)] md:min-h-0 md:pb-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-(--shadow-lift) motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
-        <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />
+      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface pb-[env(safe-area-inset-bottom)] md:min-h-0 land:min-h-0 md:pb-0 land:pb-0 md:w-[min(64rem,calc(100%-3rem))] land:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card land:rounded-card md:border land:border md:border-line land:border-line md:shadow-(--shadow-lift) land:shadow-(--shadow-lift) motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98] land:motion-safe:starting:translate-y-0 land:motion-safe:starting:scale-[0.98]">
+        <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96 land:h-96" />
         <IconButton
           label="Close"
           icon={<CloseIcon />}
           variant="secondary"
           onClick={close}
-          className="absolute top-3 right-3 z-10 md:top-4 md:right-4"
+          // On a short screen it stays in view while the panel scrolls (it clears the side insets).
+          className="absolute top-3 right-3 z-10 md:top-4 md:right-4 land:fixed land:top-8 land:right-[calc(var(--inset-x)+2.5rem)]"
         />
 
         {/* From md the picture column (picture, Play / Save, How to cite, links) sits beside the
             details; wider than them from lg, so the picture is large. */}
-        <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 md:grid-rows-[auto_auto_auto_1fr] md:gap-y-7 md:p-8 lg:gap-x-10">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 md:grid-cols-12 land:grid-cols-12 md:grid-rows-[auto_auto_auto_1fr] land:grid-rows-[auto_auto_auto_1fr] md:gap-y-7 land:gap-y-7 md:p-8 land:p-8 lg:gap-x-10">
           {/* The still plays too, and grows while focused or hovered (TV style) into the gutters
               around it, so nothing else moves. The wrapper scales: a focused link drops its
               transition (index.css). Phones: full bleed, no growth. */}
-          <div className="-mx-5 -mt-5 min-w-0 md:col-span-6 md:col-start-1 md:row-start-1 md:m-0 md:motion-safe:transition-[scale] md:motion-safe:duration-300 md:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:has-[a:focus]:scale-108 lg:col-span-7">
+          <div className="-mx-5 -mt-5 min-w-0 md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-1 land:row-start-1 md:m-0 land:m-0 md:motion-safe:transition-[scale] land:motion-safe:transition-[scale] md:motion-safe:duration-300 land:motion-safe:duration-300 md:motion-safe:ease-out-soft land:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:has-[a:focus]:scale-108 lg:col-span-7">
             <PlayLink
               video={video}
               aria-label={`Play ${video.title}`}
               data-autofocus=""
               data-spatial="over-entry"
-              className="relative block max-md:focus-visible:outline-none max-md:focus-visible:after:absolute max-md:focus-visible:after:inset-0 max-md:focus-visible:after:shadow-[inset_0_0_0_3px_var(--color-focus)] md:rounded-card"
+              className="relative block max-md:focus-visible:outline-none max-md:focus-visible:after:absolute max-md:focus-visible:after:inset-0 max-md:focus-visible:after:shadow-[inset_0_0_0_3px_var(--color-focus)] md:rounded-card land:rounded-card"
             >
               <Thumbnail
                 video={video}
@@ -335,7 +349,7 @@ function DetailDialog({ video }: { video: Video }) {
             </PlayLink>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 @container md:col-span-6 md:col-start-1 md:row-start-2 lg:col-span-7">
+          <div className="flex flex-wrap items-center gap-3 @container md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-2 land:row-start-2 lg:col-span-7">
             <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
               <PlayIcon />
               Play
@@ -344,21 +358,27 @@ function DetailDialog({ video }: { video: Video }) {
             <MyListButton
               id={video.id}
               title={video.title}
-              className={buttonClass('secondary', 'md', PRESSED)}
+              // An icon in a column too narrow for Play, Play from start and Save's label (a phone on its side).
+              className={buttonClass(
+                'secondary',
+                'md',
+                `${PRESSED} @max-[17.5rem]:w-11 @max-[17.5rem]:px-0`,
+              )}
+              labelClassName="@max-[17.5rem]:sr-only"
             />
           </div>
 
           {/* How to cite, right below the picture and its buttons: always whole, never folded. With no
               description it moves beside the picture, under the title (see the details column). */}
           {!video.description && tags.length > 0 && (
-            <div className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7">
+            <div className="min-w-0 md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-3 land:row-start-3 md:self-start land:self-start lg:col-span-7">
               {topics('')}
             </div>
           )}
           {video.description && (
             <div
               ref={citeRef}
-              className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7"
+              className="min-w-0 md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-3 land:row-start-3 md:self-start land:self-start lg:col-span-7"
             >
               <WatchCite video={video} as="h3" className="ql-cite" />
             </div>
@@ -377,7 +397,7 @@ function DetailDialog({ video }: { video: Video }) {
               e.preventDefault()
               first.focus()
             }}
-            className="min-w-0 rounded-card outline-offset-8 focus-visible:shadow-glow md:col-span-6 md:col-start-7 md:row-span-4 md:row-start-1 md:pr-8 lg:col-span-5 lg:col-start-8"
+            className="min-w-0 rounded-card outline-offset-8 focus-visible:shadow-glow md:col-span-6 land:col-span-6 md:col-start-7 land:col-start-7 md:row-span-4 land:row-span-4 md:row-start-1 land:row-start-1 md:pr-8 land:pr-8 lg:col-span-5 lg:col-start-8"
           >
             <h2
               id={titleId}
@@ -404,7 +424,7 @@ function DetailDialog({ video }: { video: Video }) {
 
           <div
             ref={sourcesRef}
-            className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-6 md:col-start-1 md:row-start-4 md:self-start lg:col-span-7"
+            className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-4 land:row-start-4 md:self-start land:self-start lg:col-span-7"
           >
             <ExternalLink href={watchUrl(video.youtubeId)}>Watch on YouTube</ExternalLink>
             {sourceUrl && <ExternalLink href={sourceUrl}>View on oer.upou.edu.ph</ExternalLink>}
@@ -415,7 +435,7 @@ function DetailDialog({ video }: { video: Video }) {
           <section
             ref={similarRef}
             aria-labelledby={`${titleId}-similar`}
-            className="ql-more border-t border-line p-5 md:px-8 md:py-7"
+            className="ql-more border-t border-line p-5 md:px-8 land:px-8 md:py-7 land:py-7"
           >
             <span aria-hidden="true" className="mb-3 block h-1 w-10 rounded-pill bg-band-gold" />
             <h3
@@ -442,11 +462,11 @@ function DetailDialog({ video }: { video: Video }) {
           panel's own grid, centred under the details column, so it never covers How to cite. */}
       {showPill && (
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          <div className="mx-auto flex justify-center md:grid md:w-[min(64rem,calc(100%-3rem))] md:grid-cols-12 md:gap-x-8 md:px-8 lg:gap-x-10">
+          <div className="mx-auto flex justify-center md:grid land:grid md:w-[min(64rem,calc(100%-3rem))] land:w-[min(64rem,calc(100%-3rem))] md:grid-cols-12 land:grid-cols-12 md:gap-x-8 land:gap-x-8 md:px-8 land:px-8 lg:gap-x-10">
             <button
               type="button"
               onClick={toSimilar}
-              className={`browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:transition-[opacity,background-color] motion-safe:duration-300 motion-safe:starting:opacity-0 md:col-span-6 md:col-start-7 md:mr-8 md:justify-self-center lg:col-span-5 lg:col-start-8 ${citeLow ? 'max-md:not-focus:invisible max-md:not-focus:opacity-0' : ''}`}
+              className={`browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus motion-safe:transition-[opacity,background-color] motion-safe:duration-300 motion-safe:starting:opacity-0 md:col-span-6 land:col-span-6 md:col-start-7 land:col-start-7 md:mr-8 land:mr-8 md:justify-self-center land:justify-self-center lg:col-span-5 lg:col-start-8 ${aside}`}
             >
               More like this
               <ChevronDownIcon className="size-4" />

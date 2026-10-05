@@ -49,7 +49,12 @@ function Tile({
   const { small, srcSet, zoom } = thumbnailOf(video, true)
   if (!load) return <div className={`page-tile bg-surface-2 ${className}`} />
   return (
-    <div className={`page-tile overflow-hidden bg-surface-2 ${className}`}>
+    // The tile is not 16:9 (the large one is 1.2:1), and a 4:3 still (YouTube's 480 and 640px ones,
+    // a denser screen's pick) carries its letterbox bars: there the picture is a centred 16:9 box the
+    // height of the tile, so those bars fall outside it as they do in any 16:9 slot.
+    <div
+      className={`page-tile overflow-hidden bg-surface-2 hidpi:flex hidpi:items-center hidpi:justify-center ${className}`}
+    >
       <img
         src={small}
         srcSet={srcSet}
@@ -60,7 +65,7 @@ function Tile({
         onLoad={markLoaded}
         onError={(e) => retryOrHide(e, small)}
         style={zoomStyle(zoom)}
-        className="size-full object-cover opacity-0 transition-opacity duration-300 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
+        className="size-full object-cover opacity-0 hidpi:aspect-video hidpi:w-auto hidpi:max-w-none hidpi:shrink-0 transition-opacity duration-300 data-loaded:opacity-100 data-failed:invisible motion-reduce:transition-none"
       />
     </div>
   )

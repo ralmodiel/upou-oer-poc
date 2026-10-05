@@ -51,6 +51,9 @@ export function packCatalog(
     if (isRecordLike(r) && typeof r.t === 'string' && r.id === slugOfTitle(r.t)) {
       out = { ...(r as PackedRecord) }
       delete out.id
+    } else if (isRecordLike(r) && r.id === undefined) {
+      // A record the source gave no id stays invalid: unpacking must not give it the title's.
+      out = { ...r, id: null } as unknown as PackedRecord
     }
     const y = isRecordLike(r) ? r.y : undefined
     const value = own(flags, y)

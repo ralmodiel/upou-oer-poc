@@ -33,6 +33,8 @@ it('opened by a link on page load, paints first and adds More like this once ind
   )
   screen.getByRole('dialog', { name: 'Climate Change Basics' })
   expect(screen.queryByRole('region', { name: 'More like this' })).toBeNull()
+  // The first paint did not index the catalog (the slices come after it).
+  expect(isRecommenderReady()).toBe(false)
   expect(await screen.findByRole('region', { name: 'More like this' })).toBeInTheDocument()
   expect(isRecommenderReady()).toBe(true)
 })

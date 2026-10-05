@@ -1332,6 +1332,8 @@ export function explainList(
   items: readonly Video[],
   profile?: Profile,
 ): string[] {
+  // Nothing to explain must not index the catalog (a quick look from a link, before its picks).
+  if (!items.length) return []
   const ctx = contextOf(getIndex(), video, profile)
   const out: string[] = []
   for (const item of items) {

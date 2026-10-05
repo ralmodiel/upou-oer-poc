@@ -5,6 +5,7 @@ import flags from './frame-flags.json'
 import { frameFlagsOf } from './frameFlags'
 import { flagsOf } from './images'
 import { packCatalog, slugOfTitle, unpackRecords } from './pack'
+import { isValidRecord } from './records'
 import speakers from './speakers.json'
 import { speakersOf } from './speakers'
 
@@ -20,6 +21,8 @@ describe('catalog pack', () => {
   it('keeps malformed records as they are', () => {
     const odd = [null, { id: 'x', t: 3 }, { t: 'A Title', id: 'a-title' }]
     expect(unpackRecords(packCatalog(odd, {}, {}))).toEqual(odd)
+    const noId = { y: 'abcdefghijk', t: 'A Title', c: 'Science', p: '2024-01-01' }
+    expect(isValidRecord(unpackRecords(packCatalog([noId], {}, {}))[0])).toBe(false)
   })
 
   it('slugs titles as the source site does', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { preconnect } from 'react-dom'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { ChevronRightIcon } from '../components/icons'
@@ -36,6 +36,8 @@ const ORIGINS = [
   'https://i.ytimg.com',
 ]
 const LONG_TITLE = 120
+// How far down counts as scrolled: more than a finger's slip.
+const SCROLLED_PX = 24
 
 export default function WatchPage() {
   const { id } = useParams()
@@ -75,6 +77,21 @@ function Watch({ video }: { video: Video }) {
     )
     observer.observe(row)
     return () => observer.disconnect()
+  }, [])
+  // A page that is scrolled (Back or a reload restored it, or the viewer scrolled during the preview)
+  // shows its text and Up next at once: they would be blank for the ten seconds of the preview
+  // (watch.css, data-scrolled). Set on the element, so a render never takes it off. The first read
+  // waits a microtask, for the router to restore the scroll.
+  const page = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const mark = () => {
+      if (scrollY < SCROLLED_PX) return
+      page.current?.setAttribute('data-scrolled', '')
+      removeEventListener('scroll', mark)
+    }
+    queueMicrotask(mark)
+    addEventListener('scroll', mark, { passive: true })
+    return () => removeEventListener('scroll', mark)
   }, [])
   useSeo(videoSeo(video, category))
   for (const origin of ORIGINS) preconnect(origin)
@@ -189,6 +206,7 @@ function Watch({ video }: { video: Video }) {
     // At least a screen tall beside the player: Up next no longer lengthens the page there, and a
     // footer in view would move with every late reflow of the column (fonts, for one).
     <div
+      ref={page}
       className="watch-page pb-16 lg:min-h-dvh"
       data-tone={category ? toneOf(category.slug) : undefined}
     >

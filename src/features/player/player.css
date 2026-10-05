@@ -144,3 +144,26 @@
     }
   }
 }
+
+/*
+  Touch: Start over answers a tap within 44px tall, drawn out by an invisible ::after (nothing
+  moves). Upward over its own "Resumed at" line, and no further down than the note's edge, which sits
+  just above where the embed draws its full screen button.
+*/
+@media (pointer: coarse) {
+  .player-start-over {
+    position: relative;
+  }
+
+  .player-start-over::after {
+    content: '';
+    position: absolute;
+    inset: -1rem 0 -0.25rem;
+  }
+
+  @container (width >= 44rem) {
+    .player-start-over::after {
+      inset: -0.5rem 0 -0.25rem;
+    }
+  }
+}

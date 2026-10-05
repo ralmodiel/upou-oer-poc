@@ -48,7 +48,7 @@ export default function ShareButton({ title }: { title: string }) {
         size="sm"
         icon={copied ? <CheckIcon /> : <ShareIcon />}
         onClick={() => void share()}
-        className={copied ? 'border-forest text-forest' : ''}
+        className={copied ? 'watch-share border-forest text-forest' : 'watch-share'}
       >
         {copied ? 'Link copied' : 'Share'}
       </Button>

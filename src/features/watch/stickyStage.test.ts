@@ -35,3 +35,24 @@ describe('the sticky stage under lg', () => {
     expect(outside).not.toMatch(/position: sticky/)
   })
 })
+
+describe('phone fixes read from watch.css', () => {
+  it('counts the home-indicator inset in the tab bar clearance for focus and More…', () => {
+    expect(css).toMatch(
+      /html:has\(\.watch-page\) \{\s*scroll-padding-bottom: calc\(\s*var\(--tabbar-h\) \+ env\(safe-area-inset-bottom, 0px\) \+ 1rem\s*\);/,
+    )
+  })
+
+  it('shows a scrolled page at once (no blank page under the preview) and gives no reveal', () => {
+    expect(css).toContain('.watch-page:has(.watch-stage .reel):not([data-scrolled]) .watch-aside')
+    expect(css).not.toMatch(/\.watch-page:not\(:has\(\.watch-stage \.reel\)\)/)
+  })
+
+  it('draws every touch target out to 44px with an ::after, never padding', () => {
+    const block = css.slice(css.indexOf('Touch: a standalone control'))
+    expect(block).toContain('@media (pointer: coarse)')
+    expect(block).toContain('inset: min(0px, calc((100% - 44px) / 2))')
+    for (const name of ['.watch-back', '.watch-refresh', '.watch-upnext-more', '.watch-cite-copy'])
+      expect(block).toContain(name)
+  })
+})

@@ -766,9 +766,12 @@ html:has(.watch-page) {
   While the preview plays, the page under the stage waits: the article (and below lg Up next,
   which sits under the stage there) keeps its space, so nothing moves, but shows nothing.
   visibility: hidden also keeps its links out of Tab, arrow keys and screen readers. Keyed on the
-  reel's own markup, so the reel ending or being skipped (it unmounts) is what lets it in.
+  reel's own markup, so the reel ending or being skipped (it unmounts) is what lets it in. Not once
+  the page has been scrolled (data-scrolled, WatchPage: restored by Back or a reload, or scrolled by
+  the viewer during the preview): it would be a blank page under the stage for ten seconds, so its
+  text and Up next show at once, with no reveal to come and the stage out of its pose.
 */
-.watch-page:has(.watch-stage .reel) .watch-stage-wrap ~ article {
+.watch-page:has(.watch-stage .reel):not([data-scrolled]) .watch-stage-wrap ~ article {
   visibility: hidden;
   opacity: 0;
 }
@@ -778,7 +781,7 @@ html:has(.watch-page) {
 }
 
 @media (width < 64rem) {
-  .watch-page:has(.watch-stage .reel) .watch-aside {
+  .watch-page:has(.watch-stage .reel):not([data-scrolled]) .watch-aside {
     visibility: hidden;
     opacity: 0;
   }
@@ -791,34 +794,49 @@ html:has(.watch-page) {
   With reduced motion it is simply there.
 */
 @media (prefers-reduced-motion: no-preference) {
-  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > * {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled]) .watch-stage-wrap ~ article > * {
     animation: watch-reveal 600ms var(--ease-out-soft, ease-out) backwards;
     animation-delay: calc(var(--watch-wait, 0ms) + 190ms);
   }
 
-  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > :first-child {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled])
+    .watch-stage-wrap
+    ~ article
+    > :first-child {
     animation-delay: var(--watch-wait, 0ms);
   }
 
-  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-title {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled])
+    .watch-stage-wrap
+    ~ article
+    > .watch-title {
     animation-delay: calc(var(--watch-wait, 0ms) + 50ms);
   }
 
-  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-speakers {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled])
+    .watch-stage-wrap
+    ~ article
+    > .watch-speakers {
     animation-delay: calc(var(--watch-wait, 0ms) + 85ms);
   }
 
-  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-meta {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled])
+    .watch-stage-wrap
+    ~ article
+    > .watch-meta {
     animation-delay: calc(var(--watch-wait, 0ms) + 120ms);
   }
 
-  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-about {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled])
+    .watch-stage-wrap
+    ~ article
+    > .watch-about {
     animation-delay: calc(var(--watch-wait, 0ms) + 260ms);
   }
 }
 
 @media (width < 64rem) and (prefers-reduced-motion: no-preference) {
-  .watch-page:not(:has(.watch-stage .reel)) .watch-aside {
+  .watch-page:not(:has(.watch-stage .reel), [data-scrolled]) .watch-aside {
     animation: watch-reveal 600ms var(--ease-out-soft, ease-out) backwards;
     animation-delay: calc(var(--watch-wait, 0ms) + 260ms);
   }
@@ -838,7 +856,7 @@ html:has(.watch-page) {
     transition: translate 600ms var(--ease-out-soft, ease-out);
   }
 
-  .watch-page:has(.watch-stage .reel)
+  .watch-page:has(.watch-stage .reel):not([data-scrolled])
     :is(.watch-stage-wrap, div:has(> .watch-back:not(.watch-back-float))) {
     translate: 0 var(--watch-centre, 0px);
     transition: none;
@@ -1445,6 +1463,17 @@ html:has(.watch-page) {
   }
 }
 
+/*
+  The phone tab bar is --tabbar-h plus the home-indicator inset (Header pads it by env(safe-area-inset-bottom)),
+  which --tabbar-h leaves out: without the inset a row of Up next brought into view by focus or
+  More… stopped up to 34px under the bar.
+*/
+@media (width < 48rem) {
+  html:has(.watch-page) {
+    scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+}
+
 @keyframes watch-stage-stick {
   to {
     scale: tan(atan2(var(--stuck-h), var(--rest-h)));
@@ -1565,5 +1594,58 @@ html[data-watch-swap]::view-transition-new(watch-stage) {
   }
   75% {
     translate: 0 0;
+  }
+}
+
+/*
+  Touch: a standalone control answers a tap within 44 x 44px, whatever it looks like. The box is
+  drawn out by an invisible ::after, never by padding, so nothing moves; min() leaves a side that is
+  already 44px long as it is, and the gaps between neighbours (8px or more) take the 2px each way. The
+  floating Back is fixed already, so it keeps its position. Inline links in running text (the
+  citation's) are exempt; the resumed note's Start over is in player.css.
+*/
+@media (pointer: coarse) {
+  :is(
+    .watch-back,
+    .watch-save,
+    .watch-share,
+    .watch-cite-copy,
+    .watch-tab,
+    .watch-desc button,
+    .watch-row a,
+    .watch-refresh,
+    .watch-upnext [role='switch'],
+    .watch-upnext-more,
+    .watch-more,
+    .watch-autoplay-actions > button
+  ):not(.watch-back-float) {
+    position: relative;
+  }
+
+  :is(
+    .watch-back,
+    .watch-save,
+    .watch-share,
+    .watch-cite-copy,
+    .watch-tab,
+    .watch-desc button,
+    .watch-row a,
+    .watch-refresh,
+    .watch-upnext [role='switch'],
+    .watch-upnext-more,
+    .watch-more,
+    .watch-autoplay-actions > button
+  )::after {
+    content: '';
+    position: absolute;
+    inset: min(0px, calc((100% - 44px) / 2));
+  }
+}
+
+/* The tab's tap area (above) reaches past the list's 0.375rem; its clip keeps 0.5rem, the margins give it back. */
+@media (pointer: coarse) {
+  .watch-meta {
+    margin-block: 0.25rem -0.5rem;
+    padding-block: 0.5rem;
   }
 }

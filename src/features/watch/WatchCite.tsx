@@ -99,7 +99,7 @@ function CitationBox({
           label={copied ? 'Copied' : 'Copy citation'}
           icon={copied ? <CheckIcon /> : <CopyIcon />}
           onClick={() => void copy()}
-          className={`${copied ? 'text-forest' : 'text-ink-2'} ${shut}`}
+          className={`watch-cite-copy ${copied ? 'text-forest' : 'text-ink-2'} ${shut}`}
         />
         {/* Always in the tree (empty, it has no width), so screen readers hear what it says. */}
         <span role="status" className="text-xs text-ink-2">

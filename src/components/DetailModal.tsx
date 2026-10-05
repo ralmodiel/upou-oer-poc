@@ -314,13 +314,16 @@ function DetailDialog({ video }: { video: Video }) {
             />
           </div>
 
-          {/* How to cite, right below the picture and its buttons: always whole, never folded. */}
-          <div
-            ref={citeRef}
-            className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7"
-          >
-            <WatchCite video={video} as="h3" className="ql-cite" />
-          </div>
+          {/* How to cite, right below the picture and its buttons: always whole, never folded. With no
+              description it moves beside the picture, under the title (see the details column). */}
+          {video.description && (
+            <div
+              ref={citeRef}
+              className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7"
+            >
+              <WatchCite video={video} as="h3" className="ql-cite" />
+            </div>
+          )}
 
           <div
             ref={detailsRef}
@@ -346,6 +349,11 @@ function DetailDialog({ video }: { video: Video }) {
               {video.title}
             </h2>
             <FactsLine video={video} className="mt-3" />
+            {!video.description && (
+              <div ref={citeRef} className="mt-5 min-w-0">
+                <WatchCite video={video} as="h3" className="ql-cite" />
+              </div>
+            )}
             {video.description && (
               <p className="mt-4 text-base leading-relaxed whitespace-pre-line text-ink-2">
                 {video.description}

@@ -54,6 +54,21 @@ it('shows How to cite whole, below the picture and its buttons', async () => {
   expect(cite.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
+it('with no description, puts How to cite beside the picture, under the title', async () => {
+  setCatalog(fixtureVideos.map((v) => (v.id === 'climate-basics' ? { ...v, description: '' } : v)))
+  try {
+    open('/?v=climate-basics')
+    const dialog = screen.getByRole('dialog', { name: 'Climate Change Basics' })
+    const cite = await within(dialog).findByRole('region', { name: 'How to cite' })
+    const details = within(dialog).getByRole('group', { name: 'Climate Change Basics' })
+    expect(details).toContainElement(cite)
+    const title = within(details).getByRole('heading', { level: 2 })
+    expect(title.compareDocumentPosition(cite) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  } finally {
+    setCatalog(fixtureVideos)
+  }
+})
+
 it('opened from the hero Details (#details), starts on the details', async () => {
   open('/?v=climate-basics#details')
   const dialog = screen.getByRole('dialog', { name: 'Climate Change Basics' })

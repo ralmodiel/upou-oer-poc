@@ -68,10 +68,20 @@ function centreNowPlaying(ol: HTMLElement, smooth = false, ifHidden = false): HT
   // From the boxes, not offsetTop: a row's offsetParent changes while a filter is on it.
   const box = row.getBoundingClientRect()
   const list = ol.getBoundingClientRect()
-  if (ifHidden && box.top >= list.top && box.bottom <= list.bottom) return row
+  // In view means clear of the list's edge fades (its scroll padding), not just inside its box.
+  const style = getComputedStyle(ol)
+  const padTop = parseFloat(style.scrollPaddingTop) || 0
+  const padBottom = parseFloat(style.scrollPaddingBottom) || 0
+  const above = box.top - (list.top + padTop)
+  const below = box.bottom - (list.bottom - padBottom)
+  if (ifHidden && above >= 0 && below <= 0) return row
   const at = box.top - list.top + ol.scrollTop
   const max = Math.max(0, ol.scrollHeight - ol.clientHeight)
-  const top = Math.min(max, Math.max(0, at - (ol.clientHeight - box.height) / 2))
+  // A kept list moves only as far as it must; an arriving one centres the row.
+  const want = ifHidden
+    ? ol.scrollTop + (above < 0 ? above : below)
+    : at - (ol.clientHeight - box.height) / 2
+  const top = Math.min(max, Math.max(0, want))
   if (Math.abs(ol.scrollTop - top) < 1) return row
   if (smooth && ol.scrollTo) ol.scrollTo({ top, behavior: 'smooth' })
   else ol.scrollTop = top

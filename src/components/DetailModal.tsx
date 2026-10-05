@@ -242,6 +242,26 @@ function DetailDialog({ video }: { video: Video }) {
     }
   }
 
+  // Topic chips: in the details column under the description; with no description they sit under
+  // the picture's buttons instead, where the citation would be (it moves to the details column).
+  const topics = (className: string) =>
+    tags.length > 0 && (
+      <ul
+        role="list"
+        aria-label="Topics"
+        data-spatial="group"
+        className={`flex flex-wrap gap-2 ${className}`}
+      >
+        {tags.map((tag) => (
+          <li key={tag}>
+            <Chip to={`/search?q=${encodeURIComponent(tag)}`} active={false} title={tag} size="sm">
+              {tag}
+            </Chip>
+          </li>
+        ))}
+      </ul>
+    )
+
   return (
     <dialog
       ref={dialog}
@@ -316,6 +336,11 @@ function DetailDialog({ video }: { video: Video }) {
 
           {/* How to cite, right below the picture and its buttons: always whole, never folded. With no
               description it moves beside the picture, under the title (see the details column). */}
+          {!video.description && tags.length > 0 && (
+            <div className="min-w-0 md:col-span-6 md:col-start-1 md:row-start-3 md:self-start lg:col-span-7">
+              {topics('')}
+            </div>
+          )}
           {video.description && (
             <div
               ref={citeRef}
@@ -359,27 +384,7 @@ function DetailDialog({ video }: { video: Video }) {
                 {video.description}
               </p>
             )}
-            {tags.length > 0 && (
-              <ul
-                role="list"
-                aria-label="Topics"
-                data-spatial="group"
-                className="mt-5 flex flex-wrap gap-2"
-              >
-                {tags.map((tag) => (
-                  <li key={tag}>
-                    <Chip
-                      to={`/search?q=${encodeURIComponent(tag)}`}
-                      active={false}
-                      title={tag}
-                      size="sm"
-                    >
-                      {tag}
-                    </Chip>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {video.description && topics('mt-5')}
           </div>
 
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-6 md:col-start-1 md:row-start-4 md:self-start lg:col-span-7">

@@ -1,4 +1,4 @@
-import { END_AT, SHOT_AT, TICK_AT } from './plan'
+import { END_AT, OUT_AT, SHOT_AT, TICK_AT } from './plan'
 
 const MASTER = 0.18
 
@@ -15,6 +15,15 @@ interface Tone {
   freq: number
   to?: number
   type?: OscillatorType
+  peak: number
+  attack: number
+  decay: number
+}
+
+interface Sweep {
+  from: number
+  to: number
+  q: number
   peak: number
   attack: number
   decay: number
@@ -55,6 +64,19 @@ function createSynth(ctx: AudioContext, out: AudioNode) {
       osc.connect(envelope(t, peak, attack, decay))
       osc.start(t)
       osc.stop(t + attack + decay + 0.05)
+    },
+    sweep(t: number, { from, to, q, peak, attack, decay }: Sweep) {
+      const src = ctx.createBufferSource()
+      src.buffer = noise
+      src.loop = true
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.Q.value = q
+      filter.frequency.setValueAtTime(from, t)
+      filter.frequency.exponentialRampToValueAtTime(to, t + attack + decay)
+      src.connect(filter).connect(envelope(t, peak, attack, decay))
+      src.start(t)
+      src.stop(t + attack + decay + 0.05)
     },
     air(t: number, { cutoff, peak, attack, decay }: Air) {
       const src = ctx.createBufferSource()
@@ -106,6 +128,11 @@ function cues(root: number): Cue[] {
     // the end card settles on a warm major chord
     [sec(END_AT) - 0.3, (s, t) => pad(s, t, [1, 1.25, 1.5, 2], 0.22, 0.6, 2.6)],
     [sec(END_AT), (s, t) => chime(s, t, 4)],
+    // the countdown's zero keeps its original swish
+    [
+      sec(OUT_AT) - 0.1,
+      (s, t) => s.sweep(t, { from: 500, to: 3200, q: 1.2, peak: 0.12, attack: 0.14, decay: 0.24 }),
+    ],
     ...TICK_AT.map((at, i): Cue => [
       sec(at),
       (s, t) => s.tone(t, { freq: i === 2 ? 1320 : 990, peak: 0.16, attack: 0.003, decay: 0.09 }),

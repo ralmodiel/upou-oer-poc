@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { CheckIcon } from '../../components/icons'
-import Button from '../../components/ui/Button'
+import IconButton from '../../components/ui/IconButton'
 import { citeOf, peekCite, type Citation } from '../../data/cites'
 import type { Video } from '../../types'
 
@@ -76,9 +76,23 @@ function CitationBox({
       className={`max-w-2xl rounded-card border border-glass-border bg-surface px-3.5 py-3 shadow-(--shadow-elev-1) sm:px-4 ${className}`}
     >
       {/* A quiet label, not a display heading: the citation is the content. */}
-      <Heading id={headingId} className="eyebrow">
-        How to cite
-      </Heading>
+      {/* The label, with Copy beside it as an icon (named and titled "Copy citation"). */}
+      <div className="-my-1.5 flex items-center gap-1">
+        <Heading id={headingId} className="eyebrow">
+          How to cite
+        </Heading>
+        <IconButton
+          label={copied ? 'Copied' : 'Copy citation'}
+          icon={copied ? <CheckIcon /> : <CopyIcon />}
+          onClick={() => void copy()}
+          className={copied ? 'text-forest' : 'text-ink-2'}
+        />
+        {/* Always in the tree (empty, it has no width), so screen readers hear what it says. */}
+        <span role="status" className="text-xs text-ink-2">
+          {copied && <span className="sr-only">Citation copied to clipboard</span>}
+          {state === 'manual' && 'Selected: press Ctrl+C (⌘C on a Mac) to copy it.'}
+        </span>
+      </div>
       <p
         ref={textRef}
         className="mt-1.5 text-sm leading-normal wrap-anywhere whitespace-pre-line text-ink-2 select-text"
@@ -102,23 +116,6 @@ function CitationBox({
         )}
       </p>
       {generated && <p className="mt-1 text-xs text-ink-3">Generated from this video's details</p>}
-      {/* Under the text, so ↓ on a remote runs title, citation link, Copy, then the description. */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={copied ? <CheckIcon /> : <CopyIcon />}
-          onClick={() => void copy()}
-          className={copied ? 'border-forest text-forest' : ''}
-        >
-          {copied ? 'Copied' : 'Copy citation'}
-        </Button>
-        {/* Always in the tree (empty, it has no width), so screen readers hear what it says. */}
-        <span role="status" className="text-sm text-ink-2">
-          {copied && <span className="sr-only">Citation copied to clipboard</span>}
-          {state === 'manual' && 'Selected: press Ctrl+C (⌘C on a Mac) to copy it.'}
-        </span>
-      </div>
     </section>
   )
 }

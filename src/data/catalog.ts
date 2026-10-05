@@ -18,6 +18,7 @@ import {
   isNameToken,
   isOrgTag,
   registerNameTokens,
+  registerSpeakers,
   topicTags,
   type LearnedNames,
 } from '../lib/tags'
@@ -25,6 +26,7 @@ import type { Video } from '../types'
 import { DEFAULT_CHANNEL, expandCatalog } from './expand'
 import { frameFlagsOf } from './frameFlags'
 import { isCleanImage } from './images'
+import { allSpeakers } from './speakers'
 
 /** Whether the video's canonical image passes the frame filter (it fails only when all do). */
 export const hasCleanPoster = (v: Video) =>
@@ -438,3 +440,4 @@ export function replaceCatalog(list: readonly Video[], names?: LearnedNames): vo
 }
 
 replaceCatalog(expandCatalog(records), catalogNames)
+registerSpeakers(allSpeakers())

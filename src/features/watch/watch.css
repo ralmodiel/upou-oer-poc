@@ -800,6 +800,10 @@
     animation-delay: calc(var(--watch-wait, 0ms) + 50ms);
   }
 
+  .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-speakers {
+    animation-delay: calc(var(--watch-wait, 0ms) + 85ms);
+  }
+
   .watch-page:not(:has(.watch-stage .reel)) .watch-stage-wrap ~ article > .watch-meta {
     animation-delay: calc(var(--watch-wait, 0ms) + 120ms);
   }

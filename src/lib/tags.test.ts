@@ -8,9 +8,11 @@ import {
   isOrgTag,
   isPersonTag,
   learnedNamesOf,
+  personKey,
   POPULAR_SERIES,
   POPULAR_TOPICS,
   registerNameTokens,
+  registerSpeakers,
   tagKey,
   tidyTag,
   topicTags,
@@ -102,5 +104,37 @@ describe('names learned by the build', () => {
     registerNameTokens(catalogNames)
     expect(tags.map(isPersonTag)).toEqual(learned)
     registerNameTokens([])
+  })
+})
+
+describe('speakers are never topics', () => {
+  it('knows a person however the tag writes them', () => {
+    const key = personKey('Felipe Cervera')
+    for (const name of [
+      'Dr. Felipe M. Cervera',
+      'FelipeCervera',
+      'DrFelipeCervera',
+      'felipe cervera',
+    ])
+      expect(personKey(name), name).toBe(key)
+    expect(personKey('H.E. Elizabeth Buensuceso')).toBe(personKey('Elizabeth Buensuceso'))
+    for (const tag of ['H.E. Elizabeth Buensuceso', 'Prop. Hadji Balajadia', 'Mx. Cheche Payos'])
+      expect(isPersonTag(tag), tag).toBe(true)
+  })
+
+  it("drops a speaker's name from the chips, joined, titled or plain", () => {
+    registerSpeakers(['Dr. Felipe M. Cervera', 'Prof. Alipio T. Garcia'])
+    const tags = ['FelipeCervera', 'DrFelipeCervera', 'felipe cervera', 'Alipio Garcia']
+    expect(topicTags([...tags, 'Space Humanities', 'Physics'])).toEqual([
+      'Space Humanities',
+      'Physics',
+    ])
+    for (const tag of tags) expect(isOrgTag(tag), tag).toBe(true)
+    registerSpeakers([])
+  })
+
+  it('keeps joined topics that are not names', () => {
+    for (const tag of ['FASTLearn', 'MicroLearning', 'TechTips', 'LearnFastWithUs', 'ASEANnale'])
+      expect(isGenericTag(tag), tag).toBe(false)
   })
 })

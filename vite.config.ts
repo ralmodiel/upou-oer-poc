@@ -82,7 +82,7 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: 'vendor', test: /node_modules/ },
-            { name: 'catalog', test: /(catalog|frame-flags)\.json$|catalog-names$/ },
+            { name: 'catalog', test: /(catalog|frame-flags|speakers)\.json$|catalog-names$/ },
           ],
         },
       },

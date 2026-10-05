@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { getVideo } from '../data/catalog'
+import Speakers from '../features/watch/Speakers'
 import WatchCite from '../features/watch/WatchCite'
 import { useProfile } from '../lib/history'
 import { lastInput } from '../lib/pointer'
@@ -384,6 +385,7 @@ function DetailDialog({ video }: { video: Video }) {
             >
               {video.title}
             </h2>
+            <Speakers id={video.id} className="mt-2" />
             <FactsLine video={video} className="mt-3" />
             {!video.description && (
               <div ref={citeRef} className="mt-5 min-w-0">

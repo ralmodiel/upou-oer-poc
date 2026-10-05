@@ -245,6 +245,30 @@ describe('WatchPage', () => {
     )
   })
 
+  it('names the speakers on their own line under the title, and never as topics', () => {
+    // A real id from speakers.json: its How to cite names Dr. Joane V. Serrano.
+    const lecture = {
+      ...testVideo,
+      id: 'managing-sustainability-transitions',
+      tags: ['JoaneSerrano', 'Dr. Joane V. Serrano', 'Sustainability'],
+    }
+    setCatalog([lecture, ...similar])
+    renderAt([`/watch/${lecture.id}`])
+    const title = screen.getByRole('heading', { level: 1, name: lecture.title })
+    const line = title.nextElementSibling
+    expect(line).toHaveTextContent(/^Speaker\s*Dr\. Joane V\. Serrano$/)
+    expect(line?.nextElementSibling).toHaveClass('watch-meta')
+    expect(screen.getByRole('link', { name: 'Sustainability' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Serrano/ })).not.toBeInTheDocument()
+  })
+
+  it('has no speaker line when the source names no one', () => {
+    renderAt([`/watch/${testVideo.id}`])
+    const title = screen.getByRole('heading', { level: 1, name: testVideo.title })
+    expect(title.nextElementSibling).toHaveClass('watch-meta')
+    expect(screen.queryByText(/^Speakers?$/)).not.toBeInTheDocument()
+  })
+
   it('stands in with the collection until the recommender is built, then swaps in place', async () => {
     renderAt([`/watch/${testVideo.id}`])
     const list = screen.getByRole('list', { name: 'Up next' })

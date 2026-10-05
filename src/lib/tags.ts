@@ -67,7 +67,7 @@ const GENERIC = new Set([
 // People are tagged with a title ("Dr. Myra Oruga", "aProf. Benjamin Gonzales", "Mayor Noel Rosal").
 // Abbreviations that are also words ("Gen", "Rep", "Sec") count only with their dot.
 const HONORIFIC =
-  /^((dr|a?prof(essor)?|(asst|assist|assistant|assisstant|assoc|associate)\.? ?prof(essor)?|kat\.? ?prop|mr|ms|mrs|atty|engr|arch|ar|sir|ma'am|hon|dean|fr|sr|br|rev|pres|president|dir|director|chancellor|vice chancellor|ambassador|mayor|governor|senator|sen|secretary|usec|commissioner|judge|congressman|congresswoman|chairperson)\.?|(amb|rep|gov|sec|gen|col|capt|lt|maj)\.)\s+\S/i
+  /^((dr|a?prof(essor)?|(asst|assist|assistant|assisstant|assoc|associate)\.? ?prof(essor)?|kat\.? ?prop|mr|ms|mrs|atty|engr|arch|ar|sir|ma'am|hon|dean|fr|sr|br|rev|pres|president|dir|director|chancellor|vice chancellor|ambassador|mayor|governor|senator|sen|secretary|usec|commissioner|judge|congressman|congresswoman|chairperson)\.?|(amb|rep|gov|sec|gen|col|capt|lt|maj|prop|mx|h\. ?e)\.)\s+\S/i
 // "MS Excel" or "AR apps": an acronym, not a title.
 const ACRONYM = /^\p{Lu}{2,4}\s/u
 const isTitled = (tag: string) => HONORIFIC.test(tag) && !ACRONYM.test(tag)
@@ -270,15 +270,45 @@ function remember(memo: Map<string, boolean>, tag: string, test: (tag: string) =
   return known
 }
 
-// Curated names (people.ts), compared like tags: whatever their case or punctuation.
+// A joined tag split at its capitals: "DrFelipeCervera" → "Dr Felipe Cervera".
+const unjoin = (tag: string) =>
+  tag.replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2').replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, '$1 $2')
+
+/**
+ * The same person however written: honorifics, initials and suffixes off, then compared like tags
+ * ("Dr. Felipe M. Cervera" = "felipe cervera" = "FelipeCervera").
+ */
+export function personKey(name: string): string {
+  let t = unjoin(name.trim())
+  while (isTitled(t)) t = t.replace(HONORIFIC, (m) => m.slice(-1))
+  return tagKey(nameParts(t).join(' '))
+}
+
+// A key this short could be a word, not a whole name.
+const MIN_PERSON_KEY = 6
+// Curated names (people.ts) and every video's speakers (speakers.json), compared by personKey.
+let speakerNames: readonly string[] = []
 let people: Set<string> | undefined
+
+/** The catalog's speakers: their names, however written in a tag, are never topics. */
+export function registerSpeakers(names: Iterable<string>) {
+  speakerNames = [...names]
+  people = undefined
+  personMemo.clear()
+  genericMemo.clear()
+}
 
 function looksLikePerson(tag: string): boolean {
   const t = tag.trim()
   if (isTitled(t)) return true
-  people ??= new Set(PEOPLE.map(tagKey))
-  if (people.has(tagKey(t))) return true
+  people ??= new Set(
+    [...PEOPLE, ...speakerNames].map(personKey).filter((key) => key.length >= MIN_PERSON_KEY),
+  )
+  if (people.has(personKey(t))) return true
   if (!/\s/.test(t)) {
+    // "DrFelipeCervera", "FelipeCervera": judged as the words they join
+    const words = unjoin(t)
+    if (words !== t && looksLikePerson(words)) return true
     learnNames()
     return surnameTags.has(letters(t))
   }

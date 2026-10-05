@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { CheckIcon } from '../../components/icons'
 import Button from '../../components/ui/Button'
-import SectionHeading from '../../components/ui/SectionHeading'
 import { citeOf, peekCite, type Citation } from '../../data/cites'
 import type { Video } from '../../types'
 
@@ -51,6 +50,7 @@ function CitationBox({
   className: string
 }) {
   const headingId = useId()
+  const Heading = as
   const textRef = useRef<HTMLParagraphElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [state, setState] = useState<'idle' | 'copied' | 'manual'>('idle')
@@ -73,12 +73,15 @@ function CitationBox({
   return (
     <section
       aria-labelledby={headingId}
-      className={`max-w-2xl rounded-card border border-glass-border bg-surface p-4 shadow-(--shadow-elev-1) sm:p-5 ${className}`}
+      className={`max-w-2xl rounded-card border border-glass-border bg-surface px-3.5 py-3 shadow-(--shadow-elev-1) sm:px-4 ${className}`}
     >
-      <SectionHeading as={as} id={headingId} title="How to cite" rule={false} />
+      {/* A quiet label, not a display heading: the citation is the content. */}
+      <Heading id={headingId} className="eyebrow">
+        How to cite
+      </Heading>
       <p
         ref={textRef}
-        className="mt-3 text-base leading-relaxed wrap-anywhere whitespace-pre-line text-ink-2 select-text"
+        className="mt-1.5 text-sm leading-normal wrap-anywhere whitespace-pre-line text-ink-2 select-text"
       >
         {cite.split(URL_RE).map((part, i) =>
           i % 2 ? (
@@ -98,9 +101,9 @@ function CitationBox({
           ),
         )}
       </p>
-      {generated && <p className="mt-2 text-xs text-ink-3">Generated from this video's details</p>}
+      {generated && <p className="mt-1 text-xs text-ink-3">Generated from this video's details</p>}
       {/* Under the text, so ↓ on a remote runs title, citation link, Copy, then the description. */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           variant="secondary"
           size="sm"

@@ -273,6 +273,20 @@ describe('WatchPage', () => {
     expect(screen.queryByRole('link', { name: /Serrano/ })).not.toBeInTheDocument()
   })
 
+  it('keeps a title with its name, so a line never ends on "Ms."', () => {
+    // 'Ms. Zarah Kristine A. Flores' is in speakers.json (open-talk-my-classroom…).
+    const talk = {
+      ...testVideo,
+      id: 'open-talk-my-classroom-in-my-monitor-challenges-and-lessons-gained-under-the-alternative-learning-system',
+      youtubeId: '7evI6PQYfaE',
+    }
+    setCatalog([talk, ...similar])
+    renderAt([`/watch/${talk.id}`])
+    const line = screen.getByRole('heading', { level: 1, name: talk.title }).nextElementSibling
+    expect(line?.textContent).toContain('Ms.\u00A0Zarah Kristine A. Flores')
+    expect(line?.textContent).toContain('Dr.\u00A0Maria Mercedes')
+  })
+
   it('has no speaker line when the source names no one', () => {
     renderAt([`/watch/${testVideo.id}`])
     const title = screen.getByRole('heading', { level: 1, name: testVideo.title })
@@ -800,6 +814,14 @@ describe('WatchPage', () => {
       expect(backs).toHaveLength(2)
       act(() => report([{ ...away, isIntersecting: true }]))
       expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1)
+      // Leaving with its top still on screen (0 to 8px: a fast fling to the end of the page) is away
+      // too, past the observer's 64px margin; a row below the screen is not.
+      const rootBounds = { top: 64 } as DOMRect
+      act(() => report([{ ...away, boundingClientRect: { top: 800 } as DOMRect, rootBounds }]))
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1)
+      act(() => report([{ ...away, boundingClientRect: { top: 2 } as DOMRect, rootBounds }]))
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(2)
+      act(() => report([{ ...away, isIntersecting: true }]))
       act(() => report([away]))
       fireEvent.click(screen.getAllByRole('button', { name: 'Back' })[1])
       expect(await screen.findByText('Home')).toBeInTheDocument()

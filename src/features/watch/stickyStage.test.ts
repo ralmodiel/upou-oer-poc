@@ -48,6 +48,22 @@ describe('phone fixes read from watch.css', () => {
     expect(css).not.toMatch(/\.watch-page:not\(:has\(\.watch-stage \.reel\)\)/)
   })
 
+  it('rests the stage wholly above the tab bar on a phone on its side', () => {
+    expect(css).toMatch(
+      /@media \(width < 48rem\) \{\s*html:has\(\.watch-page\) \{\s*--stage-cap: calc\(\s*\(100dvh - 8rem - var\(--tabbar-h\) - env\(safe-area-inset-bottom, 0px\)\) \* 16 \/ 9\s*\);/,
+    )
+  })
+
+  it('draws the stage buttons out by the stage scale, which animates with the stage', () => {
+    expect(css).toMatch(/@property --stage-s \{\s*syntax: '<number>';/)
+    expect(css).toContain('animation: watch-stage-scale linear both;')
+    expect(css).toContain('inset: min(0px, calc((100% - 44px / var(--stage-s, 1)) / 2));')
+  })
+
+  it('lifts the page above the footer, so the floating Back is never under its links', () => {
+    expect(css).toMatch(/\.watch-page \{[^}]*isolation: isolate;[^}]*z-index: 1;/)
+  })
+
   it('draws every touch target out to 44px with an ::after, never padding', () => {
     const block = css.slice(css.indexOf('Touch: a standalone control'))
     expect(block).toContain('@media (pointer: coarse)')

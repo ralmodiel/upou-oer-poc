@@ -155,15 +155,17 @@
     position: relative;
   }
 
+  /* --grow: what the stuck, scaled-down stage (watch.css, --stage-s) takes off 44px; mostly downward. */
   .player-start-over::after {
+    --grow: calc(44px / var(--stage-s, 1) - 44px);
     content: '';
     position: absolute;
-    inset: -1rem 0 -0.25rem;
+    inset: calc(-1rem - var(--grow) / 3) 0 calc(-0.25rem - var(--grow) * 2 / 3);
   }
 
   @container (width >= 44rem) {
     .player-start-over::after {
-      inset: -0.5rem 0 -0.25rem;
+      inset: calc(-0.5rem - var(--grow) / 3) 0 calc(-0.25rem - var(--grow) * 2 / 3);
     }
   }
 }

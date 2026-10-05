@@ -11,6 +11,9 @@
   --on-gold: var(--color-charcoal, #373637);
   position: relative;
   isolation: isolate;
+  /* Above the footer, which follows it: the floating Back (fixed) shows over the footer's links when the
+     footer fills a short screen. The header and tab bar are z-40. */
+  z-index: 1;
 }
 
 .watch-page[data-tone='forest'] {
@@ -131,6 +134,19 @@
 html:has(.watch-page) {
   /* On the root, so the scroll padding below can reckon with the same width. */
   --stage-cap: calc((100dvh - 8rem) * 16 / 9);
+}
+
+/*
+  Under 48rem the phone tab bar takes its height (and the home-indicator inset) from the screen too:
+  on a phone on its side the stage then rests wholly above it. Taller than wide, the width is what
+  limits the stage, so portrait phones are untouched.
+*/
+@media (width < 48rem) {
+  html:has(.watch-page) {
+    --stage-cap: calc(
+      (100dvh - 8rem - var(--tabbar-h) - env(safe-area-inset-bottom, 0px)) * 16 / 9
+    );
+  }
 }
 
 .watch-stage-wrap {
@@ -667,10 +683,11 @@ html:has(.watch-page) {
 }
 
 /*
-  Upright phones: the rows' text one step up, easier to read at arm's length: the reason (or
+  Upright phones and phones on their side (the land: condition, index.css): the rows' text one step up, easier to read at arm's length: the reason (or
   eyebrow, or Now playing) and the facts at 13px, the title at 16px, still two lines at most.
 */
-@media (width < 40rem) and (orientation: portrait) {
+@media ((width < 40rem) and (orientation: portrait)),
+  ((width < 64rem) and (max-height: 30rem) and (min-aspect-ratio: 3 / 2)) {
   .watch-next-text > :first-child,
   .watch-next-text > :last-child {
     font-size: 0.8125rem;
@@ -680,6 +697,17 @@ html:has(.watch-page) {
   .watch-next-text > .line-clamp-2 {
     font-size: 1rem;
     line-height: 1.375;
+  }
+}
+
+/*
+  On its side the room between the stuck stage and the tab bar is about one row (105px at 360px of
+  height), which the larger type would overflow: the rows take 4px less padding above and below, so a
+  whole row, text and all, still sits clear of the bar.
+*/
+@media (width < 64rem) and (max-height: 30rem) and (min-aspect-ratio: 3 / 2) {
+  .watch-next {
+    padding-block: 0.5rem;
   }
 }
 
@@ -1426,6 +1454,10 @@ html:has(.watch-page) {
         max(36svh, 100svh - var(--header-h) - var(--tabbar-h) - 9rem)
       );
       --tuck: calc(var(--rest-h) - var(--stuck-h));
+      /* The stage's scale as it scrolls (a number, in step with it): its buttons' tap areas grow to match. */
+      animation: watch-stage-scale linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 calc(3.5rem - var(--stack) + var(--tuck));
     }
 
     .watch-stage-wrap .watch-stage,
@@ -1439,6 +1471,7 @@ html:has(.watch-page) {
 
     /* Reduced motion: no ease, one step at the first scroll. */
     @media (prefers-reduced-motion: reduce) {
+      html:has(.watch-page),
       .watch-stage-wrap .watch-stage,
       .watch-stage-wrap .watch-ambient {
         animation-range: 0 1px;
@@ -1471,6 +1504,19 @@ html:has(.watch-page) {
 @media (width < 48rem) {
   html:has(.watch-page) {
     scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+}
+
+/* The stage's scale as a number, for the tap areas of the buttons on it (the end of watch-stage-stick). */
+@property --stage-s {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+@keyframes watch-stage-scale {
+  to {
+    --stage-s: tan(atan2(var(--stuck-h), var(--rest-h)));
   }
 }
 
@@ -1639,6 +1685,17 @@ html[data-watch-swap]::view-transition-new(watch-stage) {
     content: '';
     position: absolute;
     inset: min(0px, calc((100% - 44px) / 2));
+  }
+}
+
+/*
+  The stage's own buttons are scaled with it while it is stuck (a screen on its side, scrolled): their
+  tap areas are drawn out by the inverse, so they stay 44px on the screen. At rest, and from lg, the
+  scale (--stage-s, animated with the stage's own) is 1, so nothing changes there.
+*/
+@media (pointer: coarse) {
+  .watch-stage :is(.reel-btn, .watch-autoplay-actions > button)::after {
+    inset: min(0px, calc((100% - 44px / var(--stage-s, 1)) / 2));
   }
 }
 

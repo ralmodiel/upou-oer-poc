@@ -74,7 +74,12 @@ function Watch({ video }: { video: Video }) {
     const row = backRow.current
     if (!row || typeof IntersectionObserver !== 'function') return
     const observer = new IntersectionObserver(
-      ([entry]) => setBackAway(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      // Away above: its top is over the margin's edge (not just over 0: a row that leaves while
+      // its top is still on screen, 0 to 8px, is away too).
+      ([entry]) =>
+        setBackAway(
+          !entry.isIntersecting && entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0),
+        ),
       { rootMargin: '-64px 0px 0px 0px' },
     )
     observer.observe(row)

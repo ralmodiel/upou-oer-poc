@@ -2,10 +2,12 @@ import { memo, useEffect, useId, useRef, useState, type FocusEvent, type MouseEv
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigationType } from 'react-router'
 import { lastInput } from '../lib/pointer'
+import { useSavedPosition } from '../lib/storage'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
+import PlayFromStart from './PlayFromStart'
 import PlayLink from './PlayLink'
 import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
@@ -40,6 +42,12 @@ const SCRIM = 'hero-scrim'
 
 // A round icon button below 640px.
 const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
+// With Play from start the actions take about 33rem labelled, and beside the picture (lg) the row
+// has 23-40rem: its label goes below 34rem of row, and Details' too below 26rem.
+const START_ICON = `${ICON_ON_PHONE} @max-[34rem]:w-11 @max-[34rem]:px-0`
+const START_LABEL = 'max-sm:sr-only @max-[34rem]:sr-only'
+const DETAILS_ICON_CROWDED = `${ICON_ON_PHONE} @max-[26rem]:w-11 @max-[26rem]:px-0`
+const DETAILS_LABEL_CROWDED = 'max-sm:sr-only @max-[26rem]:sr-only'
 
 /**
  * The top of the home page: a large hero of one featured video, then every featured video as the
@@ -194,7 +202,9 @@ function swapHero(apply: () => void) {
     if (fromEnd > before.length) return
     const after = [...document.querySelectorAll<HTMLElement>(HERO_CONTROLS)]
     refocusing = true
-    after[Math.max(0, after.length - fromEnd)]?.focus({ preventScroll: true })
+    // Play stays Play: Play from start comes and goes with each video's saved place.
+    const to = fromEnd === before.length ? 0 : Math.max(0, after.length - fromEnd)
+    after[to]?.focus({ preventScroll: true })
     refocusing = false
   }
   if (!document.startViewTransition || prefersReducedMotion() || document.hidden) return show()
@@ -218,6 +228,7 @@ function swapHero(apply: () => void) {
 function Hero({ video, priority }: { video: Video; priority: boolean }) {
   const headingId = useId()
   const preview = useCardPreview(video)
+  const resumable = useSavedPosition(video.id) !== undefined
   const long = video.title.length > LONG_TITLE
   const onFocus = () => {
     if (lastInput() !== 'pointer' && !refocusing) preview.start()
@@ -282,21 +293,29 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
             <p className="mt-3 line-clamp-3 min-h-[3lh] max-w-2xl text-base text-pretty text-ink-2">
               {video.description}
             </p>
-            {/* One row at every width (Details and Save as icons on phones): ↓ from Play leaves the
-              hero instead of stopping on a wrapped Save. Details opens the quick look on the
-              video's details (title, facts and citation). */}
-            <div className="mt-5 flex items-center gap-3">
+            {/* One row at every width (Play from start, Details and Save as icons on phones): ↓ from
+              Play leaves the hero instead of stopping on a wrapped Save. Play from start shows
+              while Play would resume a saved place. Details opens the quick look on the video's
+              details (title, facts and citation). */}
+            <div className="mt-5 flex items-center gap-3 @container">
               <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
                 <PlayIcon />
                 Play
               </PlayLink>
+              <PlayFromStart video={video} className={START_ICON} labelClassName={START_LABEL} />
               <DetailsLink
                 id={video.id}
                 hash={AT_DETAILS}
-                className={buttonClass('secondary', 'md', ICON_ON_PHONE)}
+                className={buttonClass(
+                  'secondary',
+                  'md',
+                  resumable ? DETAILS_ICON_CROWDED : ICON_ON_PHONE,
+                )}
               >
                 <InfoIcon />
-                <span className="max-sm:sr-only">Details</span>
+                <span className={resumable ? DETAILS_LABEL_CROWDED : 'max-sm:sr-only'}>
+                  Details
+                </span>
               </DetailsLink>
               <MyListButton
                 id={video.id}

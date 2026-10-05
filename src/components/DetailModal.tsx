@@ -20,6 +20,7 @@ import { watchUrl } from '../lib/youtube'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
 import MyListButton from './MyListButton'
+import PlayFromStart from './PlayFromStart'
 import PlayLink from './PlayLink'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
@@ -334,11 +335,12 @@ function DetailDialog({ video }: { video: Video }) {
             </PlayLink>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 md:col-span-6 md:col-start-1 md:row-start-2 lg:col-span-7">
+          <div className="flex flex-wrap items-center gap-3 @container md:col-span-6 md:col-start-1 md:row-start-2 lg:col-span-7">
             <PlayLink video={video} data-spatial="entry" className={buttonClass('primary')}>
               <PlayIcon />
               Play
             </PlayLink>
+            <PlayFromStart video={video} />
             <MyListButton
               id={video.id}
               title={video.title}

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
 import { setFrameCrops } from '../../data/frameFlags'
 import { testVideo } from '../reel/testing'
@@ -20,7 +21,11 @@ describe('PlayerPoster', () => {
 
 describe('the player key time pill', () => {
   it("shows the time played and the length from the embed's info deliveries", () => {
-    const { container } = render(<YouTubePlayer video={testVideo} />)
+    const { container } = render(
+      <MemoryRouter>
+        <YouTubePlayer video={testVideo} />
+      </MemoryRouter>,
+    )
     const frame = screen.getByTitle(/YouTube video\)$/) as HTMLIFrameElement
     fireEvent.load(frame)
     const send = (info: unknown, event = 'infoDelivery') =>

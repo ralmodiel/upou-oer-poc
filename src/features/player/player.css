@@ -1,0 +1,146 @@
+/*
+  "Resumed at 1:15 · Start over" (YouTubePlayer), in the player key's glass, placed by the stage's
+  own size (the layer is a size container) where YouTube draws none of its own controls while they
+  show. Measured on its embed: a top row (avatar, title, sound, CC, settings) to about 50px, an
+  information panel at the left down to about 120px on some videos, the seek / play group in the
+  middle, and a band of time, progress and buttons over the last 104 to 128px.
+  - Wide stages (44rem up): one line at the left, 8.75rem up, between the panel and the band.
+  - 35-44rem: the same place on two lines, clear of the middle group.
+  - Phones: two lines at the top right, under the settings and above full screen; below 22rem only
+    Start over shows (the status line still says where it resumed).
+*/
+.player-resume-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  container-type: size;
+  pointer-events: none;
+}
+
+.player-resumed {
+  position: absolute;
+  top: 3.25rem;
+  right: 3%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  padding: 0.1875rem 0.1875rem 0.1875rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 0.75rem;
+  background: rgb(250 248 246 / 0.84);
+  color: #373637;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  white-space: nowrap;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 10px 28px -12px rgb(27 26 23 / 0.6);
+  backdrop-filter: blur(12px) saturate(1.2);
+  pointer-events: auto;
+}
+
+.player-resumed-at {
+  padding-top: 0.125rem;
+}
+
+.player-start-over {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+  margin-left: -0.3125rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: rgb(55 54 55 / 0.08);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.player-start-over:hover {
+  background: rgb(55 54 55 / 0.14);
+}
+
+.player-start-over:focus-visible {
+  outline-color: #8d0c34;
+}
+
+.player-start-over svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+@container (width < 22rem) {
+  .player-resumed {
+    padding: 0.1875rem;
+  }
+
+  .player-resumed-at {
+    display: none;
+  }
+
+  .player-start-over {
+    margin-left: 0;
+  }
+}
+
+@container (width >= 35rem) {
+  .player-resumed {
+    top: auto;
+    right: auto;
+    bottom: 8.75rem;
+    left: 3%;
+  }
+}
+
+@container (width >= 44rem) {
+  .player-resumed {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.875rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+  }
+
+  .player-resumed-at {
+    padding-top: 0;
+  }
+
+  .player-start-over {
+    gap: 0.375rem;
+    min-height: 2rem;
+    margin-left: 0;
+    padding: 0 0.75rem;
+  }
+
+  .player-start-over svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+/* It fades in; with motion welcome it also rises a little. */
+.player-resumed {
+  transition: opacity 0.3s var(--ease-out-soft, ease);
+}
+
+@starting-style {
+  .player-resumed {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .player-resumed {
+    transition-property: opacity, translate;
+  }
+
+  @starting-style {
+    .player-resumed {
+      translate: 0 0.375rem;
+    }
+  }
+}

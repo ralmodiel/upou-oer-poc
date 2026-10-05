@@ -98,6 +98,8 @@ export interface HistoryEntry {
 }
 
 const HISTORY_KEY = 'upou:history'
+// Where each video stopped (savePosition below); kept and deleted with the watch history.
+const POSITIONS_KEY = 'upou:positions'
 export const SEARCHES_KEY = 'upou:searches'
 
 /** The viewer's privacy and personalization choices (Privacy and history panel). */
@@ -144,7 +146,10 @@ export const readPrefs = (): Prefs => toPrefs(read<unknown>(PREFS_KEY, DEFAULT_P
 /** Updates choices; opting out of saving a history deletes what was saved. */
 export function setPrefs(patch: Partial<Prefs>) {
   write(PREFS_KEY, { ...readPrefs(), ...patch })
-  if (patch.history === false) write(HISTORY_KEY, [])
+  if (patch.history === false) {
+    write(HISTORY_KEY, [])
+    write(POSITIONS_KEY, [])
+  }
   if (patch.searches === false) write(SEARCHES_KEY, [])
 }
 
@@ -171,6 +176,77 @@ export function useWatchHistory() {
     },
     [setEntries],
   )
-  const clear = useCallback(() => setEntries(NO_HISTORY), [setEntries])
+  const clear = useCallback(() => {
+    setEntries(NO_HISTORY)
+    write(POSITIONS_KEY, [])
+  }, [setEntries])
   return { entries, record, clear }
+}
+
+// Where each video stopped, so the player starts there next time ("Resumed at 1:15"). Part of the
+// watch history: kept only while it is saved, deleted with it, used only while it may be used.
+const MAX_POSITIONS = 200
+// Seconds that must play before a place is kept; until then an earlier one stands.
+const RESUME_FROM_S = 10
+// The last 5 % or 30 s, whichever is longer, count as finished.
+const END_SHARE = 0.05
+const END_S = 30
+
+interface Position {
+  id: string
+  /** Whole seconds played. */
+  t: number
+  at: number
+}
+
+const NO_POSITIONS: Position[] = []
+const toPositions = (value: unknown): Position[] =>
+  Array.isArray(value)
+    ? value.filter((e) => typeof e?.id === 'string' && Number.isFinite(e.t) && e.t > 0)
+    : NO_POSITIONS
+
+/** Where this browser left video `id`, in whole seconds, while watch history may be used. */
+export function readPosition(id: string): number | undefined {
+  if (!historyAllowed(readPrefs())) return undefined
+  return toPositions(read<unknown>(POSITIONS_KEY, NO_POSITIONS)).find((e) => e.id === id)?.t
+}
+
+/** readPosition, following storage (another tab, the player leaving, a privacy change). */
+export const useSavedPosition = (id: string) =>
+  useSyncExternalStore(
+    subscribe,
+    () => readPosition(id),
+    () => undefined,
+  )
+
+/**
+ * Keeps where video `id` stopped (`t` of `length` seconds), newest first, the last 200. Under
+ * RESUME_FROM_S nothing changes; near the end (see END_S) the place is forgotten, so a finished
+ * video starts fresh. Nothing is kept while watch history is off.
+ */
+export function savePosition(id: string, t: number, length?: number) {
+  if (!readPrefs().history || t < RESUME_FROM_S) return
+  if (length !== undefined && t >= length - Math.max(length * END_SHARE, END_S))
+    return forgetPosition(id)
+  const rest = toPositions(read<unknown>(POSITIONS_KEY, NO_POSITIONS)).filter((e) => e.id !== id)
+  write(POSITIONS_KEY, [{ id, t: Math.floor(t), at: Date.now() }, ...rest].slice(0, MAX_POSITIONS))
+}
+
+/** Forgets where video `id` stopped (it played to the end). */
+export function forgetPosition(id: string) {
+  const list = toPositions(read<unknown>(POSITIONS_KEY, NO_POSITIONS))
+  const rest = list.filter((e) => e.id !== id)
+  if (rest.length < list.length) write(POSITIONS_KEY, rest)
+}
+
+/** Watch page state that plays video `id` from the start, passing over its saved place `t`. */
+export const fromStart = (id: string, t: number) => ({ fromStart: { id, t } })
+
+/**
+ * Whether a watch page's state asks to play video `id` from the start. Only while the place it
+ * passed over is still the saved one: once 10 s have played again, Back or a reload resumes.
+ */
+export function startsOver(state: unknown, id: string) {
+  const asked = (state as { fromStart?: { id?: unknown; t?: unknown } } | null)?.fromStart
+  return asked?.id === id && asked.t === readPosition(id)
 }

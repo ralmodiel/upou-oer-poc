@@ -926,3 +926,9 @@ Paint only. Shadows move to the var form (`shadow-(--shadow-elev-N)`), because T
 - **Preview:** the pose's translate applies on top of the sticky place, so scrolling during the preview leaves the stage in its pose; when it ends the stage glides back up under Back. A row chosen while down at Up next now glides the stage (it is in view), rather than cross-fading.
 - **Script:** `centreNowPlaying` and Refresh only ever scroll the list, so they leave the page alone under the stage. There, the More… cue comes when the viewer's own scrolling brings More… wholly into view above the tab bar (again only after scrolling back by 24px), and More… brings the first new row up under the stage (`scrollIntoView`, smooth unless motion is reduced). A row chosen by keyboard is far below the fold there, so the stage takes focus, as designed.
 - **Bigger row text on upright phones** (below 40rem, portrait): the reason, eyebrow or Now playing line and the facts at 13px, the title at 16px, still clamped to 2 lines. From sm up nothing changes.
+
+## Resume where the viewer left off (user request)
+
+- **Saved place:** per video in `upou:positions` (`[{id, t, at}]`, newest first, at most 200), every 5 s while playing, on pause, `pagehide`, a hidden tab and unmount. Under 10 s changes nothing; the last 5% or 30 s (whichever is longer) or the end deletes it. Only while history is allowed; history off or Clear history deletes all positions.
+- **Resume:** the embed gets `&start=N`; a "Resumed at m:ss · Start over" note shows for about 8 s (longer while focused or hovered), placed by the stage's size so it never covers YouTube's controls. Start over seeks to 0 and focuses the Play / Pause key.
+- **Play from start:** beside Play in the hero and the quick look while a place is saved (icon-only when crowded). It passes `{ fromStart: { id, t } }`, which plays that video from 0 with no note, only while the saved place is still `t`.

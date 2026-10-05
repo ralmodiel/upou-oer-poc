@@ -1,10 +1,17 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  forgetPosition,
+  fromStart,
+  readPosition,
+  savePosition,
+  setPrefs,
+  startsOver,
   toggleMyList,
   useInMyList,
   useMyList,
   usePersistentState,
+  useSavedPosition,
   useWatchHistory,
 } from './storage'
 
@@ -90,5 +97,87 @@ describe('storage hooks', () => {
       window.dispatchEvent(new StorageEvent('storage', { key: 'upou:my-list' }))
     })
     expect(result.current.ids).toEqual(['x'])
+  })
+})
+
+describe('saved places (resume)', () => {
+  const stored = () =>
+    JSON.parse(localStorage.getItem('upou:positions') ?? '[]') as { id: string }[]
+
+  it('keeps nothing in the first 10 s, then the whole second, newest first and once', () => {
+    savePosition('a', 9.9, 600)
+    expect(readPosition('a')).toBeUndefined()
+    expect(localStorage.getItem('upou:positions')).toBeNull()
+    savePosition('a', 75.8, 600)
+    savePosition('b', 20, 600)
+    savePosition('a', 90, 600)
+    expect(readPosition('a')).toBe(90)
+    expect(stored().map((e) => e.id)).toEqual(['a', 'b'])
+    // Starting over keeps the old place until 10 s have played again.
+    savePosition('a', 4, 600)
+    expect(readPosition('a')).toBe(90)
+  })
+
+  it('forgets a place in the last 5 % or 30 s, whichever is longer, and at the end', () => {
+    // 1000 s: the last 50 s.
+    savePosition('a', 949, 1000)
+    expect(readPosition('a')).toBe(949)
+    savePosition('a', 951, 1000)
+    expect(readPosition('a')).toBeUndefined()
+    // 200 s: the last 30 s.
+    savePosition('b', 169, 200)
+    expect(readPosition('b')).toBe(169)
+    savePosition('b', 171, 200)
+    expect(readPosition('b')).toBeUndefined()
+    savePosition('c', 100, 600)
+    forgetPosition('c')
+    expect(readPosition('c')).toBeUndefined()
+  })
+
+  it('keeps the last 200, dropping the oldest', () => {
+    for (let i = 0; i < 205; i++) savePosition(`v${i}`, 60, 600)
+    const ids = stored().map((e) => e.id)
+    expect(ids).toHaveLength(200)
+    expect(ids[0]).toBe('v204')
+    expect(ids).not.toContain('v4')
+    expect(readPosition('v5')).toBe(60)
+  })
+
+  it('goes with watch history: off saves and resumes nothing, and clearing deletes it', () => {
+    savePosition('a', 60, 600)
+    setPrefs({ useHistory: false })
+    expect(readPosition('a')).toBeUndefined()
+    setPrefs({ useHistory: true })
+    expect(readPosition('a')).toBe(60)
+    setPrefs({ history: false })
+    expect(stored()).toEqual([])
+    savePosition('a', 60, 600)
+    expect(stored()).toEqual([])
+    setPrefs({ history: true })
+    savePosition('a', 60, 600)
+    const { result } = renderHook(() => useWatchHistory())
+    act(() => result.current.clear())
+    expect(stored()).toEqual([])
+  })
+
+  it('follows saves, clears and malformed values with useSavedPosition', () => {
+    localStorage.setItem('upou:positions', '[null, {"id": "a", "t": "60"}, {"id": "b", "t": 0}]')
+    const { result } = renderHook(() => useSavedPosition('a'))
+    expect(result.current).toBeUndefined()
+    act(() => savePosition('a', 61, 600))
+    expect(result.current).toBe(61)
+    act(() => setPrefs({ history: false }))
+    expect(result.current).toBeUndefined()
+  })
+
+  it('plays from the start only the video the state names, while its place is unchanged', () => {
+    savePosition('a', 60, 600)
+    expect(startsOver(fromStart('a', 60), 'a')).toBe(true)
+    expect(startsOver({ ...fromStart('a', 60), playlist: {} }, 'b')).toBe(false)
+    expect(startsOver(null, 'a')).toBe(false)
+    expect(startsOver({ fromStart: true }, 'a')).toBe(false)
+    // Watched again past 10 s: Back or a reload to that page resumes the new place.
+    savePosition('a', 12, 600)
+    expect(startsOver(fromStart('a', 60), 'a')).toBe(false)
   })
 })

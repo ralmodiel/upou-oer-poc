@@ -1,12 +1,15 @@
-import { useEffect, useEffectEvent, useRef, useState, type SyntheticEvent } from 'react'
-import { PlayIcon } from '../../components/icons'
+import { useEffect, useEffectEvent, useId, useRef, useState, type SyntheticEvent } from 'react'
+import { useLocation } from 'react-router'
+import { PlayIcon, RestartIcon } from '../../components/icons'
 import { thumbnailOf, zoomStyle } from '../../components/media'
 import { TitleTile } from '../../components/Thumbnail'
 import { cropZoomOf } from '../../data/frameFlags'
 import { STAGE_SIZES } from '../../data/images'
+import { forgetPosition, readPosition, savePosition, startsOver } from '../../lib/storage'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
 import { reelImages } from '../reel/stills'
+import './player.css'
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 const PLAYER_ORIGIN = 'https://www.youtube-nocookie.com'
@@ -18,8 +21,12 @@ const LISTEN_TRIES = 120
 // Playback an end needs after the last one counted: a seek near the end can report "ended", play
 // on for a moment and end again, which would restart a countdown the viewer just cancelled.
 const REPLAY_MS = 2000
-const command = (func: 'playVideo' | 'pauseVideo') =>
-  JSON.stringify({ event: 'command', func, args: [], id: 1, channel: 'widget' })
+// While it plays, where it is gets saved this often (and on pause, on leaving, when hidden).
+const SAVE_EVERY_MS = 5000
+// How long "Resumed at 1:15 · Start over" stays, counted again once focus or the pointer leaves it.
+const RESUMED_MS = 8000
+const command = (func: 'playVideo' | 'pauseVideo' | 'seekTo', args: unknown[] = []) =>
+  JSON.stringify({ event: 'command', func, args, id: 1, channel: 'widget' })
 
 type Message = { event?: unknown; info?: unknown }
 
@@ -132,6 +139,18 @@ export default function YouTubePlayer({
   /** Called when the video plays to its end. */
   onEnded?: () => void
 }) {
+  const { state: navState } = useLocation()
+  // Where this browser left the video, read once: the embed starts there (`start`), unless the page
+  // was opened to play it from the start.
+  const [resumeAt] = useState(() =>
+    startsOver(navState, video.id) ? undefined : readPosition(video.id),
+  )
+  // "Resumed at …" shows once the player answers, until RESUMED_MS pass or Start over.
+  const [resumed, setResumed] = useState(resumeAt !== undefined)
+  const [holding, setHolding] = useState(false)
+  const resumeNoteId = useId()
+  const resumeRef = useRef<HTMLDivElement>(null)
+  const keyRef = useRef<HTMLButtonElement>(null)
   const [loaded, setLoaded] = useState(false)
   const [state, setState] = useState<number | undefined>()
   // Whole seconds, so the many deliveries a second bring a re-render at most once a second.
@@ -140,6 +159,16 @@ export default function YouTubePlayer({
   const frameRef = useRef<HTMLIFrameElement>(null)
   const ended = useEffectEvent(() => onEnded?.())
   const playing = state === 1 || state === 3
+  const resumedClock = resumeAt === undefined ? '' : clockOf(resumeAt)
+  // Once the player answers, and only for a place inside the video (YouTube starts a `start` past
+  // the end at 0).
+  const showResumed = resumed && resumeAt !== undefined && length !== undefined && resumeAt < length
+
+  useEffect(() => {
+    if (!showResumed || holding) return
+    const timer = setTimeout(() => setResumed(false), RESUMED_MS)
+    return () => clearTimeout(timer)
+  }, [showResumed, holding])
 
   // Says "listening" until the player first answers, then follows its state (and its end).
   useEffect(() => {
@@ -159,17 +188,44 @@ export default function YouTubePlayer({
     let last: number | undefined
     let since = 0
     let played = Infinity
+    // Where it is, as the player last said, for savePosition (which keeps nothing under 10 s, so a
+    // player that has not reached its `start` yet changes nothing).
+    let place: number | undefined
+    let total: number | undefined
+    let savedAt = -Infinity
+    const keep = () => {
+      if (place !== undefined) savePosition(video.id, place, total)
+    }
+    const keepIfHidden = () => {
+      if (document.visibilityState === 'hidden') keep()
+    }
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== PLAYER_ORIGIN || e.source !== player) return
       heard = true
       const message = messageOf(e.data)
       if (!message) return
       const time = timeOf(message)
-      if (time.at !== undefined) setAt(time.at)
-      if (time.length !== undefined) setLength(time.length)
+      if (time.at !== undefined) {
+        place = time.at
+        setAt(place)
+      }
+      if (time.length !== undefined) {
+        total = time.length
+        setLength(total)
+      }
+      if (place !== undefined && performance.now() - savedAt >= SAVE_EVERY_MS) {
+        savedAt = performance.now()
+        keep()
+      }
       const next = stateOf(message)
       if (next === undefined || next === last) return
       setState(next)
+      if (next === 2) keep()
+      // Played to the end: the next play starts fresh.
+      if (next === 0) {
+        place = undefined
+        forgetPosition(video.id)
+      }
       if (last === 1) played += performance.now() - since
       if (next === 1) since = performance.now()
       if (next === 0 && played >= REPLAY_MS) {
@@ -179,11 +235,26 @@ export default function YouTubePlayer({
       last = next
     }
     window.addEventListener('message', onMessage)
+    window.addEventListener('pagehide', keep)
+    document.addEventListener('visibilitychange', keepIfHidden)
     return () => {
       clearInterval(timer)
       window.removeEventListener('message', onMessage)
+      window.removeEventListener('pagehide', keep)
+      document.removeEventListener('visibilitychange', keepIfHidden)
+      keep()
     }
-  }, [loaded])
+  }, [loaded, video.id])
+
+  const send = (message: string) =>
+    frameRef.current?.contentWindow?.postMessage(message, PLAYER_ORIGIN)
+  // Back to 0:00. Focus in the note goes on to the Play / Pause key, as the note leaves.
+  const startOver = () => {
+    send(command('seekTo', [0, true]))
+    if (resumeRef.current?.contains(document.activeElement))
+      keyRef.current?.focus({ preventScroll: true })
+    setResumed(false)
+  }
 
   if (!isYouTubeId(video.youtubeId)) {
     return (
@@ -213,7 +284,7 @@ export default function YouTubePlayer({
       )}
       <iframe
         ref={frameRef}
-        src={`${embedUrl(video.youtubeId)}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`}
+        src={`${embedUrl(video.youtubeId)}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${resumeAt ? `&start=${resumeAt}` : ''}`}
         title={`${video.title} (YouTube video)`}
         allow={ALLOW}
         allowFullScreen
@@ -221,18 +292,44 @@ export default function YouTubePlayer({
         onLoad={() => setLoaded(true)}
         className={`absolute inset-0 size-full border-0 transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
       />
+      {/* Said once to screen readers; the note's own text is for the eyes and describes its button. */}
+      <p role="status" className="sr-only">
+        {showResumed && `Resumed at ${resumedClock}`}
+      </p>
+      {/* Before the key, so ↓ or Enter on the stage reaches Start over while it shows (WatchPage). */}
+      {showResumed && (
+        <div className="player-resume-layer">
+          <div
+            ref={resumeRef}
+            className="player-resumed"
+            onFocus={() => setHolding(true)}
+            onBlur={(e) => setHolding(e.currentTarget.contains(e.relatedTarget))}
+            onPointerEnter={() => setHolding(true)}
+            onPointerLeave={() => setHolding(false)}
+          >
+            <span id={resumeNoteId} aria-hidden="true" className="player-resumed-at">
+              Resumed at {resumedClock}
+            </span>
+            <button
+              type="button"
+              className="player-start-over"
+              aria-describedby={resumeNoteId}
+              onClick={startOver}
+            >
+              <RestartIcon />
+              Start over
+            </button>
+          </div>
+        </div>
+      )}
       {/* The key and, beside it while it has focus, the time and how far along (seen only). */}
       {/* Paused or ended: Up next's Now playing bars hold still (watch.css). */}
       <div className="watch-player-keys" data-paused={state === 2 || state === 0 || undefined}>
         <button
+          ref={keyRef}
           type="button"
           className="watch-player-key"
-          onClick={() =>
-            frameRef.current?.contentWindow?.postMessage(
-              command(playing ? 'pauseVideo' : 'playVideo'),
-              PLAYER_ORIGIN,
-            )
-          }
+          onClick={() => send(command(playing ? 'pauseVideo' : 'playVideo'))}
         >
           {playing ? <PauseIcon /> : <PlayIcon className="size-4" />}
           {playing ? 'Pause' : 'Play'}

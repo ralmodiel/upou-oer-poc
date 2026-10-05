@@ -216,7 +216,8 @@ export default function PrivacyDialog() {
         <h3 className={GROUP}>Watch history</h3>
         <div className="divide-y divide-line">
           <Toggle label="Save watch history" checked={prefs.history} onChange={set('history')}>
-            Remembers the videos you open. Turning it off deletes the saved history.
+            Remembers the videos you open and where you stopped in each. Turning it off deletes
+            both.
           </Toggle>
           <Toggle
             label="Use watch history for suggestions"

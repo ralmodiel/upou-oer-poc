@@ -165,3 +165,10 @@ export const ShieldIcon = (props: IconProps) => (
     <path d="m9 12 2 2 4-4" />
   </Icon>
 )
+
+export const RestartIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4.5 12A7.5 7.5 0 1 0 7 6.4L4.5 8.8" />
+    <path d="M4.5 4.5v4.3h4.3" />
+  </Icon>
+)

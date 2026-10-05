@@ -165,13 +165,16 @@ export function getCategories(order: 'size' | 'latest' = 'size'): Category[] {
           b.videos.length - a.videos.length ||
           a.name.localeCompare(b.name),
       )
-      .map(({ slug, name, videos: list }) => ({
-        slug,
-        name,
-        count: list.length,
-        cover: getCategoryVideos(slug)[0],
-        preview: getCategoryVideos(slug).find(hasCleanPoster),
-      })),
+      .map(({ slug, name, videos: list }) => {
+        const newest = getCategoryVideos(slug)
+        let preview: Video | undefined
+        // Only link previews read it, and finding it works out images: on first read.
+        return Object.defineProperty(
+          { slug, name, count: list.length, cover: newest[0] } as Category,
+          'preview',
+          { enumerable: true, get: () => (preview ??= newest.find(hasCleanPoster)) },
+        )
+      }),
   )
 }
 

@@ -15,6 +15,7 @@ import Speakers from '../features/watch/Speakers'
 import WatchCite from '../features/watch/WatchCite'
 import { useProfile } from '../lib/history'
 import { lastInput } from '../lib/pointer'
+import { isRecommenderReady, warmRecommenderAsync } from '../lib/recommend'
 import { topicTags } from '../lib/tags'
 import { watchUrl } from '../lib/youtube'
 import type { Video } from '../types'
@@ -40,6 +41,7 @@ import './pages.css'
 // Matches the data-closing transition in browse.css.
 const EXIT_MS = 200
 const SIMILAR = 6
+const NO_SIMILAR: Video[] = []
 // The foot of the view the More like this pill floats in (scroll-pb-24).
 const PILL_ZONE = 96
 // Below md the quick look is a full-screen sheet; a phone on its side (LAND, index.css land:)
@@ -85,7 +87,22 @@ function DetailDialog({ video }: { video: Video }) {
   const target = useMemo(() => ({ base, replace: true, state }), [base, state])
   // The taste profile as of this title: saving a card below must not reshuffle the grid.
   const profile = useFrozen(useProfile(), video.id)
-  const similar = useMemo(() => moreLikeThis(video, { profile, limit: SIMILAR }), [video, profile])
+  // A shared link opens this on page load, before the recommender has indexed the catalog (seconds
+  // on a slow phone): the index is then built in short slices after the first paint and More like
+  // this joins below. Opened from the app, it shows at once, as before.
+  const [ready, setReady] = useState(() => wasOpenedInApp(state) || isRecommenderReady())
+  useEffect(() => {
+    if (ready) return
+    let live = true
+    void warmRecommenderAsync().then(() => live && setReady(true))
+    return () => {
+      live = false
+    }
+  }, [ready])
+  const similar = useMemo(
+    () => (ready ? moreLikeThis(video, { profile, limit: SIMILAR }) : NO_SIMILAR),
+    [ready, video, profile],
+  )
   // Why each one is here, in place of the collection eyebrow.
   const reasons = useMemo(() => reasonsFor(similar, profile, video), [similar, profile, video])
   const tags = useMemo(() => topicTags(video.tags), [video])

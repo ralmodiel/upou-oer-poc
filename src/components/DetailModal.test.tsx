@@ -2,19 +2,40 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setCatalog } from '../data/testing'
+import { isRecommenderReady, warmRecommender } from '../lib/recommend'
 import DetailModal from './DetailModal'
 import { fixtureVideos } from './test-fixtures'
 
 setCatalog(fixtureVideos)
 
-const open = (entry: string) =>
-  render(
+// The recommender is ready, as once the visitor has been on the page a moment (or opened this from
+// the app): More like this renders with the dialog.
+const open = (entry: string) => {
+  warmRecommender()
+  return render(
     <RouterProvider
       router={createMemoryRouter([{ path: '/', element: <DetailModal /> }], {
         initialEntries: [entry],
       })}
     />,
   )
+}
+
+it('opened by a link on page load, paints first and adds More like this once indexed', async () => {
+  setCatalog(fixtureVideos)
+  expect(isRecommenderReady()).toBe(false)
+  render(
+    <RouterProvider
+      router={createMemoryRouter([{ path: '/', element: <DetailModal /> }], {
+        initialEntries: ['/?v=climate-basics'],
+      })}
+    />,
+  )
+  screen.getByRole('dialog', { name: 'Climate Change Basics' })
+  expect(screen.queryByRole('region', { name: 'More like this' })).toBeNull()
+  expect(await screen.findByRole('region', { name: 'More like this' })).toBeInTheDocument()
+  expect(isRecommenderReady()).toBe(true)
+})
 
 it('opens on the still, which plays and grows while focused, with ↓ leading to Play', async () => {
   open('/?v=climate-basics')

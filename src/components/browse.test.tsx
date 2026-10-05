@@ -228,7 +228,7 @@ describe('RecentlyViewed and CollectionChips', () => {
 })
 
 describe('DetailModal', () => {
-  it('opens for ?v=<id> with the title and similar titles, and ignores unknown ids', () => {
+  it('opens for ?v=<id> with the title and similar titles, and ignores unknown ids', async () => {
     renderAt('/?v=climate-basics', <DetailModal />)
     const dialog = screen.getByRole('dialog', { name: 'Climate Change Basics' })
     expect(dialog).toHaveAttribute('open')
@@ -245,7 +245,8 @@ describe('DetailModal', () => {
       'href',
       '/search?q=Climate',
     )
-    const similar = within(dialog).getByRole('region', { name: 'More like this' })
+    // Opened by a link on page load: More like this joins once the recommender is ready.
+    const similar = await within(dialog).findByRole('region', { name: 'More like this' })
     expect(
       within(similar).getByRole('link', { name: 'Details: Climate Policy in the Philippines' }),
     ).toHaveAttribute('href', '/?v=climate-policy')

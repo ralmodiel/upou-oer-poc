@@ -374,7 +374,7 @@ function MoreBelow() {
         type="button"
         data-spatial="skip"
         onClick={onClick}
-        className="more-below-pill browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm font-semibold text-ink transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="more-below-pill browse-glass pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-pill border px-4 py-2 text-sm max-md:min-h-10 font-semibold text-ink transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         More video resources below
         <ChevronDownIcon className="size-4" />

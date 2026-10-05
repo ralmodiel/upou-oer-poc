@@ -179,6 +179,8 @@ const ROW_MIN = 12
 // featured, four also new, up to twenty recently viewed).
 const ROW_POOL = ROW_CARDS + 29
 const PICKS = 12
+// Phones wrap the row descriptions: the link's 40px target overlaps the lines, not the leading.
+const IN_TEXT = 'max-md:-my-2.5'
 const NO_VIDEOS: Video[] = []
 
 const without = (list: Video[], ids: ReadonlySet<string>) => {
@@ -288,7 +290,8 @@ export default function BrowsePage() {
             title="Recommended for you"
             description={
               <>
-                Picked from what you {pickSources(prefs)} in this browser. <ManageLink />
+                Picked from what you {pickSources(prefs)} in this browser.{' '}
+                <ManageLink className={IN_TEXT} />
               </>
             }
             videos={forYouList}
@@ -305,7 +308,7 @@ export default function BrowsePage() {
             title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
             description={
               <>
-                Titles close to the one you watched last. <ManageLink />
+                Titles close to the one you watched last. <ManageLink className={IN_TEXT} />
               </>
             }
             videos={becauseList}

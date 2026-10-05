@@ -184,13 +184,22 @@ export function SeeAllTile({ to, count, title, tone, tabIndex }: SeeAll & { tabI
   )
 }
 
-/** Opens the Privacy and history panel (history and personalization switches). */
-export function ManageLink({ children = 'Privacy settings' }: { children?: string }) {
+/**
+ * Opens the Privacy and history panel (history and personalization switches). `className` lets a
+ * link inside running text keep its 40px target without taller leading on its line.
+ */
+export function ManageLink({
+  children = 'Privacy settings',
+  className = '',
+}: {
+  children?: string
+  className?: string
+}) {
   return (
     <button
       type="button"
       onClick={openPrivacy}
-      className={`${TEXT_LINK} inline-flex min-h-10 items-center`}
+      className={`${TEXT_LINK} inline-flex min-h-10 items-center ${className}`}
     >
       {children}
     </button>

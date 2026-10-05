@@ -42,9 +42,9 @@ const STEPS = [
 ]
 
 // The rows above it compact while the page scrolls there (they render the rest of their cards only
-// in use), so the first scroll overshoots. Once scrolling stops, land the heading where scroll
+// in use), so the first scroll overshoots. Once scrolling stops, land the target where scroll
 // padding puts it; give up after 2.5 s or as soon as the viewer scrolls or presses anything.
-function settleOn(heading: HTMLElement) {
+function settleOn(target: HTMLElement) {
   const inputs = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
   const started = performance.now()
   let lastY = -1
@@ -60,7 +60,7 @@ function settleOn(heading: HTMLElement) {
     lastY = window.scrollY
     if (still >= 4) {
       const pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0
-      const off = heading.getBoundingClientRect().top - pad
+      const off = target.getBoundingClientRect().top - pad
       if (Math.abs(off) <= 2) return stop()
       window.scrollBy({ top: off, behavior: 'instant' })
       still = 0
@@ -72,11 +72,13 @@ function settleOn(heading: HTMLElement) {
 }
 
 // Brought into view (smoothly unless reduced motion), its heading focused and the strip briefly
-// outlined in gold (browse.css), so a press of Help or the intro chip shows where it landed.
+// outlined in gold (browse.css), so a press of Help or the intro chip shows where it landed. It
+// lands on the eyebrow above the heading, so the sticky header never cuts "How it works" in half.
 function reveal(section: HTMLElement | null, heading: HTMLElement) {
+  const top = heading.parentElement ?? heading
   heading.focus({ preventScroll: true })
-  heading.scrollIntoView?.({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-  settleOn(heading)
+  top.scrollIntoView?.({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  settleOn(top)
   if (!section) return
   delete section.dataset.arrived
   void section.offsetWidth

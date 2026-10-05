@@ -70,6 +70,24 @@ describe('useGlobalShortcuts', () => {
     }
   })
 
+  it('on a short screen, Esc on the home stops as near the top as keeps the hero Play in view', async () => {
+    const scrollTo = window.scrollTo
+    const calls: unknown[] = []
+    window.scrollTo = ((options: unknown) => void calls.push(options)) as typeof window.scrollTo
+    try {
+      renderAt(['/'])
+      const play = screen.getByRole('button', { name: 'Play' })
+      // Its foot 132px below the screen's (jsdom: 768px tall) at the very top.
+      vi.spyOn(play, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 856, 96, 44))
+      screen.getByRole('button', { name: 'Card' }).focus()
+      await userEvent.keyboard('{Escape}')
+      expect(calls).toContainEqual(expect.objectContaining({ top: 132 }))
+      expect(play).toHaveFocus()
+    } finally {
+      window.scrollTo = scrollTo
+    }
+  })
+
   it('from the player, Back steps over the videos watched in a row to where the first was opened', async () => {
     const router = renderAt(['/'])
     await act(() => router.navigate('/other'))

@@ -40,14 +40,16 @@ const heroAt = new Map<string, number>()
 // Fades the blurred still into the page, fully by the bottom edge (browse.css).
 const SCRIM = 'hero-scrim'
 
-// A round icon button below 640px.
-const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0'
+// A round icon button below 640px, and in a row under 22rem (Play, Details and Saved labelled take
+// about 21.5rem): beside the picture on a phone on its side, from 640px wide, the row has 17-26rem.
+const ICON_ON_PHONE = 'max-sm:w-11 max-sm:px-0 @max-[22rem]:w-11 @max-[22rem]:px-0'
+const LABEL_ON_PHONE = 'max-sm:sr-only @max-[22rem]:sr-only'
 // With Play from start the actions take about 33rem labelled, and beside the picture (lg) the row
 // has 23-40rem: its label goes below 34rem of row, and Details' too below 26rem.
 const START_ICON = `${ICON_ON_PHONE} @max-[34rem]:w-11 @max-[34rem]:px-0`
-const START_LABEL = 'max-sm:sr-only @max-[34rem]:sr-only'
+const START_LABEL = `${LABEL_ON_PHONE} @max-[34rem]:sr-only`
 const DETAILS_ICON_CROWDED = `${ICON_ON_PHONE} @max-[26rem]:w-11 @max-[26rem]:px-0`
-const DETAILS_LABEL_CROWDED = 'max-sm:sr-only @max-[26rem]:sr-only'
+const DETAILS_LABEL_CROWDED = `${LABEL_ON_PHONE} @max-[26rem]:sr-only`
 
 /**
  * The top of the home page: a large hero of one featured video, then every featured video as the
@@ -313,15 +315,13 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
                 )}
               >
                 <InfoIcon />
-                <span className={resumable ? DETAILS_LABEL_CROWDED : 'max-sm:sr-only'}>
-                  Details
-                </span>
+                <span className={resumable ? DETAILS_LABEL_CROWDED : LABEL_ON_PHONE}>Details</span>
               </DetailsLink>
               <MyListButton
                 id={video.id}
                 title={video.title}
                 className={buttonClass('secondary', 'md', `${ICON_ON_PHONE} ${PRESSED}`)}
-                labelClassName="max-sm:sr-only"
+                labelClassName={LABEL_ON_PHONE}
               />
             </div>
           </div>

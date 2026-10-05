@@ -159,15 +159,19 @@ const overlaps = (a: Box, b: Box) =>
 // nothing else lies that way, so ↑ from a scrolled grid reaches the chips above it, not the
 // header covering them. The walk stops at `root`: an open dialog is fixed itself but scrolls its
 // own content. One memo per move: candidates share most ancestors.
-function barFinder(root: Element | null) {
+// With `blocks`, a sticky block inside <main> (the watch page's stage and Back row, below lg) is
+// no bar but page content, between the header and what lies below; it is added to `blocks`.
+function barFinder(root: Element | null, blocks?: Set<Element>) {
   const memo = new Map<Element, Element | null>()
   const barOf = (el: Element): Element | null => {
     if (el === root || el === document.body || el === document.documentElement) return null
     let bar = memo.get(el)
     if (bar === undefined) {
       const position = getComputedStyle(el).position
+      const block = blocks && position === 'sticky' && el.closest('main') !== null
+      if (block) blocks.add(el)
       bar =
-        position === 'fixed' || position === 'sticky'
+        (position === 'fixed' || position === 'sticky') && !block
           ? el
           : el.parentElement
             ? barOf(el.parentElement)
@@ -180,6 +184,24 @@ function barFinder(root: Element | null) {
 }
 
 const rectOf = (el: Element) => toBox(el.getBoundingClientRect())
+
+// True when `el` has scrolled under a sticky block of the page (barFinder), or past one to under
+// the header: what shows at the middle of its part on screen is something else, the block or
+// (above the block's foot) a bar. Off screen it is not covered, nor under the tab bar.
+function coveredBy(blocks: Set<Element>, el: Element, box: Box): boolean {
+  const top = Math.max(box.top, 0)
+  const bottom = Math.min(box.bottom, innerHeight)
+  const left = Math.max(box.left, 0)
+  const right = Math.min(box.right, innerWidth)
+  if (top >= bottom || left >= right || typeof document.elementFromPoint !== 'function')
+    return false
+  const hit = document.elementFromPoint((left + right) / 2, (top + bottom) / 2)
+  if (!hit || el.contains(hit)) return false
+  for (const block of blocks) {
+    if (!block.contains(el) && (block.contains(hit) || box.top < rectOf(block).bottom)) return true
+  }
+  return false
+}
 // Visually hidden (sr-only) elements are a pixel large.
 const visible = (b: Box) => b.right - b.left >= 2 && b.bottom - b.top >= 2
 
@@ -334,7 +356,10 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
         ? entryPoint(rectOf(start), dir)
         : rectOf(start)
     : entryPoint(viewportBox(), dir)
-  const barOf = barFinder(dialog)
+  const blocks = new Set<Element>()
+  const barOf = barFinder(dialog, blocks)
+  // Every sticky block of the page, also one with no candidate in it (the stage itself, a region).
+  for (const el of root.querySelectorAll(SELECTOR)) barOf(el)
   const startBar = start ? barOf(start) : null
   const onScreenOnly = start ? startBar !== null : true
   const viewport = viewportBox()
@@ -365,7 +390,7 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
       el = (dir === 'down' ? items[0] : items.at(-1)) ?? item
     }
     const box = unit ? rectOf(unit) : boxOf(el)
-    if (!visible(box)) continue
+    if (!visible(box) || (blocks.size > 0 && coveredBy(blocks, el, box))) continue
     if (scroller && !unit && !overlaps(box, rectOf(scroller))) continue
     const track = el.closest(TRACK)
     if (track && !track.contains(start) && !overlaps(box, viewOf(track))) continue

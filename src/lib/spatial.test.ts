@@ -593,6 +593,71 @@ describe('cards and the hero', () => {
   })
 })
 
+describe('sticky blocks in the page (the watch page below lg)', () => {
+  // Scrolled down: the header, then Back's row and the stage stuck under it, the page beneath.
+  function watch(sticky = true) {
+    const pos = sticky ? 'sticky' : 'static'
+    document.body.innerHTML = `
+      <header style="position: sticky"><a id="home" href="/">Home</a><a id="theme" href="/t">Theme</a></header>
+      <main>
+        <div id="row" style="position: ${pos}"><button id="back">Back</button></div>
+        <div id="wrap" style="position: ${pos}"><div id="stage" tabindex="-1"><button id="key">Pause</button></div></div>
+        <article><button id="save">Save</button><a id="meta" href="/m">Meta</a><a id="crumb" href="/c">Browse</a></article>
+      </main>`
+    place('header', [0, 0, 1024, 56])
+    place('#home', [10, 10, 60, 30])
+    place('#theme', [10, 900, 40, 40])
+    place('#row', [56, 0, 1024, 56])
+    place('#back', [64, 16, 80, 40])
+    place('#wrap', [112, 0, 1024, 330])
+    place('#stage', [112, 0, 1024, 330])
+    // Its centre below the middle of the screen (768px).
+    place('#key', [400, 16, 80, 40])
+    // Scrolled under the stage, and on past it under the header.
+    place('#save', [200, 16, 80, 40])
+    place('#meta', [20, 600, 80, 30])
+    place('#crumb', [460, 16, 80, 40])
+    // What shows at a point: the topmost of these whose box holds it.
+    const layers = ['#home', '#theme', 'header', '#back', '#row', '#key', '#stage', '#wrap']
+    document.elementFromPoint = (x: number, y: number) =>
+      [...layers, '#crumb', '#save', '#meta']
+        .map((s) => document.querySelector(s)!)
+        .find((el) => {
+          const r = el.getBoundingClientRect()
+          return x >= r.left && x < r.right && y >= r.top && y < r.bottom
+        }) ?? null
+  }
+  afterEach(() => {
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint
+  })
+
+  it('are page content: ↑ from below reaches the stage, ↑ from the stage Back', () => {
+    watch()
+    focus('#crumb')
+    expect(id(findTarget('up'))).toBe('key')
+    focus('#key')
+    expect(id(findTarget('up'))).toBe('back')
+    // ← / → from Back stay off the header (nothing beside it in the page: no move).
+    focus('#back')
+    expect(findTarget('right')).toBeNull()
+  })
+
+  it('cover what scrolled under them, and under the header past them', () => {
+    watch()
+    focus('#back')
+    expect(id(findTarget('down'))).toBe('key')
+    place('#key', [400, 600, 80, 40])
+    focus('#key')
+    expect(id(findTarget('up'))).toBe('back')
+  })
+
+  it('leave the page as it was where nothing sticks (lg)', () => {
+    watch(false)
+    focus('#back')
+    expect(id(findTarget('down'))).toBe('save')
+  })
+})
+
 describe('keepsArrow', () => {
   it('lets fields keep left/right until the caret hits an edge; widgets keep every arrow', () => {
     document.body.innerHTML =

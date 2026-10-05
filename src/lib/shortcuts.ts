@@ -64,8 +64,15 @@ const isWatch = (path: string) => path.startsWith('/watch/')
 // Back does (reloading the home would leave focus on a card scrolled out of view).
 function backToTop() {
   const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches
-  window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
-  document.querySelector<HTMLElement>('[data-spatial="entry"]')?.focus({ preventScroll: true })
+  const entry = document.querySelector<HTMLElement>('[data-spatial="entry"]')
+  // The top, or on a short screen (a phone on its side) only as near it as keeps the hero's Play,
+  // which takes focus, in view above the foot of the screen (its scroll padding: the tab bar).
+  const foot = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0
+  const below = entry
+    ? entry.getBoundingClientRect().bottom + window.scrollY - innerHeight + foot
+    : 0
+  window.scrollTo({ top: Math.max(0, below), behavior: smooth ? 'smooth' : 'auto' })
+  entry?.focus({ preventScroll: true })
 }
 
 /**

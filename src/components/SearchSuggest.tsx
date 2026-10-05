@@ -15,6 +15,7 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router'
 import { useSearchHistory } from '../lib/history'
+import { prefersReducedMotion } from './hooks'
 import {
   suggestionsWarmup,
   suggestSteps,
@@ -120,6 +121,17 @@ export function useSearchSuggestions(
 
   const shown = open && items.length > 0
 
+  // A list opening past the foot of the screen, under a field low on a short one (the search page
+  // on a phone on its side), brings the field up to the top so the list shows.
+  useEffect(() => {
+    const list = listRef.current
+    if (!shown || !list || list.getBoundingClientRect().bottom <= innerHeight) return
+    field.current?.scrollIntoView({
+      block: 'start',
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    })
+  }, [shown, field])
+
   const close = () => {
     turn.current++
     clearTimeout(timer.current)
@@ -199,7 +211,7 @@ export function useSearchSuggestions(
           onMouseDown={(e) => e.preventDefault()}
           onMouseMove={() => setActive(i)}
           onClick={() => choose(item)}
-          className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-ink aria-selected:bg-surface-2 aria-selected:outline-2 aria-selected:-outline-offset-2 aria-selected:outline-focus"
+          className="flex min-h-10 pointer-coarse:min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-ink aria-selected:bg-surface-2 aria-selected:outline-2 aria-selected:-outline-offset-2 aria-selected:outline-focus"
         >
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
           <span className="eyebrow shrink-0 text-ink-3">{KIND_LABEL[item.kind]}</span>

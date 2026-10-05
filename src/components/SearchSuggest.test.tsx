@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { setCatalog } from '../data/testing'
 import { useGlobalShortcuts } from '../lib/shortcuts'
 import { useSpatialNavigation } from '../lib/spatial'
@@ -158,5 +158,24 @@ describe('Header search suggestions', () => {
     await wait(200)
     expect(field()).toHaveFocus()
     expect(field()).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('bring the field up when the list would open past the foot of a short screen', async () => {
+    renderShell()
+    const scroll = vi.fn()
+    field().scrollIntoView = scroll
+    // jsdom lays nothing out: first a list that fits, then one past the foot (768px).
+    const rect = vi.spyOn(HTMLUListElement.prototype, 'getBoundingClientRect')
+    try {
+      rect.mockReturnValue(new DOMRect(0, 100, 300, 250))
+      await typeAndList('clim')
+      expect(scroll).not.toHaveBeenCalled()
+      await userEvent.keyboard('{Escape}')
+      rect.mockReturnValue(new DOMRect(0, 600, 300, 250))
+      await typeAndList('a')
+      expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
+    } finally {
+      rect.mockRestore()
+    }
   })
 })

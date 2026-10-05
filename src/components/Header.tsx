@@ -337,8 +337,9 @@ function SearchBox() {
           spellCheck={false}
           enterKeyHint="search"
           // Glass, as the other chrome controls: a light rim, a hairline and a soft drop on hover
-          // and focus; focus adds the focus-colour border and the TV glow.
-          className="h-10 w-full rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-rim hover:bg-surface hover:shadow-(--shadow-glass) focus:border-focus focus:bg-surface focus:shadow-(--shadow-glass) focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] [&::-webkit-search-cancel-button]:appearance-none"
+          // and focus; focus adds the focus-colour border and the TV glow. 44px tall to a finger in
+          // the header bar (md, and a phone on its side), where the bar has the room.
+          className="h-10 w-full md:pointer-coarse:h-11 land:pointer-coarse:h-11 rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-rim hover:bg-surface hover:shadow-(--shadow-glass) focus:border-focus focus:bg-surface focus:shadow-(--shadow-glass) focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] [&::-webkit-search-cancel-button]:appearance-none"
         />
         {value && (
           <button

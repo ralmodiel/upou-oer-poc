@@ -677,8 +677,10 @@ html:has(dialog[data-details][open]) {
     -webkit-line-clamp: 2;
     min-height: 2lh;
   }
+  /* Never less than a strip (a window 600px tall shows 120px): from about 520px down the sum would
+     leave a sliver or nothing, a blank where the picture was. */
   .hero-still {
-    max-height: calc(100dvh - var(--header-h) - 26rem);
+    max-height: max(7.5rem, calc(100dvh - var(--header-h) - 26rem));
     overflow: hidden;
   }
   [data-featured-zone] > section {
@@ -706,6 +708,10 @@ html:has(dialog[data-details][open]) {
   }
   [data-hero-text] .mt-5 {
     margin-top: 0.75rem;
+  }
+  /* Beside the details the whole picture fits; the short-laptop cut above (lg) would leave none. */
+  .hero-still {
+    max-height: none;
   }
 }
 /* The shortest (about 400px or less): no summary either; it is in Details. */

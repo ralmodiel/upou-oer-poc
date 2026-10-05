@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { MosaicBackdrop } from '../components/Backdrop'
+import { imagesOf } from '../components/media'
 import PageBand from '../components/PageBand'
 import VideoGrid from '../components/VideoGrid'
 import { GridHint } from '../components/browse-ui'
@@ -83,6 +84,10 @@ export default function CategoryPage() {
 
   const all = getCategoryVideos(slug, sort)
   const visible = all.slice(0, shown)
+  // The newest stills for the mosaic; when every one is flagged the band stands alone, never beside
+  // an empty box.
+  const newest = getCategoryVideos(slug).slice(0, 12)
+  const mosaic = newest.some((v) => imagesOf(v, true))
   const sortLink = (value: CategorySort) => {
     const next = new URLSearchParams(params)
     next.delete('v')
@@ -108,7 +113,7 @@ export default function CategoryPage() {
         tone={toneOf(slug)}
         eyebrow="Collection"
         title={category.name}
-        aside={<MosaicBackdrop videos={getCategoryVideos(slug).slice(0, 12)} />}
+        aside={mosaic ? <MosaicBackdrop videos={newest} /> : undefined}
       >
         {all.length} {all.length === 1 ? 'video' : 'videos'}
         {category.name === GENERAL_CATEGORY ? ' without a subject category' : ''}

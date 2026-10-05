@@ -1,5 +1,7 @@
+import { useSyncExternalStore } from 'react'
 import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
+import { loadCite } from './data/cites'
 import AppLayout from './layouts/AppLayout'
 import BrowsePage from './pages/BrowsePage'
 import SearchPage from './pages/SearchPage'
@@ -10,15 +12,21 @@ import NotFoundPage from './pages/NotFoundPage'
 
 // Wraps every route so scroll positions survive a trip to the watch page.
 function Root() {
+  // A reload of a lazy route (the watch page) shows its short fallback first. Restoring then
+  // clamps the position to that fallback, or scroll anchoring on the footer pushes it down by
+  // the page's height when the page replaces it; so restoring waits until the route has loaded.
+  const loaded = useSyncExternalStore(router.subscribe, () => router.state.initialized)
   return (
     <>
       <Outlet />
       {/* Fresh loads of a different URL start at the top; reloads and Back still restore. */}
-      <ScrollRestoration
-        getKey={(location) =>
-          location.key === 'default' ? location.pathname + location.search : location.key
-        }
-      />
+      {loaded && (
+        <ScrollRestoration
+          getKey={(location) =>
+            location.key === 'default' ? location.pathname + location.search : location.key
+          }
+        />
+      )}
     </>
   )
 }
@@ -60,7 +68,15 @@ const router = createBrowserRouter(
             {
               // Reel + player are loaded on demand.
               path: 'watch/:id',
-              lazy: async () => ({ Component: (await import('./pages/WatchPage')).default }),
+              // cites.json (3 KB) comes with it, so How to cite is in the page's first paint
+              // rather than pushing the description down when it lands (or a restored scroll).
+              lazy: async () => {
+                const [page] = await Promise.all([
+                  import('./pages/WatchPage'),
+                  loadCite('').catch(() => undefined),
+                ])
+                return { Component: page.default }
+              },
               HydrateFallback: () => <div className="min-h-dvh" />,
             },
             { path: '*', Component: NotFoundPage },

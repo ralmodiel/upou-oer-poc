@@ -56,6 +56,19 @@ html dialog.tv-sheet::backdrop {
     color-mix(in oklab, var(--color-surface) 86%, transparent);
   backdrop-filter: blur(12px);
 }
+/* Shortcuts on phones: the sheet scrolls, so its title bar (and Close) stays on top, in Privacy's
+   glass. It reaches the sheet's edges through the p-5 padding; nothing moves at rest. */
+@media (width < 40rem) {
+  .tv-sheet-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: -1.25rem -1.25rem -0.5rem;
+    padding: 1.25rem 1.25rem 0.5rem;
+    background-color: color-mix(in oklab, var(--color-surface) 86%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
 /* Privacy switches: under focus the knob glows like a focused card (neutral, plus the gold bloom
    in dark). */
 .tv-sheet [role='switch'] > span > span {

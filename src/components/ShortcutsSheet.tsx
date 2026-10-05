@@ -46,7 +46,7 @@ export default function ShortcutsSheet() {
       className="tv-sheet m-auto w-[min(28rem,calc(100%-2rem))] shell-scroll rounded-card border border-glass-border bg-surface p-0 text-ink shadow-(--shadow-elev-3) outline-none backdrop:bg-overlay motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:starting:open:translate-y-2 motion-safe:starting:open:opacity-0"
     >
       <div className="p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="tv-sheet-bar flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow">Keyboard and remote</p>
             <h2 id={titleId} className="mt-1 font-display text-2xl leading-tight">

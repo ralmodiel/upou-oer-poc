@@ -40,6 +40,8 @@ const EXIT_MS = 200
 const SIMILAR = 6
 // The foot of the view the More like this pill floats in (scroll-pb-24).
 const PILL_ZONE = 96
+// Below md the quick look is a full-screen sheet.
+const PHONE = '(width < 48rem)'
 // Soft glow of the video's still behind the image column, gone by the time the text starts.
 const SCRIM = 'bg-linear-to-b from-surface/40 via-surface/80 via-60% to-surface'
 
@@ -69,6 +71,7 @@ function DetailDialog({ video }: { video: Video }) {
   const similarHeading = useRef<HTMLHeadingElement>(null)
   const detailsRef = useRef<HTMLDivElement>(null)
   const citeRef = useRef<HTMLDivElement>(null)
+  const sourcesRef = useRef<HTMLDivElement>(null)
 
   const base = useMemo(() => {
     const params = new URLSearchParams(search)
@@ -131,19 +134,26 @@ function DetailDialog({ video }: { video: Video }) {
   }, [video, hash])
 
   // The floating More like this pill: shown while its heading is below the dialog's view (long
-  // details push it down), gone once the heading is in view or scrolled past.
+  // details push it down), gone once the heading is in view or scrolled past. Phones: gone once the
+  // source links just above the row come into view (the view counts as that much taller), so the
+  // pill never rests over them; from md it sits under the details column, clear of them.
   const hasSimilar = similar.length > 0
   const [similarBelow, setSimilarBelow] = useState(false)
   useEffect(() => {
     const heading = similarHeading.current
     const root = dialog.current
     if (!heading || !root) return
+    const sources = window.matchMedia(PHONE).matches ? sourcesRef.current : null
+    const reach = sources
+      ? heading.getBoundingClientRect().top - sources.getBoundingClientRect().top
+      : 0
+    const rootMargin = `0px 0px ${Math.max(0, Math.round(reach))}px 0px`
     const observer = new IntersectionObserver(
       ([entry]) =>
         setSimilarBelow(
           !entry.isIntersecting && entry.boundingClientRect.top > (entry.rootBounds?.top ?? 0),
         ),
-      { root },
+      { root, rootMargin },
     )
     observer.observe(heading)
     // A jump (End or Home without smooth scrolling) can carry the heading across the view without
@@ -154,17 +164,18 @@ function DetailDialog({ video }: { video: Video }) {
         if (!isIntersecting && boundingClientRect.top > top) setSimilarBelow(true)
         else if (boundingClientRect.top < top) setSimilarBelow(false)
       },
-      { root },
+      { root, rootMargin },
     )
     if (similarRef.current) jumps.observe(similarRef.current)
     return () => {
       observer.disconnect()
       jumps.disconnect()
     }
-  }, [hasSimilar])
+  }, [hasSimilar, video])
   const showPill = hasSimilar && similarBelow
   // Phones: How to cite spans the panel, so the pill steps aside while the citation is in the
-  // bottom band it floats in (from md it sits beside the citation, never over it).
+  // bottom band it floats in, or within the pill's zone below it (then the facts line above the
+  // citation would be under the pill). From md it sits beside the citation, never over it.
   const [citeLow, setCiteLow] = useState(false)
   useEffect(() => {
     const cite = citeRef.current
@@ -172,7 +183,7 @@ function DetailDialog({ video }: { video: Video }) {
     if (!cite || !root) return
     const observer = new IntersectionObserver(([entry]) => setCiteLow(entry.isIntersecting), {
       root,
-      rootMargin: '-90% 0px 0px 0px',
+      rootMargin: `-90% 0px ${PILL_ZONE}px 0px`,
     })
     observer.observe(cite)
     return () => observer.disconnect()
@@ -287,7 +298,7 @@ function DetailDialog({ video }: { video: Video }) {
       // While the pill shows, focus and anchor scrolls stop short of it.
       className={`fixed inset-0 m-0 size-full max-h-none max-w-none overflow-y-auto overscroll-contain border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-overlay md:py-10 ${showPill ? 'scroll-pb-24' : 'scroll-pb-4'}`}
     >
-      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface md:min-h-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-(--shadow-lift) motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
+      <div className="relative isolate mx-auto min-h-full w-full overflow-hidden bg-surface pb-[env(safe-area-inset-bottom)] md:min-h-0 md:pb-0 md:w-[min(64rem,calc(100%-3rem))] ql-panel md:rounded-card md:border md:border-line md:shadow-(--shadow-lift) motion-safe:transition-[opacity,scale,translate] motion-safe:duration-250 motion-safe:ease-out-soft motion-safe:starting:translate-y-6 motion-safe:starting:opacity-0 md:motion-safe:starting:translate-y-0 md:motion-safe:starting:scale-[0.98]">
         <Backdrop video={video} scrim={SCRIM} className="bottom-auto h-80 md:h-96" />
         <IconButton
           label="Close"
@@ -387,7 +398,10 @@ function DetailDialog({ video }: { video: Video }) {
             {video.description && topics('mt-5')}
           </div>
 
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-6 md:col-start-1 md:row-start-4 md:self-start lg:col-span-7">
+          <div
+            ref={sourcesRef}
+            className="flex flex-wrap gap-x-5 gap-y-2 text-sm md:col-span-6 md:col-start-1 md:row-start-4 md:self-start lg:col-span-7"
+          >
             <ExternalLink href={watchUrl(video.youtubeId)}>Watch on YouTube</ExternalLink>
             {sourceUrl && <ExternalLink href={sourceUrl}>View on oer.upou.edu.ph</ExternalLink>}
           </div>

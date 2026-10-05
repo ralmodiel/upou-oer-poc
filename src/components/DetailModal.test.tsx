@@ -83,11 +83,12 @@ it('opened from the hero Details (#details), starts on the details', async () =>
 
 describe('the floating More like this pill', () => {
   // Observers by target, so a test can say whether the More like this heading is in view.
-  const observers: { cb: IntersectionObserverCallback; el?: Element }[] = []
+  type Watcher = { cb: IntersectionObserverCallback; el?: Element; rootMargin?: string }
+  const observers: Watcher[] = []
   class FakeObserver {
-    entry: { cb: IntersectionObserverCallback; el?: Element }
-    constructor(cb: IntersectionObserverCallback) {
-      this.entry = { cb }
+    entry: Watcher
+    constructor(cb: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+      this.entry = { cb, rootMargin: options?.rootMargin }
       observers.push(this.entry)
     }
     observe(el: Element) {
@@ -138,6 +139,24 @@ describe('the floating More like this pill', () => {
     const entry = { isIntersecting: true, boundingClientRect: { top: -80 }, rootBounds: { top: 0 } }
     act(() => jumps.cb([entry as unknown as IntersectionObserverEntry], {} as IntersectionObserver))
     expect(pill()).toBeNull()
+  })
+
+  it('on phones, goes once the source links above the row come into view', () => {
+    vi.stubGlobal('IntersectionObserver', FakeObserver)
+    // A phone, with the source links 80px above the More like this heading.
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(width < 48rem)' }))
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      const top = this.textContent === 'More like this' ? 900 : 820
+      return { top } as DOMRect
+    })
+    open('/?v=climate-basics')
+    const section = screen.getByRole('region', { name: 'More like this' })
+    const heading = observers.find((o) => o.el?.textContent === 'More like this')
+    expect(heading?.rootMargin).toBe('0px 0px 80px 0px')
+    expect(observers.find((o) => o.el === section)?.rootMargin).toBe('0px 0px 80px 0px')
+    rect.mockRestore()
   })
 
   it('never shows without More like this', () => {

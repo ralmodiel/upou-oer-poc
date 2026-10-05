@@ -445,7 +445,11 @@ function ChipGroup({ title, link, children }: ChipGroupProps) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h2 className="font-display text-xl text-ink sm:text-2xl">{title}</h2>
         {link && (
-          <Link to={link.to} className={`text-sm ${TEXT_LINK}`}>
+          // A 44px tap area around the 20px line, drawn outside its box so nothing moves.
+          <Link
+            to={link.to}
+            className={`relative text-sm after:absolute after:-inset-y-3 after:inset-x-0 ${TEXT_LINK}`}
+          >
             {link.label}
           </Link>
         )}

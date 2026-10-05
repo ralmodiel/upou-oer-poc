@@ -1,5 +1,5 @@
-import { render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, render } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setFrameCrops } from '../data/frameFlags'
 import Thumbnail from './Thumbnail'
 import { fixtureVideos } from './test-fixtures'
@@ -20,5 +20,33 @@ describe('Thumbnail', () => {
   it('leaves other stills as they are', () => {
     const { container } = render(<Thumbnail video={video} sizes="320px" />)
     expect(img(container).getAttribute('style')).toBeNull()
+  })
+
+  it('loads a card picture once its card is near the viewport, a hero picture at once', () => {
+    const watchers: IntersectionObserverCallback[] = []
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          watchers.push(cb)
+        }
+        observe() {}
+        disconnect() {}
+      },
+    )
+    try {
+      const card = render(<Thumbnail video={video} sizes="320px" />).container
+      expect(img(card).getAttribute('src')).toBeNull()
+      act(() =>
+        watchers.forEach((cb) =>
+          cb([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver),
+        ),
+      )
+      expect(img(card).getAttribute('src')).toContain('mqdefault')
+      const hero = render(<Thumbnail video={video} sizes="100vw" loading="eager" />).container
+      expect(img(hero).getAttribute('src')).toContain('mqdefault')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setFrameCrops, setFrameFlags } from '../data/frameFlags'
 import type { Video } from '../types'
-import { heroImageOf, imagesOf, largeImageOf, thumbnailOf, zoomStyle } from './media'
+import { cardSrcSet, heroImageOf, imagesOf, largeImageOf, thumbnailOf, zoomStyle } from './media'
 import { fixtureVideos } from './test-fixtures'
 
 const yt = (name: string) => `https://i.ytimg.com/vi/abcdefghijk/${name}.jpg`
@@ -136,5 +136,15 @@ describe('baked-in black bars', () => {
   it('styles only zoomed images', () => {
     expect(zoomStyle(1)).toBeUndefined()
     expect(zoomStyle(1.25)).toEqual({ '--zoom': 1.25, scale: 'var(--zoom)' })
+  })
+})
+
+describe('cardSrcSet', () => {
+  it('lets the 640px still serve up to 800 device pixels, leaving the rest as it is', () => {
+    const srcSet = 'a/mqdefault.jpg 320w, a/sddefault.jpg 640w, a/maxresdefault.jpg 1280w'
+    expect(cardSrcSet(srcSet)).toBe(
+      'a/mqdefault.jpg 320w, a/sddefault.jpg 800w, a/maxresdefault.jpg 1280w',
+    )
+    expect(cardSrcSet(undefined)).toBeUndefined()
   })
 })

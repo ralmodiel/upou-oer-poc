@@ -82,6 +82,23 @@ export function imagesOf(video: Video, canonical = false): SlotImages | null {
 const slotOf = (small: string, large: string) => slotImages(small, large, cropZoomOf)
 
 /**
+ * `sizes` of the home hero's picture: from lg beside the details (55vw), else the screen's width.
+ * A 3x phone is told it needs about 600 device pixels, so it takes the 640px still (about 40 KB)
+ * rather than the 1280px one (about 130 KB), the single biggest download of a first visit on
+ * a phone: 1.6x density on a picture of a video still. Portrait 45vw is 530 at 390 wide and 580 at
+ * 430; on its side 22vw of the screen is about 600 for the half-width picture.
+ */
+export const HERO_SIZES =
+  '(min-width: 64rem) 55vw, (min-resolution: 2.5dppx) and (orientation: portrait) 45vw, (min-resolution: 2.5dppx) 22vw, 100vw'
+
+/**
+ * The srcSet of a card (not a hero): its 640px still serves up to 800 device pixels. A card 250px
+ * wide on a 3x phone on its side wants 750, which the plain srcSet answers with the 1280px still
+ * (about 130 KB against 40, eight cards a screen); on a card that extra detail cannot be seen.
+ */
+export const cardSrcSet = (srcSet: string | undefined) => srcSet?.replace(' 640w', ' 800w')
+
+/**
  * A video's own picture (its card, list row, featured image): the clean images `imagesOf` picks,
  * else the least bad one (the data's poster) rather than a plain colour tile. Covers and backdrops
  * keep to clean images, and reels and previews never use a flagged frame.

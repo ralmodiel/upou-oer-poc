@@ -4,7 +4,7 @@ import { GENERAL_CATEGORY, getCategoryVideos, type Category } from '../data/cata
 import type { Video } from '../types'
 import { useNear } from './browse-hooks'
 import { ChevronRightIcon } from './icons'
-import { imagesOf, thumbnailOf, zoomStyle } from './media'
+import { cardSrcSet, imagesOf, thumbnailOf, zoomStyle } from './media'
 import { MARK, toneOf } from './tones'
 import './pages.css'
 
@@ -57,7 +57,7 @@ function Tile({
     >
       <img
         src={small}
-        srcSet={srcSet}
+        srcSet={cardSrcSet(srcSet)}
         sizes={sizes}
         alt=""
         loading="lazy"

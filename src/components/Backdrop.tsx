@@ -7,8 +7,10 @@ const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
 }
 // A missing large still falls back to the 320px thumbnail; if that fails too, the scrim alone stays.
 const retryOrFail = (img: HTMLImageElement, fallback: string) => {
-  if (img.getAttribute('src') !== fallback) img.src = fallback
-  else img.dataset.failed = ''
+  if (img.srcset || img.getAttribute('src') !== fallback) {
+    img.srcset = ''
+    img.src = fallback
+  } else img.dataset.failed = ''
 }
 
 interface Props {
@@ -17,6 +19,11 @@ interface Props {
   scrim: string
   /** Position overrides for the root (it fills its positioned parent by default). */
   className?: string
+  /**
+   * `sizes` of the picture in front, to take the same file from the same srcSet (one download for
+   * both); without it the large still.
+   */
+  sizes?: string
 }
 
 const hide = (e: SyntheticEvent<HTMLImageElement>) => {
@@ -78,7 +85,7 @@ export function MosaicBackdrop({
  * Decorative, blurred still of a video behind a block. Absolutely positioned behind the
  * content (the parent needs `relative isolate`), so it never affects layout.
  */
-export default function Backdrop({ video, scrim, className = '' }: Props) {
+export default function Backdrop({ video, scrim, className = '', sizes }: Props) {
   // The canonical still, fully grey in browse.css: a tone behind the page, never a colour wash
   // (none when every image is flagged).
   const images = imagesOf(video, true)
@@ -93,6 +100,8 @@ export default function Backdrop({ video, scrim, className = '' }: Props) {
           <img
             key={video.id}
             src={images.large}
+            srcSet={sizes ? images.srcSet : undefined}
+            sizes={sizes}
             alt=""
             loading="lazy"
             decoding="async"

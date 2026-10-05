@@ -1,6 +1,7 @@
 import type { ImgHTMLAttributes, ReactNode, SyntheticEvent } from 'react'
 import type { Video } from '../types'
-import { thumbnailOf, tileToneOf, zoomStyle } from './media'
+import { useImageNear } from './browse-hooks'
+import { cardSrcSet, thumbnailOf, tileToneOf, zoomStyle } from './media'
 import { BAND } from './tones'
 
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
@@ -74,12 +75,16 @@ export default function Thumbnail({
 }: Props) {
   const fade = loading === 'lazy'
   const images = thumbnailOf(video, canonical)
+  const [ref, near] = useImageNear<HTMLDivElement>(fade)
   return (
-    <div className={`relative aspect-video overflow-hidden bg-surface-2 @container ${className}`}>
+    <div
+      ref={ref}
+      className={`relative aspect-video overflow-hidden bg-surface-2 @container ${className}`}
+    >
       <img
         key={video.id}
-        src={large ? images.large : images.small}
-        srcSet={images.srcSet}
+        src={near ? (large ? images.large : images.small) : undefined}
+        srcSet={near ? (large ? images.srcSet : cardSrcSet(images.srcSet)) : undefined}
         sizes={sizes}
         alt=""
         loading={loading}

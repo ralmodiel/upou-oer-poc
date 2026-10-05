@@ -16,6 +16,7 @@ import { FactsLine, LONG_TITLE } from './browse-ui'
 import { AT_DETAILS } from './details'
 import { LAND, prefersReducedMotion } from './hooks'
 import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
+import { HERO_SIZES } from './media'
 import { useCardPreview } from './preview'
 import SectionHeading from './ui/SectionHeading'
 import { PRESSED, buttonClass } from './ui/button-styles'
@@ -241,7 +242,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
 
   return (
     <div data-lead={video.id} className="relative isolate overflow-hidden">
-      <Backdrop video={video} scrim={SCRIM} />
+      <Backdrop video={video} scrim={SCRIM} sizes={HERO_SIZES} />
       {/* Phones: Featured, the picture, the details. From lg, and on a phone on its side (land:),
           the details sit beside the picture, Featured on top of them. */}
       <section
@@ -264,7 +265,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
           <PlayLink video={video} tabIndex={-1} aria-hidden="true" className="hero-still block">
             <Thumbnail
               video={video}
-              sizes="(min-width: 64rem) 55vw, 100vw"
+              sizes={HERO_SIZES}
               large
               canonical
               loading="eager"

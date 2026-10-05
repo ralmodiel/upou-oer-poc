@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode, type ReactNode } from 'react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getRows } from '../data/catalog'
 import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
@@ -114,11 +114,26 @@ describe('Videos whose every image is flagged', () => {
   })
 
   it('show their least bad image, never a plain colour tile', () => {
+    // Card pictures load once the card is near the viewport (useImageNear): here at once.
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        cb: IntersectionObserverCallback
+        constructor(cb: IntersectionObserverCallback) {
+          this.cb = cb
+        }
+        observe(target: Element) {
+          this.cb([{ isIntersecting: true, target } as IntersectionObserverEntry], this as never)
+        }
+        disconnect() {}
+      },
+    )
     renderAt('/', <VideoGrid videos={[flagged, ...others]} />)
     const card = screen.getByRole('link', { name: `Play ${flagged.title}` }).closest('article')!
     const image = card.querySelector('img')
     expect([flagged.thumbnail, flagged.poster]).toContain(image?.getAttribute('src'))
     expect(document.querySelector('[data-title-tile]')).toBeNull()
+    vi.unstubAllGlobals()
   })
 
   it('stay out of collection covers while other videos have stills', () => {

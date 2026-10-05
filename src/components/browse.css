@@ -5,10 +5,12 @@ html:has(dialog[data-details][open]) {
 }
 
 /* Home sections below the fold are laid out only when scrolled near. The size estimate
-   follows the row: one line of cards, two to a page on phones, three or four from md. */
+   follows the row: one line of cards, two to a page on phones, three or four from md. On phones
+   the cards scale with the screen (a row with its heading averages about 305px at 360 and 430 wide, ±50px;
+   the old guess was 440px, so a scroll to a lower row flew 800px past it and snapped back). */
 .lazy-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 23.5rem;
+  contain-intrinsic-size: auto calc(27vw + 12.25rem);
 }
 @media (width >= 48rem) {
   .lazy-section {

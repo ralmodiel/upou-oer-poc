@@ -226,6 +226,22 @@ html dialog.tv-sheet::backdrop {
   }
 }
 
+/* The phone search page's field: the browser's own clear button is a small blue ×; this one is
+   the ink-3 × of the header's, 44px wide and as tall as the field's inside allows (42px). */
+input[data-search-page]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 2.75rem;
+  height: 2.625rem;
+  margin: 0 -1.25rem 0 0;
+  cursor: pointer;
+  background-color: var(--color-ink-3);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E")
+    center / 1rem no-repeat;
+  opacity: 1;
+}
+
 /* Search suggestions: a glass panel; the active row lifts out of it with the focus ring. */
 .tv-suggest {
   /* 94%: small labels keep 4.5:1 even over a black or white patch behind the blur. */

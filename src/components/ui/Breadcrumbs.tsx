@@ -25,7 +25,6 @@ export default function Breadcrumbs({ items, nowrap = false, className = '' }: B
           const fit = !nowrap ? '' : last ? 'shrink-[1000]' : i === 0 ? 'shrink-0' : 'max-w-[45%]'
           return (
             <li key={`${item.label}-${i}`} className={`flex min-w-0 items-center gap-x-1 ${fit}`}>
-              {i > 0 && <ChevronRightIcon className="size-3.5 shrink-0 text-ink-3" />}
               {item.to !== undefined && !last ? (
                 // The 40px link keeps its box; a frosted pill inside it (wider by its negative
                 // margins, so the text stays put) shows hover and carries the focus ring.
@@ -45,6 +44,8 @@ export default function Breadcrumbs({ items, nowrap = false, className = '' }: B
                   {item.label}
                 </span>
               )}
+              {/* After its crumb, so a wrapped trail never starts a line with a separator. */}
+              {!last && <ChevronRightIcon className="size-3.5 shrink-0 text-ink-3" />}
             </li>
           )
         })}

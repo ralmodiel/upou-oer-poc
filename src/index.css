@@ -299,7 +299,7 @@
     -webkit-tap-highlight-color: transparent;
     /* Focus and anchor scrolling land clear of the sticky header and the phone tab bar. */
     scroll-padding-top: calc(var(--header-h) + 1rem);
-    scroll-padding-bottom: calc(var(--tabbar-h) + 1rem);
+    scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem);
   }
   /* Not while focus is in the sticky header, whose controls are always on screen: Chrome would
      scroll the page to bring them past that padding (a screen on focus, more with each key). */
@@ -438,6 +438,23 @@ html[data-theme-fade]::view-transition-new(root) {
 @layer components {
   li:has(> [data-chip]) {
     max-width: 100%;
+  }
+}
+
+/* Touch: every standalone control has a 44x44px hit area, drawn outside its box so nothing moves.
+   An invisible ::after reaches out by the shortfall on each axis (nothing when the control is
+   already 44px). Left out: links in running text (p, label) and controls that already draw an ::after
+   of their own (stretched card links, the tab indicator). Utilities still win, being a later layer. */
+@layer components {
+  @media (pointer: coarse) {
+    :where(a[href], button, summary, [role='switch']):not([class*='after:'], :where(p, label) *) {
+      position: relative;
+      &::after {
+        content: '';
+        position: absolute;
+        inset: min(0px, calc((100% - 44px) / 2));
+      }
+    }
   }
 }
 

@@ -91,7 +91,6 @@ export const PEOPLE: readonly string[] = [
   'Joycie Dorado Alegre',
   'juan carlos ojano',
   'kathleen lei limayo',
-  'Keri Yan',
   'Laura Czerniewicz',
   'leo cubillan',
   'leonardo rosete',

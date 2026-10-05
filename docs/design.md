@@ -441,8 +441,8 @@ a slide with an image; a title-tile slide stays one press away.
 - **Autoplay:** when a video ends, a light "Next" card counts down 5 s with Play now and Cancel
   (Cancel takes focus; Esc cancels instead of going Back), then plays the next row and keeps the
   playlist; at the end of the list it adds the next picks first. The "Autoplay" switch in the Up
-  next header is on by default and kept in this browser (`upou:autoplay`; only a stored `false` is
-  off). Off, the video just ends.
+  next header is off by default and kept in this browser (`upou:autoplay`; only a stored `true` is
+  on). Off, the video just ends.
 - **Play / Pause key:** a keyboard-only button on the stage, shown while focused and reached with
   Enter or ↓ from the stage. It drives the video through the embed's commands, so focus never
   enters the iframe and Esc, Backspace and the arrows keep working. It follows the player: Play

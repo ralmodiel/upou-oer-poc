@@ -24,7 +24,7 @@ const MORE = 8
 
 /** Whether the next video plays when one ends: off unless turned on (only a stored true is on). */
 export function useAutoplay() {
-  const [stored, setStored] = usePersistentState<unknown>('upou:autoplay', true)
+  const [stored, setStored] = usePersistentState<unknown>('upou:autoplay', false)
   return [stored === true, (on: boolean) => setStored(on)] as const
 }
 

@@ -250,6 +250,7 @@ describe('WatchPage', () => {
     const lecture = {
       ...testVideo,
       id: 'managing-sustainability-transitions',
+      youtubeId: '7cUUgveXqGY',
       tags: ['JoaneSerrano', 'Dr. Joane V. Serrano', 'Sustainability'],
     }
     setCatalog([lecture, ...similar])
@@ -338,6 +339,21 @@ describe('WatchPage', () => {
       setCatalog([testVideo, ...many])
       warmRecommender()
       vi.useFakeTimers()
+      localStorage.setItem('upou:autoplay', 'true') // off by default; these tests turn it on
+    })
+
+    it('is off by default: the video just ends', async () => {
+      localStorage.removeItem('upou:autoplay')
+      const { router } = listed(['pick-0', 'pick-1'])
+      const frame = await toPlayer('pick-0')
+      expect(screen.getByRole('switch', { name: 'Autoplay' })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
+      await send(frame, ended)
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      await act(() => vi.advanceTimersByTimeAsync(6000))
+      expect(router.state.location.pathname).toBe('/watch/pick-0')
     })
 
     // Plays the reel through, loads the player and returns its iframe.

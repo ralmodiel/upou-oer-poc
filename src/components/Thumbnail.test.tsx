@@ -24,11 +24,13 @@ describe('Thumbnail', () => {
 
   it('loads a card picture once its card is near the viewport, a hero picture at once', () => {
     const watchers: IntersectionObserverCallback[] = []
+    const options: (IntersectionObserverInit | undefined)[] = []
     vi.stubGlobal(
       'IntersectionObserver',
       class {
-        constructor(cb: IntersectionObserverCallback) {
+        constructor(cb: IntersectionObserverCallback, init?: IntersectionObserverInit) {
           watchers.push(cb)
+          options.push(init)
         }
         observe() {}
         disconnect() {}
@@ -37,6 +39,13 @@ describe('Thumbnail', () => {
     try {
       const card = render(<Thumbnail video={video} sizes="320px" />).container
       expect(img(card).getAttribute('src')).toBeNull()
+      // Before the first screen's pictures arrive: 100px, and none inside a row that scrolls
+      // sideways; after, 1250px both ways (the next cards a row pages to are ready).
+      const { rootMargin, scrollMargin } = options[0] ?? {}
+      expect([
+        ['100px', '0px'],
+        ['1250px', '1250px'],
+      ]).toContainEqual([rootMargin, scrollMargin])
       act(() =>
         watchers.forEach((cb) =>
           cb([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver),

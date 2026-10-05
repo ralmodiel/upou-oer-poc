@@ -1,6 +1,7 @@
 import { memo, useEffect, useId, useRef, useState, type FocusEvent, type MouseEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigationType } from 'react-router'
+import { getVideo } from '../data/catalog'
 import { lastInput } from '../lib/pointer'
 import { useSavedPosition } from '../lib/storage'
 import type { Video } from '../types'
@@ -12,8 +13,9 @@ import PlayLink from './PlayLink'
 import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
+import { useImagesSettled } from './browse-hooks'
 import { FactsLine, LONG_TITLE } from './browse-ui'
-import { AT_DETAILS } from './details'
+import { AT_DETAILS, wasOpenedInApp } from './details'
 import { LAND, prefersReducedMotion } from './hooks'
 import { ChevronDownIcon, InfoIcon, PlayIcon } from './icons'
 import { HERO_SIZES } from './media'
@@ -233,6 +235,12 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
   const preview = useCardPreview(video)
   const resumable = useSavedPosition(video.id) !== undefined
   const long = video.title.length > LONG_TITLE
+  // A quick look opened from a link paints first: the hero's still, the page's largest download,
+  // waits behind it until the pictures on screen have arrived (closing it releases the still).
+  const { search, state } = useLocation()
+  const settled = useImagesSettled()
+  const hold =
+    !settled && !!getVideo(new URLSearchParams(search).get('v')) && !wasOpenedInApp(state)
   const onFocus = () => {
     if (lastInput() !== 'pointer' && !refocusing) preview.start()
   }
@@ -242,7 +250,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
 
   return (
     <div data-lead={video.id} className="relative isolate overflow-hidden">
-      <Backdrop video={video} scrim={SCRIM} sizes={HERO_SIZES} />
+      {!hold && <Backdrop video={video} scrim={SCRIM} sizes={HERO_SIZES} />}
       {/* Phones: Featured, the picture, the details. From lg, and on a phone on its side (land:),
           the details sit beside the picture, Featured on top of them. */}
       <section
@@ -270,6 +278,7 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
               canonical
               loading="eager"
               fetchPriority={priority ? 'high' : undefined}
+              hold={hold}
             >
               {preview.overlay}
             </Thumbnail>

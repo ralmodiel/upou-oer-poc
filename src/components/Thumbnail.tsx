@@ -56,6 +56,8 @@ interface Props extends Pick<ImgHTMLAttributes<HTMLImageElement>, 'loading' | 'f
   className?: string
   /** Overlays (play glyph). */
   children?: ReactNode
+  /** No picture yet: the well alone until it turns false. */
+  hold?: boolean
 }
 
 /**
@@ -72,10 +74,12 @@ export default function Thumbnail({
   children,
   loading = 'lazy',
   fetchPriority,
+  hold = false,
 }: Props) {
   const fade = loading === 'lazy'
   const images = thumbnailOf(video, canonical)
-  const [ref, near] = useImageNear<HTMLDivElement>(fade)
+  const [ref, nearby] = useImageNear<HTMLDivElement>(fade)
+  const near = nearby && !hold
   return (
     <div
       ref={ref}

@@ -92,11 +92,16 @@ export default function Backdrop({ video, scrim, className = '', sizes }: Props)
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${className}`}
+      className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden [container-type:size] ${className}`}
     >
-      {/* The bars zoom sits on a wrapper, so the drift's own scale adds to it. */}
+      {/* The bars zoom sits on a wrapper, so the drift's own scale adds to it. The wrapper is at
+          least 16:9 (as wide as the block, or wider in a tall one): a 4:3 still from `sizes` (the
+          640px one) keeps its letterbox bars outside, as in any 16:9 slot. */}
       {images && (
-        <div style={zoomStyle(images.zoom)} className="size-full">
+        <div
+          style={zoomStyle(images.zoom)}
+          className="absolute inset-y-0 left-1/2 w-[max(100cqw,100cqh*16/9)] -translate-x-1/2"
+        >
           <img
             key={video.id}
             src={images.large}

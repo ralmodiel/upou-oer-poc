@@ -128,8 +128,12 @@
   The stage is centred and never outgrows the viewport on short screens (phones on their side);
   below md it also bleeds into the page gutters.
 */
-.watch-stage-wrap {
+html:has(.watch-page) {
+  /* On the root, so the scroll padding below can reckon with the same width. */
   --stage-cap: calc((100dvh - 8rem) * 16 / 9);
+}
+
+.watch-stage-wrap {
   position: relative;
   isolation: isolate;
 }
@@ -1289,14 +1293,59 @@
 }
 
 /*
-  Upright phones and tablets, where Up next sits under the stage: the Back row and the stage stay
-  under the header while the page scrolls beneath them, so the video stays in sight while the viewer
-  browses Up next (so Back stays in reach and the floating one never shows). The column is
-  display: contents, so the two stick down the whole page, Up next included, not just their column.
-  Not on short screens (a phone on its side), where they would leave little room. During the
-  preview the pose's translate applies on top, so the stage keeps its pose wherever it sticks.
+  Below lg, where Up next sits under the stage (any phone or tablet, upright or on its side): the
+  Back row and the stage stay under the header while the page scrolls beneath them, so the video
+  stays in sight while the viewer browses Up next (so Back stays in reach and the floating one never
+  shows). The column is display: contents, so the two stick down the whole page, Up next included,
+  not just their column. During the preview the pose's translate applies on top, so the stage keeps
+  its pose wherever it sticks.
+
+  The stuck stage is never taller than 46svh (--stuck-h, less where a tab bar leaves too little
+  for a row of Up next): on a screen that is short for its width
+  (a phone on its side) a full-width 16:9 stage would leave no room for Up next. The cap is paint
+  only. The box keeps its size, so nothing at rest or in the flow moves; while the page first
+  scrolls the stage shrinks toward its bottom edge (scroll-driven, scale) and the sticky place sits
+  --tuck higher, the empty strip over the stage tucked behind the header, so the picture lands
+  exactly where the stack ends. Where a picture is wide enough to leave room beside it (a screen on
+  its side, 4:3 or wider), the Back row stops stacking (--stack is just the header border) and overlays the paper beside
+  the stage, so the pair takes header + stage, not header + Back + stage.
 */
-@media (width < 64rem) and (orientation: portrait) and (height >= 37.5rem) {
+@media (width < 64rem) {
+  html:has(.watch-page) {
+    /* The stage's width and height at rest: the same as .watch-stage's own, in viewport units. */
+    --rest-w: min(100vw - 2 * var(--gutter), var(--stage-cap));
+    --rest-h: calc(var(--rest-w) * 9 / 16);
+    --stuck-h: var(--rest-h);
+    /* What stacks above the stuck stage: the Back row. */
+    --stack: 3.5rem;
+  }
+
+  @media (width < 48rem) {
+    html:has(.watch-page) {
+      --rest-w: min(100vw, var(--stage-cap));
+    }
+  }
+
+  @media (orientation: landscape) and (min-aspect-ratio: 4 / 3) {
+    html:has(.watch-page) {
+      /* The header's own 1px border is not in --header-h; the picture starts below it. */
+      --stack: 1px;
+    }
+
+    /* Over the stage's paper, beside the stage: clicks in the gaps still reach the stage. */
+    .watch-back-row {
+      pointer-events: none;
+    }
+
+    .watch-back-row > * {
+      pointer-events: auto;
+    }
+
+    .watch-back-row::before {
+      display: none;
+    }
+  }
+
   .watch-main {
     display: contents;
   }
@@ -1304,15 +1353,25 @@
   .watch-back-row,
   .watch-stage-wrap {
     position: sticky;
-    z-index: 20;
   }
 
+  /* The Back row above the stage (its box may reach over it, when the stage is tucked). */
   .watch-back-row {
     top: var(--header-h);
+    z-index: 21;
   }
 
   .watch-stage-wrap {
-    top: calc(var(--header-h) + 3.5rem);
+    top: calc(var(--header-h) + var(--stack) - var(--tuck, 0px));
+    z-index: 20;
+  }
+
+  /*
+    From md the floating Back (WatchPage hides it there) is wanted too: the stack sticks only while
+    Up next is in the page, so at the very end, past it, the floating Back stays in reach.
+  */
+  .watch-back-float {
+    display: inline-flex;
   }
 
   /*
@@ -1339,17 +1398,56 @@
     }
   }
 
-  /* Focus and anchors land clear of them: the stage is 16:9, edge to edge below md. */
+  @supports (animation-timeline: scroll()) and (scale: tan(atan2(1px, 1px))) {
+    html:has(.watch-page) {
+      /* 46svh; where the tab bar takes 60px more (a phone on its side under 48rem) never less than
+         36svh, and short of that room for a whole row of Up next beside it. */
+      --stuck-h: min(
+        var(--rest-h),
+        46svh,
+        max(36svh, 100svh - var(--header-h) - var(--tabbar-h) - 9rem)
+      );
+      --tuck: calc(var(--rest-h) - var(--stuck-h));
+    }
+
+    .watch-stage-wrap .watch-stage,
+    .watch-stage-wrap .watch-ambient {
+      transform-origin: 50% 100%;
+      animation: watch-stage-stick linear both;
+      animation-timeline: scroll(root);
+      /* To the scroll where the sticky place is reached: the Back row's height less what stacks. */
+      animation-range: 0 calc(3.5rem - var(--stack) + var(--tuck));
+    }
+
+    /* Reduced motion: no ease, one step at the first scroll. */
+    @media (prefers-reduced-motion: reduce) {
+      .watch-stage-wrap .watch-stage,
+      .watch-stage-wrap .watch-ambient {
+        animation-range: 0 1px;
+        animation-timing-function: steps(1, jump-end);
+      }
+    }
+  }
+
+  /* Without scroll-driven animation the stage could not shrink: sideways, nothing sticks. */
+  @supports not ((animation-timeline: scroll()) and (scale: tan(atan2(1px, 1px)))) {
+    @media (orientation: landscape) {
+      .watch-back-row,
+      .watch-stage-wrap {
+        position: relative;
+      }
+    }
+  }
+
+  /* Focus and anchors land clear of them: the header, the Back row, the stage as stuck. */
   html:has(.watch-page):not(:has(header :focus)) {
-    scroll-padding-top: calc(
-      var(--header-h) + 3.5rem + (100vw - 2 * var(--gutter)) * 9 / 16 + 1rem
-    );
+    scroll-padding-top: calc(var(--header-h) + var(--stack) + var(--stuck-h) + 1rem);
   }
 }
 
-@media (width < 48rem) and (orientation: portrait) and (height >= 37.5rem) {
-  html:has(.watch-page):not(:has(header :focus)) {
-    scroll-padding-top: calc(var(--header-h) + 3.5rem + 100vw * 9 / 16 + 1rem);
+@keyframes watch-stage-stick {
+  to {
+    scale: tan(atan2(var(--stuck-h), var(--rest-h)));
   }
 }
 

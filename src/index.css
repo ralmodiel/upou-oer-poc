@@ -505,3 +505,68 @@ html[data-theme-fade]::view-transition-new(root) {
     visibility: hidden;
   }
 }
+
+/*
+  Low-memory profile (src/lib/lite.ts sets <html data-lite> on TVs, small-memory devices and old
+  Chromium). It drops only decorative, memory-heavy effects; layout and navigation are untouched.
+  html[data-lite] outranks the single-attribute rules of the page CSS that loads after this file.
+    1. the blurred page backdrop (.backdrop-img: a blur(32px) layer per hero and quick look) and the
+       watch page's poster band behind the header (.watch-backdrop img, blur(6px) at 4.6x)
+    2. the watch page's ambient light (.watch-ambient)
+    3. every backdrop-filter (header, tab bar, glass buttons, dialogs); the glass and frost
+       tokens turn near-opaque so text stays readable without the blur
+    4. motion: animations and transitions jump to their end state (as under reduced motion)
+    5. View Transitions (removed in lite.ts: each one snapshots the page into GPU layers)
+*/
+html[data-lite] {
+  --color-glass: rgb(250 248 246 / 0.97);
+  --color-frost: rgb(255 255 255 / 0.96);
+}
+html[data-lite][data-theme='dark'] {
+  --color-glass: rgb(20 17 18 / 0.96);
+  --color-frost: rgb(48 44 45 / 0.94);
+}
+@media (prefers-color-scheme: dark) {
+  html[data-lite]:not([data-theme='light']) {
+    --color-glass: rgb(20 17 18 / 0.96);
+    --color-frost: rgb(48 44 45 / 0.94);
+  }
+}
+html[data-lite] .backdrop-img,
+html[data-lite] .watch-backdrop img,
+html[data-lite] .watch-ambient {
+  display: none !important;
+}
+html[data-lite] *,
+html[data-lite] *::before,
+html[data-lite] *::after,
+html[data-lite] *::backdrop {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/*
+  Chromium before 88 (LG webOS 6, 2021) has no aspect-ratio: every 16:9 media box (cards, quick
+  look, watch stage) would collapse to zero height and its lazy images would all load at once.
+  The classic padding box stands in for it; its children fill the box.
+*/
+@supports not (aspect-ratio: 1 / 1) {
+  .aspect-video {
+    position: relative;
+    height: 0;
+    padding-bottom: 56.25%;
+  }
+  .aspect-video > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}

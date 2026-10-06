@@ -198,7 +198,7 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
  */
 let swapping: ViewTransition | null = null
 let refocusing = false
-const HERO_CONTROLS = '[data-hero-text] :is(a, button)'
+const HERO_CONTROLS = '[data-hero-text] a, [data-hero-text] button' // no :is(), Chromium < 88 throws
 function swapHero(apply: () => void) {
   const before = [...document.querySelectorAll(HERO_CONTROLS)]
   const fromEnd = before.length - before.indexOf(document.activeElement as Element)

@@ -1,3 +1,4 @@
+import './lib/lite' // first: sets <html data-lite> and shims old engines before anything else runs
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'

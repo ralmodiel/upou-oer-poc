@@ -87,6 +87,73 @@ const spaFallbackPlugin = (): Plugin => {
   }
 }
 
+// Engines before Chromium 99 (LG webOS 6 and 22 browsers are Chromium 79 and 87) ignore every
+// `@layer` block, which is all of Tailwind. The same rules, unlayered and in source order, go to
+// legacy-layers.css; src/lib/lite.ts loads it first on those engines only.
+// padding/margin/inset-inline|block arrived in Chromium 87 and Vite leaves them: LTR-only app, so
+// the physical sides say the same thing (single-value forms only; a two-value one is left alone).
+const SIDES: Record<string, string[]> = {
+  inline: ['left', 'right'],
+  'inline-start': ['left'],
+  'inline-end': ['right'],
+  block: ['top', 'bottom'],
+  'block-start': ['top'],
+  'block-end': ['bottom'],
+}
+const LOGICAL = /(?<=[{;])(padding|margin|inset)-(inline|block)(-start|-end)?:/g
+const physical = (css: string) => {
+  let out = ''
+  let last = 0
+  for (const m of css.matchAll(LOGICAL)) {
+    const from = m.index + m[0].length
+    let end = from
+    let depth = 0
+    let single = true
+    for (; end < css.length; end++) {
+      const c = css[end]
+      if (c === '(') depth++
+      else if (c === ')') depth--
+      else if (depth === 0 && (c === ';' || c === '}')) break
+      else if (depth === 0 && c === ' ') single = false
+    }
+    if (!single || m.index < last) continue
+    const value = css.slice(from, end)
+    out += css.slice(last, m.index)
+    out += SIDES[m[2] + (m[3] ?? '')]!.map(
+      (side) => `${m[1] === 'inset' ? '' : m[1] + '-'}${side}:${value}`,
+    ).join(';')
+    last = end
+  }
+  return out + css.slice(last)
+}
+
+const legacyLayersPlugin = (): Plugin => ({
+  name: 'legacy-layers',
+  apply: 'build',
+  generateBundle(_, bundle) {
+    let css = ''
+    for (const file of Object.values(bundle)) {
+      if (file.type !== 'asset' || !file.fileName.endsWith('.css')) continue
+      const src = (file.source = physical(String(file.source)))
+      for (let at = src.indexOf('@layer'); at >= 0;) {
+        const open = src.indexOf('{', at)
+        const semi = src.indexOf(';', at)
+        if (open < 0 || (semi >= 0 && semi < open)) {
+          at = src.indexOf('@layer', semi + 1)
+          continue
+        }
+        let depth = 1
+        let end = open + 1
+        for (; end < src.length && depth > 0; end++)
+          depth += src[end] === '{' ? 1 : src[end] === '}' ? -1 : 0
+        css += src.slice(open + 1, end - 1)
+        at = src.indexOf('@layer', end)
+      }
+    }
+    if (css) this.emitFile({ type: 'asset', fileName: 'legacy-layers.css', source: css })
+  },
+})
+
 export default defineConfig({
   // "/<repo>/" for GitHub Pages project sites (set by the deploy workflow), "/" otherwise.
   base: process.env.BASE_PATH || '/',
@@ -96,11 +163,15 @@ export default defineConfig({
     catalogNamesPlugin(),
     catalogPackPlugin(),
     cspPlugin(),
+    legacyLayersPlugin(),
     spaFallbackPlugin(),
   ],
   server: { port: 5280 },
   preview: { port: 5281 },
   build: {
+    // Chromium 79 (LG webOS 6, the oldest engine the app supports): lowers `?.`, `??`, range media
+    // queries and the like. Vite's default (Chromium 111) leaves them, and old engines fail to parse.
+    target: 'chrome79',
     // Every browser Tailwind 4 supports has native modulepreload; skip the polyfill.
     modulePreload: { polyfill: false },
     rolldownOptions: {

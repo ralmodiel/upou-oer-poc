@@ -214,6 +214,13 @@
   clip-path: inset(calc(50% - 50% / var(--zoom, 1)));
 }
 
+/* Engines without aspect-ratio (Chromium < 88): the slide fills its shot instead of a 16:9 box. */
+@supports not (aspect-ratio: 1 / 1) {
+  .reel-shot[data-slide] .reel-kb img {
+    width: 100%;
+  }
+}
+
 /* Behind everything: a blurred copy of the shot on screen, seen beside slides and through the band. */
 .reel-fill {
   position: absolute;

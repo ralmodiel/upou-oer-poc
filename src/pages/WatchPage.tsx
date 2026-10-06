@@ -29,6 +29,7 @@ import { pageTitle, useSeo, videoSeo } from '../lib/seo'
 import { useGoBack } from '../lib/shortcuts'
 import { candidates, findTarget, focusAndReveal } from '../lib/spatial'
 import { useWatchHistory } from '../lib/storage'
+import { lite } from '../lib/lite'
 import { mayPreload } from '../lib/youtube'
 import type { Video } from '../types'
 
@@ -50,7 +51,9 @@ export default function WatchPage() {
 function Watch({ video }: { video: Video }) {
   // Every video opens on its reel (with no clean image, a type-only title card).
   const [phase, setPhase] = useState<'reel' | 'player'>('reel')
-  const [preload] = useState(mayPreload)
+  // Lite devices (TVs) load the player at the reveal: a second renderer and its video surfaces
+  // behind the 10 s reel cost about 300 MB (GPU and page) on top of the reel's own.
+  const [preload] = useState(() => !lite && mayPreload())
   const goBack = useGoBack()
   const { record } = useWatchHistory()
   const stageRef = useRef<HTMLDivElement>(null)

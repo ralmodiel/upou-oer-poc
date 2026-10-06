@@ -126,6 +126,10 @@ describe('a player loaded behind the preview', () => {
     expect(frame.src).toContain('mute=1')
   })
 
+  it('keeps its own data only with "Remember where I stopped" on', () => {
+    expect(warmPlayer().frame).not.toHaveAttribute('credentialless')
+  })
+
   it('is not loaded early when the viewer saves data', () => {
     expect(mayPreload()).toBe(true)
     Object.defineProperty(navigator, 'connection', {
@@ -134,5 +138,39 @@ describe('a player loaded behind the preview', () => {
     })
     expect(mayPreload()).toBe(false)
     Reflect.deleteProperty(navigator, 'connection')
+  })
+})
+
+// "Remember where I stopped" off (the default): the player keeps nothing of YouTube's.
+describe('a player loaded behind the preview, by default', () => {
+  beforeEach(() => setPrefs({ resume: false }))
+  afterEach(() => {
+    vi.useRealTimers()
+    Reflect.deleteProperty(HTMLIFrameElement.prototype, 'credentialless')
+  })
+
+  it('is credentialless and, where frames cannot be, only loads, paused, until revealed', () => {
+    vi.useFakeTimers()
+    const { frame, send, commands, reveal } = warmPlayer()
+    expect(frame).toHaveAttribute('credentialless')
+    expect(frame.src).toContain('autoplay=0&')
+    expect(frame.src).not.toContain('mute=1')
+    send('onReady')
+    reveal()
+    expect(commands().map((c) => c.func)).toEqual(['unMute', 'playVideo'])
+    expect(frame).toHaveClass('opacity-0')
+    send('onStateChange', 3)
+    send('onStateChange', 1)
+    expect(frame).toHaveClass('opacity-100')
+  })
+
+  it('is primed muted where the frame can be credentialless (its data goes with the page)', () => {
+    Object.defineProperty(HTMLIFrameElement.prototype, 'credentialless', {
+      value: false,
+      configurable: true,
+    })
+    const { frame } = warmPlayer()
+    expect(frame).toHaveAttribute('credentialless')
+    expect(frame.src).toContain('autoplay=1&rel=0&playsinline=1&mute=1&')
   })
 })

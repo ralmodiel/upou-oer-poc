@@ -454,8 +454,9 @@ a slide with an image; a title-tile slide stays one press away.
   preloaded player's own commands below).
 - **Preloaded player:** the embed loads unseen under the preview (`warm`: opacity 0, `inert`,
   `aria-hidden`, no spinner, keys, note or saving). It autoplays muted (`mute=1`, which needs no
-  activation), and on its first frame is paused, put back at its start (or resume point) and
-  unmuted, so its first seconds and the rest of YouTube's code load while the preview plays. When
+  activation; where it may, see "YouTube's own data" below), and on its first frame is paused,
+  put back at its start (or resume point) and unmuted, so its first seconds and the rest of
+  YouTube's code load while the preview plays. When
   the preview ends or is skipped it is played, asked again every 500 ms until it plays, and shown
   only then, so the poster stays until the first frame. Not playing (nor buffering) 1.5 s after the
   reveal, it reloads as before (`autoplay=1`, no mute), so preloading never costs the automatic
@@ -463,6 +464,26 @@ a slide with an image; a title-tile slide stays one press away.
   now contacted during the preview rather than after it (the same hosts) and logs a muted start
   even when the viewer leaves during the preview. Save-Data or `prefers-reduced-data` keeps the
   old behaviour: no player until the preview ends.
+- **YouTube's own data (user request, 2026-10):** `youtube-nocookie.com` set no cookies in any
+  state measured (a fresh Chrome 154 profile, third-party cookies allowed or blocked; idle, primed,
+  playing). It does keep `localStorage` (`ytidb::LAST_RESULT_ENTRY_KEY`, `yt-icons-last-purged`, and
+  once it has played, muted or not, `yt-player-caption-persistence`), IndexedDB `YtIdbMeta` and
+  Cache Storage `yt-icons`, all surviving a restart, and for a viewer with Google cookies it sends
+  their `NID` to `www.google.com/js/th/…` when third-party cookies are allowed. With "Remember where
+  I stopped" off (the default) the frame is `credentialless` (Chrome and Edge 110+): no cookies go
+  out and its storage is a throwaway one, gone with the page (measured: nothing left in either
+  YouTube partition, 0 cookies; playback and the automatic start as before, reel end to playing
+  0.27–0.28 s after a card click or a direct load). Where a browser lacks `credentialless` (Safari,
+  Firefox, LG webOS before Chromium 110) the warm player is not primed, only loaded paused
+  (`autoplay=0`), since the muted start stores more than a loaded player does; measured in Chrome
+  without it, reel end to playing 1.3–1.9 s. On, the frame is an ordinary one and is primed as
+  before, so the player keeps its data (caption settings and the like). The regular `youtube.com`
+  embed is not used either way: it sets five `.youtube.com` cookies (four for 180 days, partitioned,
+  so even with third-party cookies blocked) and calls `doubleclick.net` while idle, and YouTube's
+  own resume for signed-in viewers could not be verified here; the local saved place already
+  resumes in this browser. Sources: YouTube Help 171780 (privacy-enhanced mode: views are not used to
+  personalize) and the player parameters page ("If you enable Autoplay … playback data collection
+  and sharing will therefore occur upon page load").
 - **Layout:** from lg the watch page holds the viewport height, so Up next filling in never pulls
   the footer into view (CLS 0 at 1024, 1440 and 1920).
 
@@ -941,6 +962,6 @@ Paint only. Shadows move to the var form (`shadow-(--shadow-elev-N)`), because T
 
 ## Resume where the viewer left off (user request)
 
-- **Saved place:** per video in `upou:positions` (`[{id, t, at}]`, newest first, at most 200), every 5 s while playing, on pause, `pagehide`, a hidden tab and unmount. Under 10 s changes nothing; the last 5% or 30 s (whichever is longer) or the end deletes it. Off by default: only once the viewer turns on "Remember where I stopped" (Privacy panel, under Save watch history, which it needs). Turning it off, history off or Clear history deletes all positions.
+- **Saved place:** per video in `upou:positions` (`[{id, t, at}]`, newest first, at most 200), every 5 s while playing, on pause, `pagehide`, a hidden tab and unmount. Under 10 s changes nothing; the last 5% or 30 s (whichever is longer) or the end deletes it. Off by default: only once the viewer turns on "Remember where I stopped" (Privacy panel, under Save watch history, which it needs). Turning it off, history off or Clear history deletes all positions. The same switch lets the YouTube player keep its own data (see "YouTube's own data" on the watch page).
 - **Resume:** the embed gets `&start=N`; a "Resumed at m:ss · Start over" note shows for about 8 s (longer while focused or hovered), placed by the stage's size so it never covers YouTube's controls. Start over seeks to 0 and focuses the Play / Pause key.
 - **Play from start:** beside Play in the hero and the quick look while a place is saved (icon-only when crowded). It passes `{ fromStart: { id, t } }`, which plays that video from 0 with no note, only while the saved place is still `t`.

@@ -225,7 +225,7 @@ export default function PrivacyDialog() {
             onChange={set('resume')}
           >
             {prefs.history
-              ? 'Each video resumes where you left it, with Play from start beside Play. Turning it off deletes the saved places.'
+              ? 'Each video resumes where you left it, with Play from start beside Play. It also lets the YouTube player keep its own data, such as caption settings, in this browser. Turning it off deletes the saved places.'
               : 'Needs “Save watch history”.'}
           </Toggle>
           <Toggle

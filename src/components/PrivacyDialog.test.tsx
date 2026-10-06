@@ -37,6 +37,8 @@ describe('PrivacyDialog', () => {
     act(() => openPrivacy())
     const resume = toggle('Remember where I stopped')
     expect(resume).toHaveAttribute('aria-checked', 'false')
+    // It also decides whether YouTube's player may keep its own data (YouTubePlayer).
+    expect(resume).toHaveAccessibleDescription(/lets the YouTube player keep its own data/)
     fireEvent.click(resume)
     expect(readPrefs().resume).toBe(true)
     localStorage.setItem('upou:positions', JSON.stringify([{ id: 'a', t: 60, at: 1 }]))

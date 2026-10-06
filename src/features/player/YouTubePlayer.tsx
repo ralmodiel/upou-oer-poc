@@ -5,11 +5,26 @@ import { thumbnailOf, zoomStyle } from '../../components/media'
 import { TitleTile } from '../../components/Thumbnail'
 import { cropZoomOf } from '../../data/frameFlags'
 import { STAGE_SIZES } from '../../data/images'
-import { forgetPosition, readPosition, savePosition, startsOver } from '../../lib/storage'
+import {
+  forgetPosition,
+  readPosition,
+  readPrefs,
+  resumeAllowed,
+  savePosition,
+  startsOver,
+} from '../../lib/storage'
 import { embedUrl, isYouTubeId, watchUrl } from '../../lib/youtube'
 import type { Video } from '../../types'
 import { reelImages } from '../reel/stills'
 import './player.css'
+
+// React renders it (a boolean attribute); its types do not list it yet.
+declare module 'react' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- merging needs the same parameter
+  interface IframeHTMLAttributes<T> {
+    credentialless?: boolean
+  }
+}
 
 const ALLOW = 'autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share'
 const PLAYER_ORIGIN = 'https://www.youtube-nocookie.com'
@@ -140,6 +155,11 @@ export function PlayerPoster({ video }: { video: Video }) {
  * its start and unmuted, so its first seconds and the rest of YouTube's code are loaded while the
  * preview plays (unmuting only once revealed would buffer again, about a second). When `warm` turns
  * false it is played, and shows only once it plays: the poster stays until the first frame.
+ *
+ * With "Remember where I stopped" off (the default) the frame is `credentialless` (Chrome and Edge
+ * 110+): it sends no cookies and its storage goes with the page, so YouTube's player keeps nothing
+ * in this browser. Where a browser lacks it, the warm player is not primed but only loaded, paused,
+ * since a muted start makes YouTube store more than a loaded player does.
  */
 export default function YouTubePlayer({
   video,
@@ -165,7 +185,13 @@ export default function YouTubePlayer({
   const resumeRef = useRef<HTMLDivElement>(null)
   const keyRef = useRef<HTMLButtonElement>(null)
   const [loaded, setLoaded] = useState(false)
-  // Mounted warm: primed muted and paused, so it has to be told to play.
+  // "Remember where I stopped", read once: on, the player may keep its own data in this browser.
+  const [keepData] = useState(() => resumeAllowed(readPrefs()))
+  // Primed (a muted start behind the preview) only where what that start stores is kept by choice,
+  // or goes with the page (a credentialless frame).
+  const mayPrime = keepData || 'credentialless' in HTMLIFrameElement.prototype
+  // Mounted warm: primed muted and paused (or, where it may not be, just loaded), so it has to be
+  // told to play.
   const [primed, setPrimed] = useState(warm)
   // A primed player has played since it was revealed.
   const [started, setStarted] = useState(false)
@@ -335,7 +361,8 @@ export default function YouTubePlayer({
     )
   }
 
-  const src = `${embedUrl(video.youtubeId)}${primed ? '&mute=1' : ''}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${resumeAt ? `&start=${resumeAt}` : ''}`
+  // Warm and not primed, it loads paused and waits to be played.
+  const src = `${embedUrl(video.youtubeId, !primed || mayPrime)}${primed && mayPrime ? '&mute=1' : ''}&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}${resumeAt ? `&start=${resumeAt}` : ''}`
   return (
     <>
       {!shown && !warm && (
@@ -351,6 +378,7 @@ export default function YouTubePlayer({
         allow={ALLOW}
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
+        credentialless={!keepData}
         onLoad={() => setLoaded(true)}
         inert={warm}
         aria-hidden={warm || undefined}

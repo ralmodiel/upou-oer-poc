@@ -346,6 +346,24 @@ function postings(docs: Vec[], termCount: number): Pick<Index, 'offsets' | 'post
   return { offsets, postDoc, postW }
 }
 
+/** The same vectors as views into one pair of buffers: two ArrayBuffers instead of two per doc. */
+function sharedVecs(docs: readonly Vec[]): Vec[] {
+  let total = 0
+  for (const vec of docs) total += vec.ids.length
+  const ids = new Int32Array(total)
+  const ws = new Float32Array(total)
+  let at = 0
+  return docs.map((vec) => {
+    if (!vec.ids.length) return EMPTY_VEC
+    ids.set(vec.ids, at)
+    ws.set(vec.ws, at)
+    const end = at + vec.ids.length
+    const view = { ids: ids.subarray(at, end), ws: ws.subarray(at, end) }
+    at = end
+    return view
+  })
+}
+
 type Grouping = Pick<
   Index,
   'series' | 'seriesSize' | 'seriesTags' | 'programmes' | 'tags' | 'tagDf' | 'tagLimit' | 'groups'
@@ -439,7 +457,7 @@ function* building(list: readonly Video[]): Generator<void, Index, void> {
   yield
   return {
     source: list,
-    docs,
+    docs: sharedVecs(docs),
     pos: new Map(list.map((v, i) => [v.id, i])),
     ...vocab,
     ...posted,

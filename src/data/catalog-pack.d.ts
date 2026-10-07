@@ -1,6 +1,11 @@
-// catalog.json, frame-flags.json and speakers.json as one table, packed by the build
-// (catalogPack in vite.config.ts, packCatalog in src/data/pack.ts).
-declare module 'virtual:catalog-pack' {
-  const pack: import('./pack').CatalogPack
-  export default pack
+// The catalog in pieces, split by the build (catalogSplitPlugin in vite.config.ts, splitCatalog in
+// src/data/split.ts): the home summary, then the URLs of the files holding the other videos.
+declare module 'virtual:catalog-home' {
+  const summary: import('./split').HomeSummary
+  export default summary
+}
+
+declare module 'virtual:catalog-files' {
+  const urls: string[]
+  export default urls
 }

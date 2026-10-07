@@ -298,12 +298,23 @@ export function registerSpeakers(names: Iterable<string>) {
   genericMemo.clear()
 }
 
+/** The keys tags are compared with to tell a person: the curated names' and `names`'. */
+export const personKeysOf = (names: Iterable<string>): string[] => [
+  ...new Set([...PEOPLE, ...names].map(personKey).filter((key) => key.length >= MIN_PERSON_KEY)),
+]
+
+/** People keys worked out ahead (the build's, for the catalog's speakers): see personKeysOf. */
+export function registerPersonKeys(keys: readonly string[]) {
+  speakerNames = []
+  people = new Set(keys)
+  personMemo.clear()
+  genericMemo.clear()
+}
+
 function looksLikePerson(tag: string): boolean {
   const t = tag.trim()
   if (isTitled(t)) return true
-  people ??= new Set(
-    [...PEOPLE, ...speakerNames].map(personKey).filter((key) => key.length >= MIN_PERSON_KEY),
-  )
+  people ??= new Set(personKeysOf(speakerNames))
   if (people.has(personKey(t))) return true
   if (!/\s/.test(t)) {
     // "DrFelipeCervera", "FelipeCervera": judged as the words they join

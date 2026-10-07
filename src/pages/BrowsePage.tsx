@@ -21,6 +21,7 @@ import {
   getRows,
   getVideo,
   hasCleanPoster,
+  videoCount,
   videos,
 } from '../data/catalog'
 import { isEmptyProfile, useProfile, type Profile } from '../lib/history'
@@ -209,7 +210,7 @@ export default function BrowsePage() {
   // The first featured video with a clean poster, as in the static shell (link previews never
   // reach the page UI).
   const first = getFeatured().find(hasCleanPoster) ?? getFeatured()[0]
-  useSeo(homeSeo(videos.length, getCategories().length, first?.poster ?? first?.backdrop))
+  useSeo(homeSeo(videoCount(), getCategories().length, first?.poster ?? first?.backdrop))
   const entries = useShownHistory()
   const [prefs] = usePrefs()
   const historyOn = historyAllowed(prefs)
@@ -370,7 +371,7 @@ function Intro() {
       action={<HowItWorksChip />}
       compact
     >
-      {videos.length.toLocaleString('en')} free videos: lectures, webinars and student work. Browse
+      {videoCount().toLocaleString('en')} free videos: lectures, webinars and student work. Browse
       by collection or search everything.
     </PageBand>
   )

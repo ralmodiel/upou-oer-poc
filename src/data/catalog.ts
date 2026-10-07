@@ -1,5 +1,6 @@
-import pack from 'virtual:catalog-pack'
 import catalogNames from 'virtual:catalog-names'
+import files from 'virtual:catalog-files'
+import summary from 'virtual:catalog-home'
 import { formatDate } from '../lib/format'
 import {
   buildVocabulary,
@@ -18,16 +19,19 @@ import {
   isNameToken,
   isOrgTag,
   registerNameTokens,
-  registerSpeakers,
+  registerPersonKeys,
   topicTags,
   type LearnedNames,
 } from '../lib/tags'
-import type { Video } from '../types'
-import { DEFAULT_CHANNEL, expandCatalog } from './expand'
-import { frameFlagsOf } from './frameFlags'
+import { whenImagesSettled } from '../components/browse-hooks'
+import { isEmptyProfile, readProfile } from '../lib/history'
+import type { CatalogRecord, Video } from '../types'
+import { DEFAULT_CHANNEL, expandRecord } from './expand'
+import { addFrameFlags, frameFlagsOf } from './frameFlags'
 import { isCleanImage } from './images'
-import { unpackRecords } from './pack'
-import { allSpeakers } from './speakers'
+import { unpackRecords, type CatalogPack } from './pack'
+import { addSpeakers } from './speakers'
+import { chunkOf, type CatalogPart, type HomeSummary } from './split'
 
 /** Whether the video's canonical image passes the frame filter (it fails only when all do). */
 export const hasCleanPoster = (v: Video) =>
@@ -81,12 +85,19 @@ interface IndexedVideo {
 /** The crawler's bucket for posts without a category: browsable, but not a home section. */
 export const GENERAL_CATEGORY = 'General'
 const MIN_ROW_SIZE = 3
+// The newest videos the summary holds, which is what getLatest reads for the home.
+const HOME_LATEST = 12
 
 // The catalog is static, so derived collections are memoized and only tests swap the data
 // (see testing.ts). `videos` is a live binding: importers see the swap.
 export let videos: readonly Video[] = []
 let byId = new Map<string, Video>()
 let memo = new Map<string, unknown>()
+// Set while only the home summary's videos (and what was fetched since) are in: the whole catalog's
+// counts, its other videos still on the way. Everything derived (memo) then reads the summary's
+// videos alone, which is all the home's first screen shows.
+let partial: Pick<HomeSummary, 'total' | 'categories'> | undefined
+let complete = false
 
 const cached = <T>(key: string, compute: () => T): T => {
   if (!memo.has(key)) memo.set(key, compute())
@@ -125,13 +136,22 @@ interface Group {
   slug: string
   name: string
   videos: Video[]
+  /** The category's size when only some of its videos are in. */
+  size?: number
 }
+
+const sizeOf = (g: Group) => g.size ?? g.videos.length
 
 /** Videos grouped by category (catalog order), keyed by slug. */
 function groups(): Map<string, Group> {
   return cached('groups', () => {
     const bySlug = new Map<string, Group>()
     const byName = new Map<string, Group>()
+    for (const [name, slug, size] of partial?.categories ?? []) {
+      const group = { slug, name, videos: [], size }
+      byName.set(name, group)
+      bySlug.set(slug, group)
+    }
     for (const v of videos) {
       let group = byName.get(v.category)
       if (!group) {
@@ -163,15 +183,16 @@ export function getCategories(order: 'size' | 'latest' = 'size'): Category[] {
         (a, b) =>
           isGeneral(a.name) - isGeneral(b.name) ||
           (order === 'latest' ? newestFirst(newestOf(a.slug), newestOf(b.slug)) : 0) ||
-          b.videos.length - a.videos.length ||
+          sizeOf(b) - sizeOf(a) ||
           a.name.localeCompare(b.name),
       )
-      .map(({ slug, name, videos: list }) => {
+      .map((group) => {
+        const { slug, name } = group
         const newest = getCategoryVideos(slug)
         let preview: Video | undefined
         // Only link previews read it, and finding it works out images: on first read.
         return Object.defineProperty(
-          { slug, name, count: list.length, cover: newest[0] } as Category,
+          { slug, name, count: sizeOf(group), cover: newest[0] } as Category,
           'preview',
           { enumerable: true, get: () => (preview ??= newest.find(hasCleanPoster)) },
         )
@@ -186,6 +207,16 @@ export function getCategory(slug: string): Category | undefined {
 /** By exact name. Slugs can carry a "-2" suffix, so never slugify a name to find its category. */
 export function getCategoryByName(name: string): Category | undefined {
   return cached('categoryByName', () => new Map(getCategories().map((c) => [c.name, c]))).get(name)
+}
+
+/**
+ * A category's newest videos, newest first: all of them, or while only some videos are in, the ones
+ * that are (the first POOL_CATEGORY are right once the pool has arrived, see split.ts).
+ */
+export function getCategoryNewest(slug: string): Video[] {
+  if (!partial) return getCategoryVideos(slug)
+  const name = groups().get(slug)?.name
+  return newestLoaded(Infinity).filter((v) => v.category === name)
 }
 
 /** The videos of one category. Results are shared and memoized: do not mutate them. */
@@ -223,6 +254,8 @@ export function getFeatured(): Video[] {
 }
 
 export function getLatest(limit = 12): Video[] {
+  // Only the first twelve are the summary's; the pool (see split.ts) holds the newest sixteen.
+  if (partial && limit > HOME_LATEST) return newestLoaded(limit)
   return cached(`latest:${limit}`, () => byDate().slice(0, limit))
 }
 
@@ -431,10 +464,14 @@ export function* searchWarmup(): Generator<void, void> {
     if (!(yield* steps([...counts.keys()], keep))) return
     cached('vocabulary', () => vocabularyOf(counts, (word) => names.has(word)))
   }
+  mark('search:indexed')
 }
 
 /** Installs a catalog and forgets everything derived from it. Tests: use setCatalog in testing.ts. */
 export function replaceCatalog(list: readonly Video[], names?: LearnedNames): void {
+  partial = undefined
+  complete = true
+  loaded.clear()
   videos = list
   // The names its tags teach, learned by the build; for other lists, read only when a page first
   // asks about names (watch page, quick look, recommendations).
@@ -443,5 +480,176 @@ export function replaceCatalog(list: readonly Video[], names?: LearnedNames): vo
   memo = new Map()
 }
 
-replaceCatalog(expandCatalog(unpackRecords(pack)), catalogNames)
-registerSpeakers(allSpeakers())
+/** A mark on the performance timeline: when each part arrived, was parsed, and was indexed. */
+export const mark = (name: string) => typeof performance !== 'undefined' && performance.mark?.(name)
+
+/** Videos in the whole catalog, also while only the home summary's are in. */
+export const videoCount = (): number => partial?.total ?? videos.length
+
+/** Whether every video is in (else only the home summary's and what was fetched since). */
+export const isCatalogComplete = (): boolean => complete
+
+// The summary's videos, then each file's as it arrives, by position in the whole catalog. A
+// video's object is the one handed out already, so a card keeps its video when the rest arrives.
+const loaded = new Map<number, Video>()
+let loadedList: { size: number; list: Video[] } | undefined
+
+/** The videos in so far, in catalog order. */
+function loadedVideos(): Video[] {
+  if (loadedList?.size !== loaded.size)
+    loadedList = {
+      size: loaded.size,
+      list: [...loaded.keys()].sort((a, b) => a - b).map((at) => loaded.get(at)!),
+    }
+  return loadedList.list
+}
+
+/** The newest `limit` of the videos in so far; right up to the pool's size once it is in. */
+function newestLoaded(limit: number): Video[] {
+  return [...loadedVideos()].sort(newestFirst).slice(0, limit)
+}
+
+// The build checked every record (src/data/split.ts), so they expand without checks.
+function expandPart(part: CatalogPack): Video[] {
+  addFrameFlags(part)
+  addSpeakers(part)
+  return (unpackRecords(part) as CatalogRecord[]).map(expandRecord)
+}
+
+const fetched: (Promise<void> | undefined)[] = files.map(() => undefined)
+let arrived = 0
+let settle = () => {}
+const whole = new Promise<void>((resolve) => (settle = resolve))
+
+function addFile(i: number, part: CatalogPart): void {
+  if (complete) return
+  mark(`catalog:arrived:${i}`)
+  const list = expandPart(part)
+  list.forEach((v, j) => {
+    loaded.set(part.at[j], v)
+    byId.set(v.id, v)
+  })
+  mark(`catalog:parsed:${i}`)
+  if (++arrived === files.length) {
+    // Whole: in catalog order, as expandCatalog gave it. What the home shows keeps its identity.
+    const keep = ['featured', `latest:${HOME_LATEST}`].map((key) => [key, memo.get(key)] as const)
+    replaceCatalog(loadedVideos().slice(), catalogNames)
+    for (const [key, old] of keep) {
+      const now = memo.get(key) as Video[] | undefined
+      if (old && now && (old as Video[]).every((v, k) => v === now[k])) memo.set(key, old)
+    }
+    mark('catalog:complete')
+    settle()
+  }
+}
+
+/** File `i`, fetched once (again after a failure). */
+function loadFile(i: number, low = false): Promise<void> {
+  return (fetched[i] ??= (async () => {
+    mark(`catalog:requested:${i}`)
+    try {
+      const res = await fetch(files[i], low ? ({ priority: 'low' } as RequestInit) : undefined)
+      if (!res.ok) throw new Error(`catalog file ${i}: ${res.status}`)
+      const body = await res.text()
+      mark(`catalog:body:${i}`)
+      addFile(i, JSON.parse(body) as CatalogPart)
+    } catch (error) {
+      fetched[i] = undefined
+      throw error
+    }
+  })())
+}
+
+/** Fetches every file not in yet, at once; resolves when the whole catalog is installed. */
+function loadAll(): Promise<void> {
+  if (complete) return Promise.resolve()
+  return Promise.all(files.map((_, i) => loadFile(i))).then(() => whole)
+}
+
+/** Resolves once every video is in: the background fetch (trickle) brings them, or a page's own. */
+export const catalogComplete = (): Promise<void> => (complete ? Promise.resolve() : whole)
+
+const POOL = 0
+
+/** The pool and the file of `id`: what a page of that one video reads (see split.ts). */
+function loadVideo(id: string, pool: boolean): Promise<void> {
+  if (complete) return Promise.resolve()
+  const own = byId.has(id) ? [] : [loadFile(chunkOf(id, files.length - 1))]
+  return Promise.all(pool ? [loadFile(POOL), ...own] : own).then(() => undefined)
+}
+
+const WATCH = /^\/watch\/([^/]+)\/?$/
+
+/**
+ * What a page must wait for before it renders (the router's loader), if anything. The home with
+ * nothing in this browser's history renders from the summary; a watch page or a quick look needs
+ * its own video (and the pool); every other page, and a home that lists history, waits for all.
+ */
+export function catalogWait(pathname: string, search: string): Promise<void> | undefined {
+  if (complete) return undefined
+  if (pathname === '/') {
+    if (!isEmptyProfile(readProfile())) return loadAll()
+    const quickLook = new URLSearchParams(search).get('v')
+    return quickLook && !byId.has(quickLook) ? loadVideo(quickLook, false) : undefined
+  }
+  const watch = WATCH.exec(pathname)
+  return watch ? loadVideo(decodeURIComponent(watch[1]), true) : loadAll()
+}
+
+// The route path under the app's base ("/watch/x"), for catalogWait.
+const appPath = (pathname: string): string => {
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+  return base && pathname.startsWith(base) ? pathname.slice(base.length) || '/' : pathname
+}
+
+/** For the layout route (App.tsx): a page renders once catalogWait lets it; never again after. */
+export const catalogRoute = {
+  loader: ({ request }: { request: Request }) => {
+    const { pathname, search } = new URL(request.url)
+    return catalogWait(appPath(pathname), search)?.then(() => null) ?? null
+  },
+  shouldRevalidate: () => !complete,
+}
+
+// After the first screen has painted and its images are in, the rest comes a file at a time (two
+// lanes), each fetch at low priority and after the browser had a moment idle, so it never holds up
+// an image or a frame. A page that needs it sooner asks for it (catalogWait).
+function trickle(): void {
+  let next = 0
+  const gap = () =>
+    new Promise<void>((resolve) =>
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback(() => resolve(), { timeout: 150 })
+        : setTimeout(resolve, 50),
+    )
+  const lane = async () => {
+    while (next < files.length && !complete) {
+      try {
+        await loadFile(next++, true)
+      } catch {
+        return
+      }
+      await gap()
+    }
+  }
+  void Promise.all([lane(), lane()]).then(() => {
+    // Anything that failed is asked for once more.
+    if (!complete) void loadAll().catch(() => undefined)
+  })
+}
+
+registerPersonKeys(summary.people)
+const head = expandPart(summary.pack)
+if (!files.length) {
+  // The dev server and tests: every video is in the summary.
+  replaceCatalog(head, catalogNames)
+} else {
+  summary.at.forEach((at, i) => loaded.set(at, head[i]))
+  videos = head
+  byId = new Map(head.map((v) => [v.id, v]))
+  registerNameTokens(catalogNames)
+  partial = summary
+  // What the first page needs is asked for now, beside the app's scripts.
+  void catalogWait(appPath(location.pathname), location.search)?.catch(() => undefined)
+  whenImagesSettled(trickle)
+}

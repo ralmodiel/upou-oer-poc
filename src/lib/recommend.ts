@@ -1,7 +1,7 @@
 // Content-based recommendations: a TF-IDF index over the catalog's text (titles, tags, categories,
 // channels, descriptions and, when ingested, transcripts), blended with category, tag and series
 // signals and with the user's local profile. Everything runs in the browser; nothing leaves it.
-import { GENERAL_CATEGORY, videos } from '../data/catalog'
+import { catalogComplete, GENERAL_CATEGORY, isCatalogComplete, mark, videos } from '../data/catalog'
 import { neighborsOf } from '../data/recs'
 import type { Video } from '../types'
 import type { Profile } from './history'
@@ -105,8 +105,6 @@ interface Index {
   keys: string[]
   /** Title keys several documents share → those documents, newest first. */
   groups: Map<string, number[]>
-  /** Per document, filled on demand. */
-  talks: (Talk | undefined)[]
   /** Title terms at least this informative are rare enough to explain a pick. */
   rareIdf: number
 }
@@ -253,14 +251,14 @@ const isName = (term: string) => isNameToken(term) || isNameToken(`${term}s`)
 const MARKS =
   /\b(?:part|pt|episode|ep|session|module|chapter|lesson|lecture|vol|volume|book|day|week|level|unit|no)\.?\s*([ivx]+|\d+)\b|\d+/g
 
-function talkOf(title: string, key = titleKey(title)): Talk {
+function talkOf(title: string): Talk {
   const end = bodyEnd(title)
   // Faculty prefixes ("FMDS …") do not make another talk.
   const words = (end >= MIN_BODY ? title.slice(0, end) : title)
     .split(/\s+/)
     .filter((w) => !isOrgTag(w.replace(EDGE, '')))
   const marks = Array.from(normalizeText(title).matchAll(MARKS), (m) => m[1] ?? m[0]).join(' ')
-  return { key, terms: new Set(tokenize(words.join(' '))), marks }
+  return { key: titleKey(title), terms: new Set(tokenize(words.join(' '))), marks }
 }
 
 function sameTalk(a: Talk, b: Talk): boolean {
@@ -271,9 +269,18 @@ function sameTalk(a: Talk, b: Talk): boolean {
   return both >= SAME_TALK * (a.terms.size + b.terms.size - both)
 }
 
+// Each video's, worked out once: Up next and the quick look compare many pairs.
+const talks = new WeakMap<Video, Talk>()
+
+function talkOfVideo(v: Video): Talk {
+  let talk = talks.get(v)
+  if (!talk) talks.set(v, (talk = talkOf(v.title)))
+  return talk
+}
+
 /** Whether two videos are one talk: speaker cuts, re-uploads or near-identical titles. */
 export const isNearDuplicate = (a: Video, b: Video): boolean =>
-  sameTalk(talkOf(a.title), talkOf(b.title))
+  sameTalk(talkOfVideo(a), talkOfVideo(b))
 
 const stampOf = (at: unknown): number => (typeof at === 'number' && Number.isFinite(at) ? at : 0)
 
@@ -281,6 +288,9 @@ const stampOf = (at: unknown): number => (typeof at === 'number' && Number.isFin
 const STEP_MS = 8
 /** How often (in documents) a build step checks the clock. */
 const CHECK_EVERY = 16
+
+/** True when a build step has run its time: checked every CHECK_EVERY items (see building). */
+type Due = (i: number) => boolean
 
 const countInto = (counts: Map<string, number>, keys: Iterable<string>) => {
   for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1)
@@ -317,7 +327,11 @@ function scanOne(scan: Scan, v: Video, d: number, keyOf: (tag: string) => string
   scan.stamps[d] = Date.parse(v.publishedAt) || 0
 }
 
-function vocabulary(df: Map<string, number>, n: number): Pick<Index, 'terms' | 'idf'> {
+function* vocabulary(
+  df: Map<string, number>,
+  n: number,
+  due: Due,
+): Generator<void, Pick<Index, 'terms' | 'idf'>> {
   // Terms in over a quarter of a large catalog ("elearning", "university") carry no signal.
   const common = Math.max(n / 4, 20)
   const terms = new Map<string, number>()
@@ -325,24 +339,34 @@ function vocabulary(df: Map<string, number>, n: number): Pick<Index, 'terms' | '
   for (const [t, count] of df) {
     idf[terms.size] = count > common ? 0 : Math.log(n / count)
     terms.set(t, terms.size)
+    if (due(terms.size)) yield
   }
   return { terms, idf }
 }
 
-function postings(docs: Vec[], termCount: number): Pick<Index, 'offsets' | 'postDoc' | 'postW'> {
+function* postings(
+  docs: Vec[],
+  termCount: number,
+  due: Due,
+): Generator<void, Pick<Index, 'offsets' | 'postDoc' | 'postW'>> {
   const offsets = new Int32Array(termCount + 1)
-  for (const vec of docs) for (const id of vec.ids) offsets[id + 1]++
+  for (let d = 0; d < docs.length; d++) {
+    for (const id of docs[d].ids) offsets[id + 1]++
+    if (due(d)) yield
+  }
   for (let t = 0; t < termCount; t++) offsets[t + 1] += offsets[t]
   const cursor = offsets.slice(0, -1)
   const postDoc = new Int32Array(offsets[termCount])
   const postW = new Float32Array(offsets[termCount])
-  docs.forEach((vec, d) => {
+  for (let d = 0; d < docs.length; d++) {
+    const vec = docs[d]
     for (let i = 0; i < vec.ids.length; i++) {
       const k = cursor[vec.ids[i]]++
       postDoc[k] = d
       postW[k] = vec.ws[i]
     }
-  })
+    if (due(d)) yield
+  }
   return { offsets, postDoc, postW }
 }
 
@@ -370,11 +394,22 @@ type Grouping = Pick<
 >
 
 /** Tags, series and title groups, from the first pass. */
-function grouping({ keysOf, seriesKeys, titleKeys, stamps }: Scan, n: number): Grouping {
+function* grouping(
+  { keysOf, seriesKeys, titleKeys, stamps }: Scan,
+  n: number,
+  due: Due,
+): Generator<void, Grouping> {
   const tagDf = new Map<string, number>()
-  for (const keys of keysOf) countInto(tagDf, keys)
+  for (let d = 0; d < keysOf.length; d++) {
+    countInto(tagDf, keysOf[d])
+    if (due(d)) yield
+  }
   const tagLimit = Math.max(n / 10, 20)
-  const tags = keysOf.map((keys) => new Set(keys.filter((k) => (tagDf.get(k) ?? 0) <= tagLimit)))
+  const tags: Set<string>[] = []
+  for (let d = 0; d < keysOf.length; d++) {
+    tags.push(new Set(keysOf[d].filter((k) => (tagDf.get(k) ?? 0) <= tagLimit)))
+    if (due(d)) yield
+  }
 
   const seriesSize = new Map<string, number>()
   for (const k of seriesKeys) if (k) seriesSize.set(k, (seriesSize.get(k) ?? 0) + 1)
@@ -391,11 +426,13 @@ function grouping({ keysOf, seriesKeys, titleKeys, stamps }: Scan, n: number): G
     else members.set(k, [d])
   })
   const seriesTags = new Map<string, Set<string>>()
+  let step = 0
   for (const [k, ds] of members) {
     if (ds.length < 3) continue
     const counts = new Map<string, number>()
     for (const d of ds) countInto(counts, keysOf[d])
     seriesTags.set(k, new Set([...counts].filter(([, c]) => c * 2 >= ds.length).map(([t]) => t)))
+    if (due(step++)) yield
   }
   // A tag that starts like the series' name and that few videos outside it carry is the programme.
   const programmes = new Set(POPULAR_SERIES.map(tagKey))
@@ -446,25 +483,23 @@ function* building(list: readonly Video[]): Generator<void, Index, void> {
     scanOne(scan, list[d], d, keyOf)
     if (due(d)) yield
   }
-  const vocab = vocabulary(scan.df, n)
-  yield
+  const vocab = yield* vocabulary(scan.df, n, due)
   const docs: Vec[] = []
   for (let d = 0; d < n; d++) {
     docs.push(project(vocab, scan.bags[d]))
     if (due(d)) yield
   }
-  const posted = postings(docs, vocab.terms.size)
-  yield
+  const posted = yield* postings(docs, vocab.terms.size, due)
+  const grouped = yield* grouping(scan, n, due)
   return {
     source: list,
     docs: sharedVecs(docs),
     pos: new Map(list.map((v, i) => [v.id, i])),
     ...vocab,
     ...posted,
-    ...grouping(scan, n),
+    ...grouped,
     stamps: scan.stamps,
     keys: scan.titleKeys,
-    talks: [],
     rareIdf: Math.log(n / Math.max(2, n * RARE_SHARE)),
   }
 }
@@ -501,7 +536,7 @@ export const warmRecommender = (): void => {
 }
 
 /** Whether the index is built, so a recommendation now takes about a millisecond. */
-export const isRecommenderReady = (): boolean => index?.source === videos
+export const isRecommenderReady = (): boolean => isCatalogComplete() && index?.source === videos
 
 interface Scheduler {
   yield?: () => Promise<void>
@@ -534,6 +569,7 @@ async function runSlices(current: Job): Promise<void> {
     if (step.done) {
       index = step.value
       job = undefined
+      mark('recommender:indexed')
       return
     }
   }
@@ -541,9 +577,11 @@ async function runSlices(current: Job): Promise<void> {
 
 /**
  * Builds the index in steps of about 8 ms, yielding to the browser between them, so no task runs
- * long. Calls share one build; a recommendation asked for meanwhile finishes it at once.
+ * long. Calls share one build; a recommendation asked for meanwhile finishes it at once. On a first
+ * visit to the home, it first waits for the rest of the catalog.
  */
 export function warmRecommenderAsync(): Promise<void> {
+  if (!isCatalogComplete()) return catalogComplete().then(warmRecommenderAsync)
   if (index?.source === videos) return Promise.resolve()
   const current = jobFor(videos)
   return (current.done ??= runSlices(current))
@@ -569,8 +607,7 @@ const tagKeysOf = (idx: Index, v: Video): Set<string> => {
   return new Set(keys.filter((k) => (idx.tagDf.get(k) ?? 0) <= idx.tagLimit))
 }
 
-const talkAt = (idx: Index, d: number): Talk =>
-  (idx.talks[d] ??= talkOf(idx.source[d].title, idx.keys[d]))
+const talkAt = (idx: Index, d: number): Talk => talkOfVideo(idx.source[d])
 
 /** Cosine of `q` against every document, via the posting lists of the query's terms. */
 function scoreAll(idx: Index, q: Vec): Float64Array {

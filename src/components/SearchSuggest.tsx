@@ -14,6 +14,7 @@ import {
   type RefObject,
 } from 'react'
 import { useNavigate } from 'react-router'
+import { catalogComplete, isCatalogComplete } from '../data/catalog'
 import { useSearchHistory } from '../lib/history'
 import { prefersReducedMotion } from './hooks'
 import {
@@ -51,11 +52,15 @@ let waiting: (() => void)[] = []
 function whenWarm(fn: () => void) {
   waiting.push(fn)
   if (waiting.length > 1) return
-  runSliced(suggestionsWarmup(), () => {
-    const ready = waiting
-    waiting = []
-    for (const f of ready) f()
-  })
+  const warm = () =>
+    runSliced(suggestionsWarmup(), () => {
+      const ready = waiting
+      waiting = []
+      for (const f of ready) f()
+    })
+  // The suggestions read every video: on a first visit they wait for the rest of the catalog.
+  if (isCatalogComplete()) warm()
+  else void catalogComplete().then(warm)
 }
 
 const KIND_LABEL: Record<SuggestionKind, string> = {

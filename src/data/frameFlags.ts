@@ -1,4 +1,3 @@
-import pack from 'virtual:catalog-pack'
 import crops from './frame-crops.json'
 import {
   beautyBitsOf,
@@ -13,7 +12,7 @@ import {
   zoomFrom,
   type Box,
 } from './images'
-import { tableOf } from './pack'
+import { tableOf, type CatalogPack } from './pack'
 
 /**
  * What the frame analysis (scripts/faces) knows about each video's thumbnail candidates, keyed by
@@ -38,7 +37,8 @@ import { tableOf } from './pack'
  * zoom per candidate that pushes the bars out of a 16:9 slot, cutting at most 2% of the picture:
  * one number, or [zoom for the 16:9 sizes, zoom for the 4:3 ones] when they differ.
  */
-let table: Record<string, number> = tableOf(pack, pack.flags)
+// Filled part by part as the catalog arrives (catalog.ts), before its videos are expanded.
+let table: Record<string, number> = {}
 let cropTable: Record<string, unknown> = crops
 
 /** The packed value of a video (0 when nothing is known). */
@@ -69,6 +69,11 @@ export const keepBoxOf = (youtubeId: string): Box | undefined => keepOf(table[yo
 export function cropZoomOf(src: string): number {
   const id = youtubeIdOf(src)
   return id ? zoomFrom(cropTable[id], src) : 1
+}
+
+/** Adds a part's flags (catalog.ts), before its videos are expanded. */
+export const addFrameFlags = (pack: CatalogPack): void => {
+  Object.assign(table, tableOf(pack, pack.flags))
 }
 
 /** Test hook: swap the flag table (pass `{}` to clear it). */

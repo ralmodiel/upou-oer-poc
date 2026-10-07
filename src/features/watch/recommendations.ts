@@ -1,6 +1,6 @@
 import {
   getCategoryByName,
-  getCategoryVideos,
+  getCategoryNewest,
   getLatest,
   getVideo,
   similarTo,
@@ -73,7 +73,7 @@ export function upNextPlaceholder(video: Video, limit = 8): UpNextItem[] {
   const picks: Video[] = []
   const take = taker(video, picks, limit)
   const category = getCategoryByName(video.category)
-  for (const v of category ? getCategoryVideos(category.slug) : []) {
+  for (const v of category ? getCategoryNewest(category.slug) : []) {
     if (picks.length === limit) break
     take(v)
   }

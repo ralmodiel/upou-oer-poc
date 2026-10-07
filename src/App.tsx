@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
+import { catalogRoute } from './data/catalog'
 import { loadCite } from './data/cites'
 import AppLayout from './layouts/AppLayout'
 import BrowsePage from './pages/BrowsePage'
@@ -59,6 +60,9 @@ const router = createBrowserRouter(
         {
           path: '/',
           Component: AppLayout,
+          // The rest of the catalog arrives after the first paint; a page that needs it waits here.
+          ...catalogRoute,
+          HydrateFallback: () => <div className="min-h-dvh" />,
           children: [
             { index: true, Component: BrowsePage },
             { path: 'search', Component: SearchPage },

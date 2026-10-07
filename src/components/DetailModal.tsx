@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
-import { getVideo } from '../data/catalog'
+import { getVideo, isCatalogComplete } from '../data/catalog'
 import Speakers from '../features/watch/Speakers'
 import WatchCite from '../features/watch/WatchCite'
 import { useProfile } from '../lib/history'
@@ -89,8 +89,11 @@ function DetailDialog({ video }: { video: Video }) {
   const profile = useFrozen(useProfile(), video.id)
   // A shared link opens this on page load, before the recommender has indexed the catalog (seconds
   // on a slow phone): the index is then built in short slices after the first paint and More like
-  // this joins below. Opened from the app, it shows at once, as before.
-  const [ready, setReady] = useState(() => wasOpenedInApp(state) || isRecommenderReady())
+  // this joins below. Opened from the app, it shows at once, as before (unless the rest of the
+  // catalog is still arriving: first visit, see catalog.ts).
+  const [ready, setReady] = useState(
+    () => (wasOpenedInApp(state) && isCatalogComplete()) || isRecommenderReady(),
+  )
   useEffect(() => {
     if (ready) return
     let live = true

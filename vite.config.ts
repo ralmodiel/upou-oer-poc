@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -6,8 +7,8 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { packCatalog } from './src/data/pack.ts'
 import { isValidRecord } from './src/data/records.ts'
+import { splitCatalog } from './src/data/split.ts'
 import { learnedNamesOf } from './src/lib/tags.ts'
 
 // Strict CSP for production builds only (the dev server needs inline scripts for HMR).
@@ -64,24 +65,60 @@ const catalogNamesPlugin = (): Plugin => ({
   },
 })
 
-// catalog.json, frame-flags.json and speakers.json joined into one smaller table (src/data/pack.ts),
-// emitted as a JSON.parse of a string: browsers parse that faster than the same object literal.
-const PACK_ID = 'virtual:catalog-pack'
+// catalog.json, frame-flags.json and speakers.json joined into smaller tables (src/data/pack.ts) and
+// split (src/data/split.ts): the home summary ships with the app, as a JSON.parse of a string
+// (browsers parse that faster than the same object literal); every other video goes into JSON files
+// the app fetches after its first paint (catalog.ts), each parsing in a few milliseconds on a slow
+// phone. As files they never become a script's string literal, which would stay in memory beside
+// the parsed records. The dev server and tests get every video in the summary.
+const HOME_ID = 'virtual:catalog-home'
+const FILES_ID = 'virtual:catalog-files'
+const CHUNKS = 6
 
-const catalogPackPlugin = (): Plugin => ({
-  name: 'catalog-pack',
-  resolveId: (id) => (id === PACK_ID ? `\0${PACK_ID}` : undefined),
-  load(id) {
-    if (id !== `\0${PACK_ID}`) return
-    const read = (name: string) => {
-      const file = fileURLToPath(new URL(`./src/data/${name}`, import.meta.url))
-      this.addWatchFile(file)
-      return JSON.parse(readFileSync(file, 'utf8'))
-    }
-    const pack = packCatalog(read('catalog.json'), read('frame-flags.json'), read('speakers.json'))
-    return `export default JSON.parse(${JSON.stringify(JSON.stringify(pack))})`
-  },
-})
+const catalogSplitPlugin = (): Plugin => {
+  let split: ReturnType<typeof splitCatalog> | undefined
+  let base = '/'
+  let chunks = 0
+  const read = (ctx: { addWatchFile(file: string): void }, file: string) => {
+    const path = fileURLToPath(new URL(`./src/data/${file}`, import.meta.url))
+    ctx.addWatchFile(path)
+    return JSON.parse(readFileSync(path, 'utf8'))
+  }
+  const splitOf = (ctx: { addWatchFile(file: string): void }) =>
+    (split ??= splitCatalog(
+      read(ctx, 'catalog.json'),
+      read(ctx, 'frame-flags.json'),
+      read(ctx, 'speakers.json'),
+      chunks,
+    ))
+  const fileNames: string[] = []
+  return {
+    name: 'catalog-split',
+    configResolved: (config) => {
+      base = config.base
+      chunks = config.command === 'build' ? CHUNKS : 0
+    },
+    buildStart() {
+      split = undefined
+      fileNames.length = 0
+      if (!chunks) return
+      splitOf(this).files.forEach((file, i) => {
+        const source = JSON.stringify(file)
+        const hash = createHash('sha1').update(source).digest('hex').slice(0, 8)
+        const fileName = `assets/catalog-${i}-${hash}.json`
+        this.emitFile({ type: 'asset', fileName, source })
+        fileNames.push(fileName)
+      })
+    },
+    resolveId: (id) => (id === HOME_ID || id === FILES_ID ? `\0${id}` : undefined),
+    load(id) {
+      if (id === `\0${FILES_ID}`)
+        return `export default ${JSON.stringify(fileNames.map((f) => base + f))}`
+      if (id !== `\0${HOME_ID}`) return
+      return `export default JSON.parse(${JSON.stringify(JSON.stringify(splitOf(this).summary))})`
+    },
+  }
+}
 
 // GitHub Pages has no rewrites; it serves 404.html for unknown paths, so deep links still boot the app.
 const spaFallbackPlugin = (): Plugin => {
@@ -170,7 +207,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     catalogNamesPlugin(),
-    catalogPackPlugin(),
+    catalogSplitPlugin(),
     cspPlugin(),
     legacyLayersPlugin(),
     spaFallbackPlugin(),
@@ -189,7 +226,7 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: 'vendor', test: /node_modules/ },
-            { name: 'catalog', test: /catalog-(names|pack)$/ },
+            { name: 'catalog', test: /catalog-(names|home|files)$/ },
           ],
         },
       },

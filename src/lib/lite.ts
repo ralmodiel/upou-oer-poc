@@ -41,7 +41,11 @@ if (lite) {
 // utilities): the page would show unstyled. The build emits the same rules unlayered as
 // legacy-layers.css; it goes in first so the app's own unlayered CSS still wins, as it does with
 // layers. (A short unstyled flash on those engines is accepted.)
-if (typeof CSSLayerBlockRule === 'undefined') {
+// (The page shells' public/theme-boot.js adds it before the first paint: then it is already here.)
+if (
+  typeof CSSLayerBlockRule === 'undefined' &&
+  !document.querySelector('link[data-legacy-layers]')
+) {
   const link = document.createElement('link')
   link.rel = 'stylesheet'
   link.href = `${import.meta.env.BASE_URL}legacy-layers.css`

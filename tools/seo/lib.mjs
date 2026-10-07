@@ -3,7 +3,7 @@
 // and robots.txt. Head tags come from the presets the app uses at runtime (src/lib/seo.ts), so
 // crawlers and the app describe each page the same way. Search and My List get noindex shells
 // too, outside the sitemap, so that loading them directly is a 200 rather than Pages' 404.html.
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import CROPS from '../../src/data/frame-crops.json' with { type: 'json' }
@@ -78,13 +78,13 @@ export const templateOf = (html) =>
 // app's header and tab bar (chrome.mjs), painted from the HTML while the scripts load, and the
 // theme script ahead of the stylesheet and scripts (it waits for neither). Left out on the search
 // page, whose header field shows the query.
-function shell(template, options, fallback, extra = [], section) {
+function shell(template, options, fallback, extra = [], section, catalogFiles = '') {
   const block = ['<!--seo-->', ...[...headTags(options), ...extra].map(renderTag), '<!--/seo-->']
     .map((line) => `    ${line}`)
     .join('\n')
   const chrome = section === undefined ? '' : chromeMarkup(basePath(), section)
   const boot = chrome
-    ? `<script src="${basePath()}theme-boot.js" data-theme-boot></script>\n    `
+    ? `<script src="${basePath()}theme-boot.js" data-theme-boot${catalogFiles ? ` data-catalog="${catalogFiles}"` : ''}></script>\n    `
     : ''
   return template
     .replace(/<title\b[^>]*>[\s\S]*?<\/title>/, () => `${boot}<title>${esc(options.title)}</title>`)
@@ -271,6 +271,16 @@ async function writeAll(files, concurrency = 64) {
   return bytes
 }
 
+// The home shell lists the app's catalog files (vite.config.ts, catalog-<n>-<hash>.json), in order,
+// for public/theme-boot.js. None in a dist without them (tests).
+async function catalogFilesOf(dist) {
+  const names = (await readdir(join(dist, 'assets')).catch(() => []))
+    .map((name) => /^catalog-(\d+)-[0-9a-f]+\.json$/.exec(name))
+    .filter(Boolean)
+    .sort((a, b) => a[1] - b[1])
+  return names.map((m) => `${basePath()}assets/${m[0]}`).join(' ')
+}
+
 /**
  * Generates the shells, sitemap and robots.txt into `dist`. `site` (VITE_SITE_URL) makes every
  * URL absolute; without it canonicals are base-relative and no sitemap is written.
@@ -310,6 +320,7 @@ export async function generate({
       homeFallback(home, latestFirst(categories), newest.slice(0, LATEST)),
       [heroPreload(newest.find((v) => v.featured) ?? newest[0])].filter(Boolean),
       'home',
+      await catalogFilesOf(dist),
     ),
   ])
   urls.push({ loc: canonicalUrl('/'), lastmod: newest[0]?.publishedAt })

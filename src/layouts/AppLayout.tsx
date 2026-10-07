@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, useNavigation } from 'react-router'
 import DetailModal from '../components/DetailModal'
 import Footer from '../components/Footer'
 import Header, { TabBar } from '../components/Header'
@@ -18,6 +18,31 @@ function skipToMain(e: MouseEvent<HTMLAnchorElement>) {
   document.getElementById('main')?.focus()
 }
 
+// A page that waits for the rest of the catalog (first visit, see catalog.ts) leaves the old one on
+// screen: a thin bar under the header's stripe, after a short delay so quick changes show none.
+function NavProgress() {
+  const busy = useNavigation().state !== 'idle'
+  return busy ? <div aria-hidden className="nav-progress" /> : null
+}
+
+const FRAME =
+  'flex min-h-dvh flex-col pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] md:pb-0'
+
+/**
+ * What stands in while the first page waits for the rest of the catalog (a direct link to a page
+ * other than the home): the same header and tab bar as the page shell's, in place, rather than a
+ * blank frame.
+ */
+export function AppFallback() {
+  return (
+    <div className={FRAME}>
+      <Header />
+      <TabBar />
+      <main className="flex-1" />
+    </div>
+  )
+}
+
 export default function AppLayout() {
   useGlobalShortcuts()
   useSpatialNavigation()
@@ -28,7 +53,7 @@ export default function AppLayout() {
 
   return (
     // Bottom padding keeps the footer clear of the phone tab bar.
-    <div className="flex min-h-dvh flex-col pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] md:pb-0">
+    <div className={FRAME}>
       {/* Tab only: the clipped link is no target for the arrow keys. */}
       <a
         href="#main"
@@ -38,6 +63,7 @@ export default function AppLayout() {
       >
         Skip to content
       </a>
+      <NavProgress />
       <Header />
       <TabBar />
       <main id="main" tabIndex={-1} className="flex-1 outline-none">

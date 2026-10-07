@@ -241,10 +241,15 @@ function Hero({ video, priority }: { video: Video; priority: boolean }) {
   const long = video.title.length > LONG_TITLE
   // A quick look opened from a link paints first: the hero's still, the page's largest download,
   // waits behind it until the pictures on screen have arrived (closing it releases the still).
+  // Not when the page shell already started that download (its hero preload, public/theme-boot.js):
+  // the file is in, or on its way, so holding it back only delays the paint.
   const { search, state } = useLocation()
   const settled = useImagesSettled()
   const hold =
-    !settled && !!getVideo(new URLSearchParams(search).get('v')) && !wasOpenedInApp(state)
+    !settled &&
+    !!getVideo(new URLSearchParams(search).get('v')) &&
+    !wasOpenedInApp(state) &&
+    !document.querySelector('link[data-hero]')
   const onFocus = () => {
     if (lastInput() !== 'pointer' && !refocusing) preview.start()
   }

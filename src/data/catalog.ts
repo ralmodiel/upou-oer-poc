@@ -24,14 +24,14 @@ import {
   type LearnedNames,
 } from '../lib/tags'
 import { whenImagesSettled } from '../components/browse-hooks'
-import { isEmptyProfile, readProfile } from '../lib/history'
+import { readProfile } from '../lib/history'
 import type { CatalogRecord, Video } from '../types'
 import { DEFAULT_CHANNEL, expandRecord } from './expand'
 import { addFrameFlags, frameFlagsOf } from './frameFlags'
 import { isCleanImage } from './images'
 import { unpackRecords, type CatalogPack } from './pack'
 import { addSpeakers } from './speakers'
-import { chunkOf, type CatalogPart, type HomeSummary } from './split'
+import { chunkOf, HOME, ROW_POOL, type CatalogPart, type HomeSummary } from './split'
 
 /** Whether the video's canonical image passes the frame filter (it fails only when all do). */
 export const hasCleanPoster = (v: Video) =>
@@ -543,16 +543,37 @@ function addFile(i: number, part: CatalogPart): void {
   }
 }
 
+// Per attempt, the download included: a slow phone link takes seconds for a file, not this long.
+const FILE_TIMEOUT_MS = 20_000
+
 /** File `i`, fetched once (again after a failure). */
 function loadFile(i: number, low = false): Promise<void> {
   return (fetched[i] ??= (async () => {
     mark(`catalog:requested:${i}`)
     try {
-      const res = await fetch(files[i], low ? ({ priority: 'low' } as RequestInit) : undefined)
-      if (!res.ok) throw new Error(`catalog file ${i}: ${res.status}`)
-      const body = await res.text()
-      mark(`catalog:body:${i}`)
-      addFile(i, JSON.parse(body) as CatalogPart)
+      // A blip (a 5xx, a dropped connection) is retried twice before the page gives up: the
+      // router's loader and the early prefetch share this one request.
+      for (let attempt = 0; ; attempt++) {
+        // A request that never answers is cut off too, so it reaches the retry and the error page.
+        const abort = new AbortController()
+        const timer = setTimeout(() => abort.abort(), FILE_TIMEOUT_MS)
+        try {
+          const res = await fetch(files[i], {
+            signal: abort.signal,
+            ...(low ? ({ priority: 'low' } as RequestInit) : {}),
+          })
+          if (!res.ok) throw new Error(`catalog file ${i}: ${res.status}`)
+          const body = await res.text()
+          mark(`catalog:body:${i}`)
+          addFile(i, JSON.parse(body) as CatalogPart)
+          break
+        } catch (error) {
+          if (attempt === 2) throw error
+          await new Promise((resolve) => setTimeout(resolve, 400 * 3 ** attempt))
+        } finally {
+          clearTimeout(timer)
+        }
+      }
     } catch (error) {
       fetched[i] = undefined
       throw error
@@ -571,29 +592,59 @@ export const catalogComplete = (): Promise<void> => (complete ? Promise.resolve(
 
 const POOL = 0
 
-/** The pool and the file of `id`: what a page of that one video reads (see split.ts). */
-function loadVideo(id: string, pool: boolean): Promise<void> {
-  if (complete) return Promise.resolve()
-  const own = byId.has(id) ? [] : [loadFile(chunkOf(id, files.length - 1))]
-  return Promise.all(pool ? [loadFile(POOL), ...own] : own).then(() => undefined)
+/**
+ * What a page of these videos reads (see split.ts): the file of each one not in yet and, for a
+ * watch page (`pool`), the pool beside them. Without `pool` the pool is asked for only if a video
+ * is still missing then: it is in no file of its own, but most are.
+ */
+async function loadVideos(ids: readonly string[], pool: boolean): Promise<void> {
+  if (complete) return
+  const missing = ids.filter((id) => !byId.has(id))
+  const own = new Set(missing.map((id) => chunkOf(id, files.length - 1)))
+  await Promise.all([...(pool ? [POOL] : []), ...own].map((i) => loadFile(i)))
+  if (!pool && missing.some((id) => !byId.has(id))) await loadFile(POOL)
+}
+
+/**
+ * Whether the home reads the same from the summary as from the whole catalog, given what this
+ * browser watched (BrowsePage): each collection row still fills its cards (HOME.rowCards) from the
+ * summary's newest ROW_POOL after leaving out the titles above it: the five featured, the four
+ * "Also new" and the recently viewed.
+ */
+function homeFits(watched: readonly string[]): boolean {
+  const featured = getFeatured().map((v) => v.id)
+  const above = new Set(featured)
+  getLatest(HOME.latest)
+    .filter((v) => !above.has(v.id))
+    .slice(0, 4)
+    .forEach((v) => above.add(v.id))
+  watched.forEach((id) => above.add(id))
+  return getRows(ROW_POOL)
+    .filter((row) => row.count >= HOME.rowMin)
+    .slice(0, HOME.rows)
+    .every((row) => row.videos.filter((v) => !above.has(v.id)).length >= HOME.rowCards)
 }
 
 const WATCH = /^\/watch\/([^/]+)\/?$/
 
 /**
- * What a page must wait for before it renders (the router's loader), if anything. The home with
- * nothing in this browser's history renders from the summary; a watch page or a quick look needs
- * its own video (and the pool); every other page, and a home that lists history, waits for all.
+ * What a page must wait for before it renders (the router's loader), if anything. The home renders
+ * from the summary, once the videos in this browser's history are in and the rows are the same
+ * without the rest (homeFits), else it waits for all; a watch page or a quick look needs its own
+ * video (and the pool for a watch page); every other page waits for all.
  */
 export function catalogWait(pathname: string, search: string): Promise<void> | undefined {
   if (complete) return undefined
   if (pathname === '/') {
-    if (!isEmptyProfile(readProfile())) return loadAll()
     const quickLook = new URLSearchParams(search).get('v')
-    return quickLook && !byId.has(quickLook) ? loadVideo(quickLook, false) : undefined
+    const watched = readProfile().watched.map((e) => e.id)
+    const wanted = quickLook ? [...watched, quickLook] : watched
+    const fits = () => (homeFits(watched) ? undefined : loadAll())
+    if (wanted.every((id) => byId.has(id))) return fits()
+    return loadVideos(wanted, false).then(fits)
   }
   const watch = WATCH.exec(pathname)
-  return watch ? loadVideo(decodeURIComponent(watch[1]), true) : loadAll()
+  return watch ? loadVideos([decodeURIComponent(watch[1])], true) : loadAll()
 }
 
 // The route path under the app's base ("/watch/x"), for catalogWait.
@@ -638,6 +689,31 @@ function trickle(): void {
   })
 }
 
+// The rest of the catalog starts when the page can spare it: once the first image has painted
+// (the hero, the largest paint), when the pictures in view have settled, or at the first touch,
+// key press or click, for search suggestions and picks that follow it.
+function startTrickle(): void {
+  let started = false
+  const start = () => {
+    if (started) return
+    started = true
+    trickle()
+  }
+  whenImagesSettled(start)
+  for (const type of ['pointerdown', 'keydown'])
+    addEventListener(type, start, { once: true, passive: true, capture: true })
+  try {
+    const observer = new PerformanceObserver((list) => {
+      if (!list.getEntries().some((e) => (e as PerformanceEntry & { url?: string }).url)) return
+      observer.disconnect()
+      start()
+    })
+    observer.observe({ type: 'largest-contentful-paint', buffered: true })
+  } catch {
+    // No such entries (old engines): the settled gate and the first touch stand.
+  }
+}
+
 registerPersonKeys(summary.people)
 const head = expandPart(summary.pack)
 if (!files.length) {
@@ -651,5 +727,5 @@ if (!files.length) {
   partial = summary
   // What the first page needs is asked for now, beside the app's scripts.
   void catalogWait(appPath(location.pathname), location.search)?.catch(() => undefined)
-  whenImagesSettled(trickle)
+  startTrickle()
 }

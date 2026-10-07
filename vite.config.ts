@@ -12,31 +12,40 @@ import { learnedNamesOf } from './src/lib/tags.ts'
 
 // Strict CSP for production builds only (the dev server needs inline scripts for HMR).
 // React style props go through CSSOM, so inline styles need no 'unsafe-inline'.
-const csp = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self'",
-  "img-src 'self' data: https://i.ytimg.com https://oer.upou.edu.ph",
-  'frame-src https://www.youtube-nocookie.com',
-  "connect-src 'self'",
-  "font-src 'self'",
-  "media-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join('; ')
+// "Like on YouTube" (VITE_YT_CLIENT_ID set) adds Google Identity Services and the YouTube Data API.
+const GSI = 'https://accounts.google.com/gsi/'
+const csp = (yt: boolean) =>
+  [
+    "default-src 'self'",
+    `script-src 'self'${yt ? ` ${GSI}client` : ''}`,
+    `style-src 'self'${yt ? ` ${GSI}style` : ''}`,
+    "img-src 'self' data: https://i.ytimg.com https://oer.upou.edu.ph",
+    `frame-src https://www.youtube-nocookie.com${yt ? ` ${GSI}` : ''}`,
+    `connect-src 'self'${yt ? ` ${GSI} https://www.googleapis.com https://oauth2.googleapis.com` : ''}`,
+    "font-src 'self'",
+    "media-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ')
 
-const cspPlugin = (): Plugin => ({
-  name: 'csp-meta',
-  apply: 'build',
-  transformIndexHtml: () => [
-    {
-      tag: 'meta',
-      attrs: { 'http-equiv': 'Content-Security-Policy', content: csp },
-      injectTo: 'head-prepend',
+const cspPlugin = (): Plugin => {
+  let yt = false
+  return {
+    name: 'csp-meta',
+    apply: 'build',
+    configResolved: (c) => {
+      yt = !!c.env.VITE_YT_CLIENT_ID
     },
-  ],
-})
+    transformIndexHtml: () => [
+      {
+        tag: 'meta',
+        attrs: { 'http-equiv': 'Content-Security-Policy', content: csp(yt) },
+        injectTo: 'head-prepend',
+      },
+    ],
+  }
+}
 
 // The names tags.ts learns from the catalog (speakers in its tags and titles), learned once here
 // so the browser skips that work; the app imports them as virtual:catalog-names.

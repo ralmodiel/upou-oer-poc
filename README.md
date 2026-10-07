@@ -258,6 +258,9 @@ public/fonts/            self-hosted type; licenses in public/THIRD_PARTY_LICENS
   pressed; no message can make it send one.
 - Values read back from `localStorage` are treated as untrusted (hand edits, older versions):
   readers check types and keep only well-formed items, so a bad value cannot break a page.
+- Optional **Like on YouTube** button (absent unless `VITE_YT_CLIENT_ID` is set at build time). It
+  contacts Google only when a viewer presses Like. Setup and UPOU adoption steps:
+  [docs/youtube-like-setup.md](docs/youtube-like-setup.md).
 - `npm audit` reports 0 vulnerabilities. Run `npm run audit` (also part of `npm run verify`) after
   dependency changes.
 

@@ -38,6 +38,8 @@ jobs:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
           VITE_SITE_URL: ${{ steps.pages.outputs.origin }}${{ steps.pages.outputs.base_path }}
           VITE_REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          # Optional: the OAuth client ID for "Like on YouTube" (docs/youtube-like-setup.md).
+          VITE_YT_CLIENT_ID: ${{ vars.YT_CLIENT_ID }}
 
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import type { Category } from '../../data/catalog'
 import { formatDate } from '../../lib/format'
 import type { Video } from '../../types'
+import LikeButton from './LikeButton'
 import SaveButton from './SaveButton'
 import ShareButton from './ShareButton'
 import './watch.css'
@@ -35,6 +36,7 @@ export default function WatchMeta({ video, category }: { video: Video; category?
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2">
         <SaveButton video={video} />
+        <LikeButton video={video} />
         <ShareButton title={video.title} />
       </div>
     </>

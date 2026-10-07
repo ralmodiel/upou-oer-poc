@@ -172,3 +172,9 @@ export const RestartIcon = (props: IconProps) => (
     <path d="M4.5 4.5v4.3h4.3" />
   </Icon>
 )
+
+export const ThumbUpIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M7 10.5v9H4.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1H7zm0 0 3.2-6.2a1.6 1.6 0 0 1 3 .9l-.5 3.3h5a1.7 1.7 0 0 1 1.7 2l-1.2 6.3a2 2 0 0 1-2 1.7H7" />
+  </Icon>
+)

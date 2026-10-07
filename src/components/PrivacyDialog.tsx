@@ -7,6 +7,7 @@ import { OPEN_PRIVACY_EVENT, pickSources } from '../lib/privacy'
 import { useAppEvent } from '../lib/shortcuts'
 import { candidates } from '../lib/spatial'
 import { historyAllowed, usePrefs, useWatchHistory, type Prefs } from '../lib/storage'
+import { disconnectYt, useYtConnected, ytLikeEnabled } from '../lib/ytLike'
 import { CloseIcon } from './icons'
 import Button from './ui/Button'
 import IconButton from './ui/IconButton'
@@ -154,6 +155,7 @@ export default function PrivacyDialog() {
   const history = useWatchHistory()
   const searches = useSearchHistory()
   const historyOn = historyAllowed(prefs)
+  const ytConnected = useYtConnected()
 
   useAppEvent(OPEN_PRIVACY_EVENT, () => {
     const el = dialog.current
@@ -280,6 +282,26 @@ export default function PrivacyDialog() {
             Clear searches
           </ClearRow>
         </div>
+
+        {ytLikeEnabled && (
+          <>
+            <h3 className={GROUP}>Like on YouTube</h3>
+            <div className="py-3">
+              <p className="text-sm text-ink-2">
+                This one feature contacts Google, and only when you press Like on a video: it signs
+                you in to YouTube so your like is saved to your YouTube account. Nothing is stored
+                in this browser, and the sign-in is forgotten when you close the page.
+              </p>
+              <ClearRow
+                status={ytConnected ? 'Connected to YouTube.' : 'Not connected.'}
+                count={ytConnected ? 1 : 0}
+                onClear={() => void disconnectYt()}
+              >
+                Disconnect YouTube
+              </ClearRow>
+            </div>
+          </>
+        )}
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <p className="text-xs leading-relaxed text-ink-3">

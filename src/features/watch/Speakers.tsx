@@ -2,9 +2,11 @@ import { getVideo } from '../../data/catalog'
 import { speakersOf } from '../../data/speakers'
 
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' })
-// A title stays with its name: a line never ends on "Ms." (a no-break space after it).
-const TITLE = /^((?:Dr|Mr|Mrs|Ms|Miss|Prof|Engr|Atty|Rev|Hon|Sir)\.?)\s+/
-const bound = (name: string) => name.replace(TITLE, '$1\u00A0')
+// A title stays with its name: a line never ends on "Ms." or inside "Asst. Prof." (no-break
+// spaces in and after it).
+const TITLE =
+  /^(?:(?:Asst|Assoc|Assist)\.?\s+)?(?:Dr|Mr|Mrs|Ms|Miss|Prof|Engr|Atty|Rev|Hon|Sir)\.?\s+/
+const bound = (name: string) => name.replace(TITLE, (title) => title.replace(/\s+/g, '\u00A0'))
 
 /**
  * Who speaks, on its own line under a video's title (never part of it): a small "Speaker" label,

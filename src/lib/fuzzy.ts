@@ -43,13 +43,18 @@ export const normalize = (s: string) =>
   // Most text is ASCII, so the Unicode work is skipped for it.
   (ASCII.test(s) ? s : s.normalize('NFD').replace(/\p{Diacritic}/gu, '')).toLowerCase()
 
+/** A number written onto the word before it starts a word of its own ("covid19" → "covid 19"). */
+export const splitNumbers = (s: string) => s.replace(/(\p{L})(?=\p{N})/gu, '$1 ')
+
 /** Text as words with a space at each end (" climate change basics "), for word tests. */
-// Apostrophes join ("Teacher’s" → "teachers"), as in text.ts's normalizeText.
+// Apostrophes join ("Teacher’s" → "teachers"), as in text.ts's normalizeText; "COVID19" reads as
+// "COVID-19" does ("covid 19"), as tags.ts's tagKey has them the same.
 export const wordsOf = (text: string) =>
-  ` ${normalize(text)
-    .replace(/['’‘`´]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()} `
+  ` ${splitNumbers(
+    normalize(text)
+      .replace(/['’‘`´]/g, '')
+      .replace(/[^\p{L}\p{N}]+/gu, ' '),
+  ).trim()} `
 
 /** Edits allowed for a word: none up to 3 letters, one up to 7, two from 8. */
 export const maxEdits = (word: string) => (word.length >= 8 ? 2 : word.length >= 4 ? 1 : 0)

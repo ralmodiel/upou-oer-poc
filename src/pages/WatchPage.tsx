@@ -172,6 +172,11 @@ function Watch({ video }: { video: Video }) {
     setPhase('player')
     record(video.id)
   }
+  // Without the reel (engines that cannot lay it out) the player is there from the start, and that
+  // is the watch.
+  useEffect(() => {
+    if (!reelWorks) record(video.id)
+  }, [record, video.id])
 
   // Autoplay: the row after this one in the list (the first row when this page is not one of
   // them); at the end of the list the next picks are added first, as More… would.

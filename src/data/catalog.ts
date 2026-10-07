@@ -13,6 +13,7 @@ import {
   NEAR,
   nearWords,
   normalize,
+  splitNumbers,
   vocabularyOf,
   wordsOf,
   type Term,
@@ -378,8 +379,12 @@ export function queryTerms(query: string): Term[] {
     .replace(/['’‘`´]/g, '')
     .split(/\s+/)
     // Edge punctuation is dropped so quoted or comma-separated queries still match; inside a
-    // word it splits it as in the index ("covid-19" → "covid 19").
-    .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' '))
+    // word it splits it as in the index ("covid-19" and "covid19" → "covid 19").
+    .map((t) =>
+      splitNumbers(
+        t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' '),
+      ),
+    )
     .filter(Boolean)
     .map((word): Term => {
       const root = stem(word)

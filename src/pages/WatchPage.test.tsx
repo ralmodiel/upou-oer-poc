@@ -323,6 +323,15 @@ describe('WatchPage', () => {
     expect(line?.textContent).toContain('Dr.\u00A0Maria Mercedes')
   })
 
+  it('keeps a two-word title ("Asst. Prof.") whole and with its name', () => {
+    // 'Asst. Prof. Kimberly Florendo' is in speakers.json (values-education).
+    const talk = { ...testVideo, id: 'values-education', youtubeId: '8HvHymgCm7I' }
+    setCatalog([talk, ...similar])
+    renderAt([`/watch/${talk.id}`])
+    const line = screen.getByRole('heading', { level: 1, name: talk.title }).nextElementSibling
+    expect(line?.textContent).toContain('Asst.\u00A0Prof.\u00A0Kimberly Florendo')
+  })
+
   it('has no speaker line when the source names no one', () => {
     renderAt([`/watch/${testVideo.id}`])
     const title = screen.getByRole('heading', { level: 1, name: testVideo.title })

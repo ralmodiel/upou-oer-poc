@@ -57,6 +57,19 @@ describe('searchCatalog', () => {
     expect(typo.correction).toBe('nutrition')
   })
 
+  it('finds "COVID19" and "COVID-19" alike, as the topic chips treat them', () => {
+    setCatalog([
+      video('dash', { title: 'Life after COVID-19' }),
+      video('space', { title: 'Schools', tags: ['COVID 19'] }),
+      video('joined', { title: 'Words for Kids', tags: ['covid19'] }),
+      video('k12', { title: 'K-12 Science' }),
+    ])
+    const ids = (q: string) => searchVideos(q).map((v) => v.id)
+    expect(ids('covid19').sort()).toEqual(['dash', 'joined', 'space'])
+    expect(ids('covid-19').sort()).toEqual(['dash', 'joined', 'space'])
+    expect(ids('K12')).toEqual(['k12'])
+  })
+
   it('takes a one-letter word only as a whole word', () => {
     setCatalog([
       video('r', { title: 'Data Analysis in R' }),

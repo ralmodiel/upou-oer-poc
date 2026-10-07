@@ -7,6 +7,7 @@ import { expandRecord } from '../data/expand'
 import type { CatalogRecord, Video } from '../types'
 import {
   DESCRIPTION_MAX,
+  LONG_TITLE_MAX,
   TITLE_MAX,
   breadcrumbJsonLd,
   canonicalUrl,
@@ -66,10 +67,15 @@ describe('text', () => {
     expect(cut).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
   })
 
-  it('keeps every title within TITLE_MAX', () => {
+  it('adds the site name when it fits and keeps long titles whole enough to differ', () => {
     expect(pageTitle('Collections')).toBe('Collections · UPOU OER')
-    expect(pageTitle('x'.repeat(100))).toBe(`${'x'.repeat(64)}…`)
-    for (const r of slim) expect(pageTitle(r.t).length).toBeLessThanOrEqual(TITLE_MAX)
+    expect(pageTitle('x'.repeat(100))).toBe('x'.repeat(100))
+    expect(pageTitle('x'.repeat(200))).toBe(`${'x'.repeat(LONG_TITLE_MAX - 1)}…`)
+    for (const r of slim) expect(pageTitle(r.t).length).toBeLessThanOrEqual(LONG_TITLE_MAX)
+    // Parts of a series differ only at the end of a long title.
+    const part = (n: number) =>
+      `From Cone Snail Venom to Drugs: The Scientific Odyssey of a UP Graduate (Part ${n})`
+    expect(pageTitle(part(1))).not.toBe(pageTitle(part(2)))
   })
 
   it('describes every video in at most DESCRIPTION_MAX characters', () => {

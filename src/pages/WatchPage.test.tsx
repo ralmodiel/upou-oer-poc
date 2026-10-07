@@ -5,6 +5,7 @@ import { thumbnailOf } from '../components/media'
 import { getVideo, slugifyCategory } from '../data/catalog'
 import { setFrameFlags } from '../data/frameFlags'
 import { setCatalog } from '../data/testing'
+import { LONG_TITLE_MAX } from '../lib/seo'
 import { REEL_MS } from '../features/reel/PromoReel'
 import { DECODE_CAP_MS } from '../features/reel/preload'
 import { testVideo } from '../features/reel/testing'
@@ -781,7 +782,7 @@ describe('WatchPage', () => {
     renderAt(['/watch/long'])
     // lib/seo keeps the words and drops the suffix when "title · UPOU OER" would not fit.
     expect(document.title).toMatch(/^A very long title .*\S…$/)
-    expect(document.title.length).toBeLessThanOrEqual(65)
+    expect(document.title.length).toBeLessThanOrEqual(LONG_TITLE_MAX)
     expect(screen.getByRole('heading', { level: 1, name: title })).toHaveAttribute('data-long')
   })
 

@@ -142,8 +142,7 @@ describe('tools/seo/generate.mjs', () => {
     )
     expect(sitemap).not.toMatch(/\/(search|my-list)\//)
     const robots = readFileSync(join(dist, 'robots.txt'), 'utf8')
-    expect(robots).toContain('Disallow: /upou-networks/search')
-    expect(robots).toContain('Disallow: /upou-networks/my-list')
+    expect(robots).not.toContain('Disallow')
     expect(robots).toContain(`Sitemap: ${SITE}/sitemap.xml`)
 
     run()

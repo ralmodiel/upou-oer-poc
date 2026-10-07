@@ -309,12 +309,15 @@ it on an existing `dist/`) and takes a few seconds:
   Because the shells are directories, canonical URLs end with a slash (`/watch/<id>/`); Pages
   redirects `/watch/<id>` there.
 - **`sitemap.xml`** with every indexable URL (`lastmod` from the publish date) and **`robots.txt`**
-  (allow all, `Disallow` for `/search` and `/my-list`, `Sitemap:` line). `public/robots.txt` is
-  the development default; the generator overwrites it.
+  (allow all and a `Sitemap:` line; `/search` and `/my-list` are not disallowed, so crawlers can
+  read their `noindex`). `public/robots.txt` is the development default; the generator overwrites
+  it. Crawlers read `robots.txt` only at the host root, so on a project site
+  (`<user>.github.io/<repo>/`) submit `<site>/sitemap.xml` in Search Console instead.
 - **At runtime** each page calls `useSeo()` from `src/lib/seo.ts`, which updates the same tags in
   place as you navigate (tags are reused by their `data-seo` attribute) and restores them on
-  unmount. Search, My List and not-found pages are `noindex`. Titles stay within 65 characters
-  and descriptions within 160; a video without a description gets "Title · Category · UP Open
+  unmount. Search, My List and not-found pages are `noindex`. Titles add " · UPOU OER" when that
+  fits in 65 characters, else keep up to 120 so episodes of a series stay distinct; descriptions
+  stay within 160; a video without a description gets "Title · Category · UP Open
   University · published Mon YYYY · Topics: …".
 
 Absolute URLs come from `VITE_SITE_URL`, the site root including the base path (for example

@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import CROPS from '../../src/data/frame-crops.json' with { type: 'json' }
 import FLAGS from '../../src/data/frame-flags.json' with { type: 'json' }
+import SPEAKERS from '../../src/data/speakers.json' with { type: 'json' }
 import {
   STAGE_SIZES,
   candidateOf,
@@ -33,7 +34,7 @@ import {
   socialImageOf,
   videoSeo,
 } from '../../src/lib/seo.ts'
-import { registerNameTokens } from '../../src/lib/tags.ts'
+import { personKeysOf, registerNameTokens, registerPersonKeys } from '../../src/lib/tags.ts'
 import { watchUrl } from '../../src/lib/youtube.ts'
 import { hasCleanPoster, isGeneral, loadCatalog, newestFirst, posterOf } from './catalog.mjs'
 import { chromeMarkup } from './chrome.mjs'
@@ -250,9 +251,9 @@ function sitemapFiles(dist, urls, max) {
 const robots = (withSitemap) =>
   [
     'User-agent: *',
+    // No Disallow for /search and /my-list: their shells say noindex, which a crawler only reads
+    // if it may fetch them.
     'Allow: /',
-    `Disallow: ${basePath()}search`,
-    `Disallow: ${basePath()}my-list`,
     ...(withSitemap ? ['', `Sitemap: ${siteUrl()}/sitemap.xml`] : []),
     '',
   ].join('\n')
@@ -299,8 +300,14 @@ export async function generate({
   const template = templateOf(await readFile(join(dist, 'index.html'), 'utf8'))
   records ??= JSON.parse(await readFile(CATALOG, 'utf8'))
   const { videos, categories } = loadCatalog(limit ? records.slice(0, limit) : records)
-  // Same names as the app learns, so descriptions leave out the same people.
+  // Same names and speakers as the app learns (catalog.ts, split.ts), so descriptions leave out the
+  // same people.
   registerNameTokens(() => videos)
+  registerPersonKeys(
+    personKeysOf(
+      videos.flatMap((v) => (Object.hasOwn(SPEAKERS, v.youtubeId) ? SPEAKERS[v.youtubeId] : [])),
+    ),
+  )
   const newest = [...videos].sort(newestFirst)
   const byName = new Map(categories.map((c) => [c.name, c]))
   const files = []

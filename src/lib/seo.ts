@@ -23,6 +23,11 @@ const PUBLISHER_URL = 'https://www.upou.edu.ph/'
 const LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/'
 /** Search results show about 60 characters of a title and 160 of a description. */
 export const TITLE_MAX = 65
+/**
+ * Titles too long for the suffix keep this many characters: search engines cut the shown title by
+ * width themselves, and cutting at TITLE_MAX made parts 1 to 4 of a series share one title.
+ */
+export const LONG_TITLE_MAX = 120
 export const DESCRIPTION_MAX = 160
 const LIST_MAX = 100
 const ROBOTS_INDEX = 'index, follow, max-image-preview:large'
@@ -84,10 +89,10 @@ export function clamp(text: string, max: number): string {
   return `${kept.replace(/[\s,;:·|–—-]+$/, '')}…`
 }
 
-/** "Main · UPOU OER" when that fits TITLE_MAX; longer titles keep their words and drop the suffix. */
+/** "Main · UPOU OER" when that fits TITLE_MAX; longer titles drop the suffix (up to LONG_TITLE_MAX). */
 export function pageTitle(main: string): string {
   const full = `${clamp(main, TITLE_MAX)} · ${SITE_NAME}`
-  return full.length <= TITLE_MAX ? full : clamp(main, TITLE_MAX)
+  return full.length <= TITLE_MAX ? full : clamp(main, LONG_TITLE_MAX)
 }
 
 const monthYear = new Intl.DateTimeFormat('en', {

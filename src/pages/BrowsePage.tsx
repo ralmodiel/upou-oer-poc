@@ -101,7 +101,8 @@ function computeRecs(
   // Only when nothing unshown matches (a tiny catalog) may a section repeat a shown title.
   const orShown = (list: Video[], withShown: () => Video[]) => (list.length ? list : withShown())
   const picked = orShown(forYou(profile, limit, shown), () => forYou(profile, limit))
-  const watched = getVideo(profile.watched[0]?.id)
+  // The newest watched video still in the catalog (a refresh may have dropped the newest).
+  const watched = profile.watched.map((e) => getVideo(e.id)).find((v) => v !== undefined)
   // Neither watched nor already recommended above (nor shown, as far as possible).
   const seen = [...picked.map((v) => v.id), ...profile.watched.map((e) => e.id)]
   const because = watched

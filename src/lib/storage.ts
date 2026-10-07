@@ -156,7 +156,8 @@ export const readPrefs = (): Prefs => toPrefs(read<unknown>(PREFS_KEY, DEFAULT_P
 
 /** Updates choices; opting out of saving a history deletes what was saved. */
 export function setPrefs(patch: Partial<Prefs>) {
-  write(PREFS_KEY, { ...readPrefs(), ...patch })
+  // Saved places are opt-in: turning the history back on never turns them on again by itself.
+  write(PREFS_KEY, { ...readPrefs(), ...patch, ...(patch.history === false && { resume: false }) })
   if (patch.history === false) {
     write(HISTORY_KEY, [])
     write(POSITIONS_KEY, [])
@@ -190,7 +191,17 @@ export function useWatchHistory() {
       if (!readPrefs().history) return
       setEntries((prev: unknown) => {
         const rest = toEntries(prev).filter((e) => e.id !== id)
-        return [{ id, at: Date.now() }, ...rest].slice(0, MAX_HISTORY)
+        const next = [{ id, at: Date.now() }, ...rest].slice(0, MAX_HISTORY)
+        // A video that leaves the history takes its saved place with it, so the panel's count of
+        // the history is the whole record (it kept 200 places beside 20 videos).
+        const kept = new Set(next.map((e) => e.id))
+        const places = toPositions(read<unknown>(POSITIONS_KEY, NO_POSITIONS))
+        if (places.some((e) => !kept.has(e.id)))
+          write(
+            POSITIONS_KEY,
+            places.filter((e) => kept.has(e.id)),
+          )
+        return next
       })
     },
     [setEntries],

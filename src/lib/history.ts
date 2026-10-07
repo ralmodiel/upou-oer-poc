@@ -44,12 +44,23 @@ const toIds = (value: unknown): string[] =>
 
 const cleanQuery = (q: string) => q.trim().replace(/\s+/g, ' ')
 
-/** Adds a committed query to the front of the list (case-insensitive dedupe, last 20 kept). */
+// A query that carries on the newest one within this long ("clim", then "climate chan") replaces
+// it: a pause while typing commits what was typed so far.
+const REFINE_MS = 60_000
+
+/**
+ * Adds a committed query to the front of the list (case-insensitive dedupe, last 20 kept); one that
+ * extends the newest entry, soon after it, takes its place.
+ */
 export const addSearch = (list: SearchEntry[], q: string, at = Date.now()): SearchEntry[] => {
   const query = cleanQuery(q)
   if (query.length < MIN_QUERY_LENGTH) return list
   const key = query.toLowerCase()
-  const rest = list.filter((e) => e.q.toLowerCase() !== key)
+  const rest = list.filter(
+    (e, i) =>
+      e.q.toLowerCase() !== key &&
+      !(i === 0 && at - (e.at ?? 0) < REFINE_MS && key.startsWith(e.q.toLowerCase())),
+  )
   return [{ q: query, at }, ...rest].slice(0, MAX_SEARCHES)
 }
 

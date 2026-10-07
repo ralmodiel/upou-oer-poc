@@ -177,10 +177,25 @@ describe('saved places (resume)', () => {
     savePosition('a', 60, 600)
     expect(stored()).toEqual([])
     setPrefs({ history: true })
+    // Back on, the history does not turn saved places on again by itself.
+    savePosition('a', 60, 600)
+    expect(stored()).toEqual([])
+    setPrefs({ resume: true })
     savePosition('a', 60, 600)
     const { result } = renderHook(() => useWatchHistory())
     act(() => result.current.clear())
     expect(stored()).toEqual([])
+  })
+
+  it('drops the place of a video that leaves the watch history', () => {
+    const { result } = renderHook(() => useWatchHistory())
+    for (let i = 0; i < 21; i++) {
+      act(() => result.current.record(`v${i}`))
+      savePosition(`v${i}`, 60, 600)
+    }
+    expect(result.current.entries).toHaveLength(20)
+    expect(readPosition('v0')).toBeUndefined()
+    expect(readPosition('v1')).toBe(60)
   })
 
   it('follows saves, clears and malformed values with useSavedPosition', () => {

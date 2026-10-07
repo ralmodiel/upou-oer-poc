@@ -48,6 +48,15 @@ describe('useSearchHistory', () => {
     ])
     expect(addSearch(list, 'x', 3)).toBe(list)
   })
+
+  it('lets a query typed on after a pause replace the part typed before it', () => {
+    let list = addSearch([], 'clim', 1_000)
+    list = addSearch(list, 'climate chan', 3_000)
+    list = addSearch(list, 'climate change', 5_000)
+    expect(list).toEqual([{ q: 'climate change', at: 5_000 }])
+    // Much later, a longer query is a search of its own.
+    expect(addSearch(list, 'climate change policy', 200_000)).toHaveLength(2)
+  })
 })
 
 describe('useProfile', () => {

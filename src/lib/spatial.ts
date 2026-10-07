@@ -112,13 +112,14 @@ function project(b: Box, dir: Direction) {
  * Distance along the axis counts once, the gap across it twice (overlapping candidates have none)
  * and the centre offset breaks ties among aligned candidates.
  */
-export function distance(from: Box, to: Box, dir: Direction): number | null {
+export function distance(from: Box, to: Box, dir: Direction, lineStart = false): number | null {
   const s = project(from, dir)
   const c = project(to, dir)
   if (c.near < s.far - 1) return null
   const along = Math.max(0, c.near - s.far)
   const across = Math.max(0, c.lo - s.hi, s.lo - c.hi)
-  const centre = Math.abs((c.lo + c.hi) / 2 - (s.lo + s.hi) / 2)
+  // From a whole edge (entryPoint), ties go in reading order: nearest the line's start, not its middle.
+  const centre = lineStart ? Math.abs(c.lo - s.lo) : Math.abs((c.lo + c.hi) / 2 - (s.lo + s.hi) / 2)
   return along + 2 * across + centre / 2
 }
 
@@ -128,11 +129,12 @@ export function nearest<T>(
   items: readonly T[],
   dir: Direction,
   boxFor: (item: T) => Box,
+  lineStart = false,
 ): T | undefined {
   let best: T | undefined
   let bestCost = Infinity
   for (const item of items) {
-    const cost = distance(from, boxFor(item), dir)
+    const cost = distance(from, boxFor(item), dir, lineStart)
     if (cost !== null && cost < bestCost) {
       best = item
       bestCost = cost
@@ -141,12 +143,17 @@ export function nearest<T>(
   return best
 }
 
-// Where a move starts when nothing (or only a container) has focus: the corner of `b` opposite to
-// `dir`, so "down" from a container finds the first row inside it, "up" the last.
+// Where a move starts when nothing (or only a container) has focus: the edge of `b` opposite to
+// `dir`, so "down" from a container finds the first row inside it, "up" the last. ↑ / ↓ start from
+// the whole edge, not its left corner: a narrow card at the left never beats a full row of chips
+// or the hero's Play nearer the top.
 function entryPoint(b: Box, dir: Direction): Box {
-  const top = dir === 'up' ? b.bottom : b.top
+  if (dir === 'up' || dir === 'down') {
+    const top = dir === 'up' ? b.bottom : b.top
+    return { top, bottom: top, left: b.left, right: b.right }
+  }
   const left = dir === 'left' ? b.right : b.left
-  return { top, bottom: top, left, right: left }
+  return { top: b.top, bottom: b.top, left, right: left }
 }
 
 const viewportBox = (): Box => ({ top: 0, left: 0, bottom: innerHeight, right: innerWidth })
@@ -406,7 +413,10 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   const reach = (m: { box: Box }) =>
     vertical ||
     Math.max(0, m.box.top - fromBox.bottom, fromBox.top - m.box.bottom) <= viewport.bottom / 2
-  const pick = (items: typeof first) => nearest(fromBox, items.filter(reach), dir, (m) => m.box)?.el
+  // Nothing focused yet (a fresh page, the skip link's main): ↓ lands on the entry control too.
+  const entering = !start || !isCandidate(start)
+  const pick = (items: typeof first) =>
+    nearest(fromBox, items.filter(reach), dir, (m) => m.box, entering && vertical)?.el
   // From the page, a bar at the top of the screen lies above everything on it (the start may be
   // scrolled under it) and one at the bottom below: the item nearest across wins.
   const pickBar = () => {
@@ -428,7 +438,10 @@ export function findTarget(dir: Direction, from: Element | null = document.activ
   return (
     (startBar
       ? (pick(first) ?? (vertical ? (entry() ?? pick(last) ?? pick(passed)) : otherBars()))
-      : (pick(first) ?? pick(passed) ?? (vertical ? pickBar() : undefined))) ??
+      : ((entering ? entry() : undefined) ??
+        pick(first) ??
+        pick(passed) ??
+        (vertical ? pickBar() : undefined))) ??
     (leaving ? ownTarget() : undefined) ??
     null
   )

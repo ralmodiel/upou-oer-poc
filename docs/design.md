@@ -978,3 +978,19 @@ Paint only. Shadows move to the var form (`shadow-(--shadow-elev-N)`), because T
 - **Files:** the other records are JSON files (`assets/catalog-N-hash.json`, six chunks by a hash of the id, plus file 0, the pool: each collection's newest 24 and the newest 16 overall, which Up next's stand-ins read). Fetched with `fetch` (so never a script string literal in the heap), two at a time, low priority, after the first screen's images settle (`whenImagesSettled`), each followed by an idle gap. Each file parses in 1-3 ms and expands in 5-13 ms at 4x CPU. The whole catalog is installed in one step (`replaceCatalog`), so nothing derived changes while the files arrive; the videos of the first screen keep their objects.
 - **Early use:** `catalogRoute` (the layout route's loader, App.tsx) decides what a page waits for: the home with an empty profile renders from the summary; `/watch/:id` and `?v=` fetch their own file (and the pool for Up next); every other page, and a home with history, waits for all files (blank `min-h-dvh` fallback, as the lazy watch page does). Search suggestions, the recommender and More like this wait for the whole catalog, then build in idle slices as before.
 - **Marks:** `catalog:requested|body|arrived|parsed:N`, `catalog:complete`, `recommender:indexed`, `search:indexed` on the performance timeline.
+
+## QA round with five agents (user request: "run 1 QA round with multiple agents")
+
+Five agents in parallel on the production build: accessibility and remote, flows and stored state, the watch page and reel, tablet to 4K layout, and a code and security read. Fixed:
+
+- **Remote entry:** with nothing focused (a fresh page, the skip link's `main`), ↓ starts from the screen's whole top edge, not its left corner, and lands on the hero's Play (`data-spatial="entry"`) first; ties go in reading order. The search page's chips now come before the first result.
+- **The hero holds still** under reduced motion and while scrolled out of view.
+- **My List** says "Removed … from My List" in a polite status when a card goes; the header count runs again once the whole catalog is in (a cold load showed 1 of 5).
+- **Search:** a one-letter word (R, the C of C++, the 1 of #1) matches only as a whole word on the results page (2,124 results to 39 for "R"); suggestions still take it as a word start.
+- **Stored lists** are read once per id, and history is capped at 20 on read too.
+- **Reel:** when every large still fails (no maxres file), it retries the card-sized ones, then plays the title card, never an empty stage.
+- **A malformed `/watch/50%` URL** no longer stops the app loading; it shows "Video not found".
+- **SEO shells:** catalog text with `$'` or `$&` can no longer corrupt a page (function replacements); a clamped title never ends in half an emoji.
+- **Header search at md:** the placeholder reads in full (no Clear-button padding while empty).
+
+Left as they are, for a decision: the 4K page at scale 1 keeps desktop sizes in a 1600px column (a TV at 1920 CSS px is unaffected); "More video resources below" still covers a title on short wide screens (accepted in round 9); Esc in an empty search field still goes Back (user requirement); focus is not moved on in-app navigation; the hero has no visible pause control; the deploy workflow still gives the build job Pages-write and OIDC permissions (a patch is in the PR; a workflow change needs the owner's push); `robots.txt` on a project site is ignored by crawlers.

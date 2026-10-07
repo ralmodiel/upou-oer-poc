@@ -77,7 +77,8 @@ export const embedUrlOf = (youtubeId: string) =>
 export function clamp(text: string, max: number): string {
   const s = text.replace(/\s+/g, ' ').trim()
   if (s.length <= max) return s
-  const head = s.slice(0, max - 1)
+  // Never keep half of a surrogate pair (an emoji cut in two).
+  const head = s.slice(0, max - 1).replace(/[\uD800-\uDBFF]$/, '')
   const space = head.lastIndexOf(' ')
   const kept = space >= max * 0.6 ? head.slice(0, space) : head
   return `${kept.replace(/[\s,;:·|–—-]+$/, '')}…`

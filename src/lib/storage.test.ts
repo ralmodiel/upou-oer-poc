@@ -82,6 +82,15 @@ describe('storage hooks', () => {
     expect(history.current.entries.map((e) => e.id)).toEqual(['c', 'b'])
   })
 
+  it('reads stored lists once per id, history capped at 20', () => {
+    localStorage.setItem('upou:my-list', '["a", "a", "b"]')
+    const old = Array.from({ length: 30 }, (_, i) => ({ id: `v${i % 25}`, at: 100 - i }))
+    localStorage.setItem('upou:history', JSON.stringify(old))
+    expect(renderHook(() => useMyList()).result.current.ids).toEqual(['a', 'b'])
+    const entries = renderHook(() => useWatchHistory()).result.current.entries
+    expect(entries.map((e) => e.id)).toEqual(Array.from({ length: 20 }, (_, i) => `v${i}`))
+  })
+
   it('falls back when stored JSON is invalid', () => {
     localStorage.setItem('upou:my-list', '{not json')
     const { result } = renderHook(() => useMyList())

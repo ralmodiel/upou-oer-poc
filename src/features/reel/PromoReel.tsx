@@ -39,6 +39,8 @@ interface Stills {
   backdrop: string | null
 }
 
+const hasNoImage = (stills: Stills) => !stills.backdrop && stills.shots.every((s) => !s)
+
 export interface PromoReelProps {
   video: Video
   /** Called once, when the reel ends or is skipped. */
@@ -88,8 +90,9 @@ export default function PromoReel({
   const doneRef = useRef(false)
   const stills = loaded?.key === video.id ? loaded : null
   const started = stills !== null
-  // No clean image at all: the reel plays as a type-only title card on the collection's band.
-  const titleCard = plan.shots.length === 0
+  // No clean image at all, or none that loads: the reel plays as a type-only title card on the
+  // collection's band.
+  const titleCard = plan.shots.length === 0 || (stills !== null && hasNoImage(stills))
 
   const complete = () => {
     if (doneRef.current) return
@@ -121,16 +124,26 @@ export default function PromoReel({
     // Face-safe images only (frame-flags): the card image for small previews, else the shared poster.
     const safe = reelImages(video)
     const backdrop = (small ? (safe.thumbnail ?? safe.poster) : safe.poster) ?? shots[0]
-    const images = backdrop ? [backdrop, ...shots] : []
-    void settleImages(images, DECODE_CAP_MS, controller.signal).then(([backdropOk, ...shotOk]) => {
-      if (controller.signal.aborted) return
+    const settle = async (backdrop: string | undefined, shots: string[]): Promise<Stills> => {
+      const images = backdrop ? [backdrop, ...shots] : []
+      const [backdropOk, ...shotOk] = await settleImages(images, DECODE_CAP_MS, controller.signal)
       const fallback = backdropOk && backdrop ? backdrop : null
-      setLoaded({
+      return {
         key: video.id,
         shots: shots.map((src, i) => (shotOk[i] ? src : fallback)),
         backdrop: fallback ?? shots.find((_, i) => shotOk[i]) ?? null,
-      })
-    })
+      }
+    }
+    void (async () => {
+      let stills = await settle(backdrop, shots)
+      // Every large still failed (a missing maxres file): the card-sized ones often exist.
+      if (!small && hasNoImage(stills) && !controller.signal.aborted)
+        stills = await settle(
+          safe.thumbnail ?? plan.shots[0]?.small,
+          plan.shots.map((s) => s.small),
+        )
+      if (!controller.signal.aborted) setLoaded(stills)
+    })()
     return () => controller.abort()
   }, [video, plan, preview])
 
@@ -274,7 +287,7 @@ function TitleCard({ video, plan }: { video: Video; plan: ReelPlan }) {
 // Static once mounted: the CSS timeline runs without React re-rendering it. The montage is
 // decorative for assistive tech; the end card carries the one readable summary.
 const Timeline = memo(function Timeline({ plan, stills, preview, video }: TimelineProps) {
-  const titleCard = plan.shots.length === 0
+  const titleCard = plan.shots.length === 0 || hasNoImage(stills)
   return (
     <>
       {/* A blurred copy of the shot on screen: beside slides, which show whole, and under the band. */}

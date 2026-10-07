@@ -60,6 +60,12 @@ describe('text', () => {
     expect(clamp('  spaced   out  ', 50)).toBe('spaced out')
   })
 
+  it('never cuts an emoji in half', () => {
+    const cut = clamp(`${'x'.repeat(63)}😀😀😀`, 65)
+    expect(cut).toBe(`${'x'.repeat(63)}…`)
+    expect(cut).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+  })
+
   it('keeps every title within TITLE_MAX', () => {
     expect(pageTitle('Collections')).toBe('Collections · UPOU OER')
     expect(pageTitle('x'.repeat(100))).toBe(`${'x'.repeat(64)}…`)

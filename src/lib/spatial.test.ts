@@ -241,13 +241,37 @@ describe('findTarget', () => {
     expect(id(findTarget('left'))).toBe('browse')
   })
 
-  it('starts from the top-left corner of a focused container or of the viewport', () => {
+  it('starts from the top edge of a focused container or of the viewport, in reading order', () => {
     page()
     focus('#main')
     expect(id(findTarget('down'))).toBe('a1-link')
     ;(document.activeElement as HTMLElement).blur()
     expect(id(findTarget('down'))).toBe('home')
     expect(id(findTarget('right'))).toBe('home')
+  })
+
+  it('takes ↓ with nothing focused to the entry control or a full-width row, not a card at the left', () => {
+    document.body.innerHTML = `
+      <main id="main" tabindex="-1">
+        <a id="card" href="/w/1">Card</a>
+        <a id="play" href="/w/2" data-spatial="entry">Play</a>
+      </main>`
+    place('#main', [0, 0, 1280, 800])
+    place('#card', [300, 40, 300, 160])
+    place('#play', [320, 800, 100, 44])
+    expect(id(findTarget('down'))).toBe('play')
+    focus('#main')
+    expect(id(findTarget('down'))).toBe('play')
+    document.body.innerHTML = `
+      <main>
+        <div id="chips" data-spatial="group"><button id="chip">All</button><button id="chip2">Two</button></div>
+        <a id="card" href="/w/1">Card</a>
+      </main>`
+    place('#chips', [200, 40, 1200, 40])
+    place('#chip', [200, 40, 80, 40])
+    place('#chip2', [200, 140, 80, 40])
+    place('#card', [300, 40, 300, 160])
+    expect(id(findTarget('down'))).toBe('chip')
   })
 
   it('enters a focused container up or down, and leaves it sideways as a whole', () => {

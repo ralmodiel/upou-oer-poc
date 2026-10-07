@@ -50,6 +50,17 @@ describe('searchCatalog', () => {
     expect(typo.correction).toBe('nutrition')
   })
 
+  it('takes a one-letter word only as a whole word', () => {
+    setCatalog([
+      video('r', { title: 'Data Analysis in R' }),
+      video('cpp', { title: 'Learning C++ Fast' }),
+      video('other', { title: 'Research Practice' }),
+    ])
+    expect(searchVideos('R').map((v) => v.id)).toEqual(['r'])
+    expect(searchVideos('C++').map((v) => v.id)).toEqual(['cpp'])
+    expect(searchVideos('analysis r').map((v) => v.id)).toEqual(['r'])
+  })
+
   it('keeps every word required, each one allowed a near spelling', () => {
     setCatalog(fixtureVideos)
     expect(searchVideos('climte chnge').map((v) => v.id)).toEqual(['climate-basics'])

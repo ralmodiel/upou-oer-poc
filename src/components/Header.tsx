@@ -8,7 +8,7 @@ import {
   type FormEvent,
 } from 'react'
 import { Link, NavLink, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router'
-import { getVideo } from '../data/catalog'
+import { catalogComplete, getVideo, isCatalogComplete } from '../data/catalog'
 import { useHelp } from '../lib/howitworks'
 import { openPrivacy } from '../lib/privacy'
 import { FOCUS_SEARCH_EVENT, openShortcuts, useAppEvent } from '../lib/shortcuts'
@@ -39,9 +39,19 @@ import { buttonClass, iconButtonClass } from './ui/button-styles'
 const NAV_LINK =
   'relative inline-flex h-10 items-center pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-0.5 rounded-pill px-2 text-sm font-medium whitespace-nowrap text-ink-2 transition-[background-color,color,box-shadow] hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:shadow-glow aria-[current=page]:font-semibold aria-[current=page]:text-ink after:absolute after:inset-x-2 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-maroon after:opacity-0 after:shadow-[0_0_10px_1px_var(--color-glow-brand)] after:transition-opacity aria-[current=page]:after:opacity-100 dark:after:bg-band-gold lg:px-3 lg:after:inset-x-3'
 
-// Saved ids that still exist in the catalog.
+// Saved ids that still exist in the catalog. Until the whole catalog is in, a saved video may sit
+// in a file not fetched yet, so the count runs again once it completes.
 function useSavedCount() {
   const { ids } = useMyList()
+  const [complete, setComplete] = useState(isCatalogComplete)
+  useEffect(() => {
+    if (complete) return
+    let live = true
+    void catalogComplete().then(() => live && setComplete(true))
+    return () => {
+      live = false
+    }
+  }, [complete])
   return ids.filter((id) => getVideo(id)).length
 }
 
@@ -339,7 +349,7 @@ function SearchBox() {
           // Glass, as the other chrome controls: a light rim, a hairline and a soft drop on hover
           // and focus; focus adds the focus-colour border and the TV glow. 44px tall to a finger in
           // the header bar (md, and a phone on its side), where the bar has the room.
-          className="h-10 w-full md:pointer-coarse:h-11 land:pointer-coarse:h-11 rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-rim hover:bg-surface hover:shadow-(--shadow-glass) focus:border-focus focus:bg-surface focus:shadow-(--shadow-glass) focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] [&::-webkit-search-cancel-button]:appearance-none"
+          className="h-10 w-full md:pointer-coarse:h-11 land:pointer-coarse:h-11 rounded-pill border border-glass-border bg-surface/90 pr-10 pl-10 placeholder-shown:pr-3 text-sm text-ink shadow-(--shadow-elev-1) transition-[background-color,border-color,box-shadow] placeholder:text-ink-3 hover:border-rim hover:bg-surface hover:shadow-(--shadow-glass) focus:border-focus focus:bg-surface focus:shadow-(--shadow-glass) focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)] [&::-webkit-search-cancel-button]:appearance-none"
         />
         {value && (
           <button

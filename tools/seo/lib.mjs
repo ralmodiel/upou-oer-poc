@@ -88,10 +88,11 @@ function shell(template, options, fallback, extra = [], section, catalogFiles = 
     : ''
   return template
     .replace(/<title\b[^>]*>[\s\S]*?<\/title>/, () => `${boot}<title>${esc(options.title)}</title>`)
-    .replace(/\n[ \t]*<\/head>/, `\n${block}\n  </head>`)
+    .replace(/\n[ \t]*<\/head>/, () => `\n${block}\n  </head>`)
     .replace(
       '<div id="root"></div>',
-      `<div id="root">${chrome}<!--seo-fallback-->\n<div class="seo-fallback">\n${fallback}\n</div>\n<!--/seo-fallback--></div>`,
+      () =>
+        `<div id="root">${chrome}<!--seo-fallback-->\n<div class="seo-fallback">\n${fallback}\n</div>\n<!--/seo-fallback--></div>`,
     )
 }
 

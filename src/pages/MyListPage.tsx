@@ -23,10 +23,16 @@ export default function MyListPage() {
   // Unsaving a card here removes it: focus moves to the Save of the card that takes its place (the
   // one before at the end; the empty state's first link when none is left), never to the body.
   const lost = useRef(-1)
+  // Said aloud, since the card just goes: focus lands on the next one with no word of the change.
+  const [removed, setRemoved] = useState('')
   const onClickCapture = (e: MouseEvent) => {
-    const item = (e.target as HTMLElement).closest('button[aria-pressed="true"]')?.closest('li')
-    if (item?.parentElement)
+    const button = (e.target as HTMLElement).closest('button[aria-pressed="true"]')
+    const item = button?.closest('li')
+    if (item?.parentElement) {
       lost.current = Array.prototype.indexOf.call(item.parentElement.children, item)
+      const title = button?.getAttribute('aria-label')?.replace(/^Save /, '')
+      setRemoved(title ? `Removed “${title}” from My List` : 'Removed from My List')
+    }
   }
   const page = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
@@ -43,6 +49,9 @@ export default function MyListPage() {
 
   return (
     <div ref={page} className="px-(--gutter) pt-6 pb-16 sm:pt-8">
+      <p role="status" className="sr-only">
+        {removed}
+      </p>
       <SectionHeading
         as="h1"
         eyebrow="Saved for later"

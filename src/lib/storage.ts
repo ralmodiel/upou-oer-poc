@@ -66,7 +66,7 @@ export function usePersistentState<T>(key: string, fallback: T) {
 const MY_LIST_KEY = 'upou:my-list'
 const NO_IDS: string[] = []
 const toIds = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((id) => typeof id === 'string') : NO_IDS
+  Array.isArray(value) ? [...new Set(value.filter((id) => typeof id === 'string'))] : NO_IDS
 
 /** Adds a video to the front of My List, or removes it when it is already saved. */
 export function toggleMyList(id: string) {
@@ -172,8 +172,15 @@ export function usePrefs() {
 }
 
 const NO_HISTORY: HistoryEntry[] = []
-const toEntries = (value: unknown): HistoryEntry[] =>
-  Array.isArray(value) ? value.filter((e) => typeof e?.id === 'string') : NO_HISTORY
+const MAX_HISTORY = 20
+// Newest first: an id seen twice keeps its newer entry; the cap holds for stored lists too.
+const toEntries = (value: unknown): HistoryEntry[] => {
+  if (!Array.isArray(value)) return NO_HISTORY
+  const seen = new Set<string>()
+  return value
+    .filter((e) => typeof e?.id === 'string' && !seen.has(e.id) && seen.add(e.id))
+    .slice(0, MAX_HISTORY)
+}
 
 export function useWatchHistory() {
   const [raw, setEntries] = usePersistentState<unknown>(HISTORY_KEY, NO_HISTORY)
@@ -183,7 +190,7 @@ export function useWatchHistory() {
       if (!readPrefs().history) return
       setEntries((prev: unknown) => {
         const rest = toEntries(prev).filter((e) => e.id !== id)
-        return [{ id, at: Date.now() }, ...rest].slice(0, 20)
+        return [{ id, at: Date.now() }, ...rest].slice(0, MAX_HISTORY)
       })
     },
     [setEntries],

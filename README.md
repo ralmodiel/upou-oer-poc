@@ -22,9 +22,10 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
 
 ## Features
 
-- **Browse (`/`)** — an editorial Featured block with manual prev/next and an "Also new" list, a
-  "Recently viewed" strip, a row of collection chips, and one capped grid per collection
-  (sections below the fold render lazily). Chips and rows follow each collection's newest video,
+- **Browse (`/`)** — an editorial Featured block that moves on to the next pick after 7 seconds
+  left alone (never under reduced motion or while scrolled away; a card under the pointer or in
+  focus shows at once) and an "Also new" list, a "Recently viewed" strip, a row of collection
+  chips, and one capped grid per collection (sections below the fold render lazily). Chips and rows follow each collection's newest video,
   newest first. With watch history off, a notice where Recently viewed sits turns it back on in
   one press. A dismissible "How it works" strip greets first-time visitors; the footer's "Help"
   link brings it back.
@@ -40,8 +41,8 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   title, meta, share link, topics and "Up next": a playlist that keeps its order from video to
   video, with "More…" for the next eight picks and its own scroll area.
 - **Autoplay** — when a video ends, a "Next" card counts down 5 seconds (Play now, Cancel; Esc
-  cancels), then plays the next Up next video. The Autoplay switch beside Up next is on by
-  default and remembered in this browser.
+  cancels), then plays the next Up next video. The Autoplay switch beside Up next is off by
+  default; turning it on is remembered in this browser.
 - **Theme** — light / dark / system toggle, stored under `upou:theme` and applied before the first
   paint without an inline script.
 - **Keyboard and TV remotes** — Esc goes back everywhere (dialogs close first), `/` focuses
@@ -51,7 +52,7 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   never has to enter the YouTube frame.
 - **Previews** — hovering a card for a moment, or focusing it, plays that video's muted promo
   reel inside the card; it stops on leave, blur or Esc, and never starts under reduced motion.
-  The featured viewer previews the video it shows on focus and on each previous / next pick.
+  The featured viewer previews the video it shows when its card is focused.
 - **Backdrops** — the featured block, quick look and watch page sit on a blurred still from the
   video, falling back to the thumbnail (and then to a plain surface) when an image is missing.
 - **Brand colors** — UPOU maroon, forest and gold bands, rules and badges in both themes, and a
@@ -72,7 +73,7 @@ design, trademarks, or trade dress of any commercial streaming service. See [NOT
   description, and three real still frames from the video. A seeded random generator (keyed by
   the YouTube ID) picks one of three templates (Cinematic, Split, Kinetic), an accent color, Ken
   Burns motion, transitions, and a synthesized Web Audio sting. Every video looks different, and
-  each one replays the same way every time. Skip Intro and a sound toggle are included.
+  each one replays the same way every time. Skip preview and a sound toggle are included.
 - **Player** — privacy-enhanced `youtube-nocookie.com` embed that autoplays when the reel ends.
   Its end and play state arrive as the embed's own messages (no YouTube script), which drive
   autoplay and the Play / Pause key.

@@ -6,6 +6,7 @@ import {
   buildVocabulary,
   correctionOf,
   countWords,
+  EXACT,
   matchTier,
   maxEdits,
   NEAR,
@@ -391,14 +392,18 @@ export function searchCatalog(
   if (!terms.length) return { videos: [], exact: 0 }
   const hits: { v: Video; score: number }[] = []
   let exact = 0
+  // One letter or digit ("R", the "C" of "C++", the "1" of "#1") is in nearly every field, so on
+  // the results page it counts only as a whole word. Suggestions still take it as a word start.
+  const tier = (field: string, t: Term) =>
+    t.word.length > 1 ? matchTier(field, t) : field.includes(` ${t.word} `) ? EXACT : 0
   for (const { v, title, meta, body } of index()) {
     if (wanted && v.category !== wanted) continue
     let score = 0
     let typed = true
     for (const t of terms) {
-      const a = matchTier(title, t)
-      const b = titles ? 0 : matchTier(meta, t)
-      const c = titles ? 0 : matchTier(body, t)
+      const a = tier(title, t)
+      const b = titles ? 0 : tier(meta, t)
+      const c = titles ? 0 : tier(body, t)
       if (!a && !b && !c) {
         score = 0
         break
@@ -627,6 +632,15 @@ function homeFits(watched: readonly string[]): boolean {
 
 const WATCH = /^\/watch\/([^/]+)\/?$/
 
+// A malformed escape ("/watch/50%") stays as typed: no video has that id, so the page says so.
+const safeDecode = (s: string): string => {
+  try {
+    return decodeURIComponent(s)
+  } catch {
+    return s
+  }
+}
+
 /**
  * What a page must wait for before it renders (the router's loader), if anything. The home renders
  * from the summary, once the videos in this browser's history are in and the rows are the same
@@ -644,7 +658,7 @@ export function catalogWait(pathname: string, search: string): Promise<void> | u
     return loadVideos(wanted, false).then(fits)
   }
   const watch = WATCH.exec(pathname)
-  return watch ? loadVideos([decodeURIComponent(watch[1])], true) : loadAll()
+  return watch ? loadVideos([safeDecode(watch[1])], true) : loadAll()
 }
 
 // The route path under the app's base ("/watch/x"), for catalogWait.

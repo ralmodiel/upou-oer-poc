@@ -67,7 +67,8 @@ function Featured(props: Props) {
 /**
  * The hero moves on to the next featured video after ADVANCE_MS left alone: no click or key press,
  * no pointer over the hero or the row, no focus in them, no preview playing anywhere (a swap would
- * restart one in Also new), no dialog open (a hidden tab pauses it). A pointer resting on a card
+ * restart one in Also new), no dialog open, the hero on screen and no reduced motion (a hidden tab
+ * pauses it too). A pointer resting on a card
  * (HOVER_INTENT_MS), or focus on one, shows that video at once; the count then starts from it. The
  * active card shows the count as a thin line.
  */
@@ -94,7 +95,12 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
     const timer = window.setInterval(() => {
       const el = zone.current
       if (document.hidden || !el) return
+      const box = el.getBoundingClientRect()
+      // Reduced motion: the hero holds still. Scrolled out of view: nobody is watching it move.
       const busy =
+        prefersReducedMotion() ||
+        box.bottom < 0 ||
+        box.top > window.innerHeight ||
         hovered.current ||
         el.contains(document.activeElement) ||
         document.querySelector('.card-preview') ||

@@ -39,6 +39,13 @@ it('opened by a link on page load, paints first and adds More like this once ind
   expect(isRecommenderReady()).toBe(true)
 })
 
+it('locks the page through an attribute on html while open, not html:has()', async () => {
+  open('/?v=climate-basics')
+  expect(document.documentElement).toHaveAttribute('data-quick-look')
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(document.documentElement).not.toHaveAttribute('data-quick-look'))
+})
+
 it('opens on the still, which plays and grows while focused, with ↓ leading to Play', async () => {
   open('/?v=climate-basics')
   const dialog = screen.getByRole('dialog', { name: 'Climate Change Basics' })

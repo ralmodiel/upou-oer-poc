@@ -104,6 +104,14 @@ function Watch({ video }: { video: Video }) {
     addEventListener('scroll', mark, { passive: true })
     return () => removeEventListener('scroll', mark)
   }, [])
+  // <html data-watch> while this page is up (watch.css). As html:has(.watch-page), every node React
+  // added anywhere restyled the whole document: 40 ms a commit on a laptop, far more on a phone.
+  // A swap to the next video unmounts the old page before the new one sets it again.
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    root.setAttribute('data-watch', '')
+    return () => root.removeAttribute('data-watch')
+  }, [])
   useSeo(videoSeo(video, category))
   for (const origin of ORIGINS) preconnect(origin)
 

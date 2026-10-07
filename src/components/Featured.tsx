@@ -1,4 +1,13 @@
-import { memo, useEffect, useId, useRef, useState, type FocusEvent, type MouseEvent } from 'react'
+import {
+  memo,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type MouseEvent,
+} from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigationType } from 'react-router'
 import { getVideo } from '../data/catalog'
@@ -437,6 +446,15 @@ function MoreBelow() {
     }
   }, [])
 
+  // <html data-more-cue> while it shows: focus and anchor scrolls keep clear of it (browse.css). As
+  // html:has([data-more-below]), every node React added anywhere restyled the whole document.
+  const hidden = atFooter || covering
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    root.toggleAttribute('data-more-cue', !hidden)
+    return () => root.removeAttribute('data-more-cue')
+  }, [hidden])
+
   const onClick = (e: MouseEvent<HTMLButtonElement>) => {
     // The resting place of a row: just below the sticky header (html scroll-padding-top).
     const rest = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0
@@ -458,7 +476,7 @@ function MoreBelow() {
   return (
     <div
       data-more-below=""
-      data-hidden={atFooter || covering ? '' : undefined}
+      data-hidden={hidden ? '' : undefined}
       className="more-below pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center pt-16 pb-[calc(4.75rem+env(safe-area-inset-bottom))] transition-opacity duration-300 data-hidden:invisible data-hidden:opacity-0 md:pb-6 land:pb-[calc(var(--tabbar-h)+0.5rem+env(safe-area-inset-bottom))]"
     >
       <button

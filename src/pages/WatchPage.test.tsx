@@ -92,6 +92,17 @@ describe('WatchPage', () => {
     expect(JSON.parse(localStorage.getItem('upou:history') ?? '[]')[0]?.id).toBe(testVideo.id)
   })
 
+  it('marks html while up (watch.css), as html:has(.watch-page) made every insertion restyle all', async () => {
+    const { router } = renderAt([`/watch/${testVideo.id}`])
+    const root = document.documentElement
+    expect(root).toHaveAttribute('data-watch')
+    // The next video: the old page goes, the new one keeps the mark.
+    await act(() => router.navigate(`/watch/${similar[0].id}`))
+    expect(root).toHaveAttribute('data-watch')
+    await act(() => router.navigate('/'))
+    expect(root).not.toHaveAttribute('data-watch')
+  })
+
   it('shows the Esc hint only the first time, and only to fine pointers', () => {
     const touch = renderAt([`/watch/${testVideo.id}`])
     expect(screen.queryByText('to go back', { exact: false })).not.toBeInTheDocument()

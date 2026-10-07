@@ -130,8 +130,10 @@
 /*
   The stage is centred and never outgrows the viewport on short screens (phones on their side);
   below md it also bleeds into the page gutters.
+  html[data-watch] is set while a watch page is up (WatchPage.tsx). Never html:has(): with one, every
+  node added anywhere restyled the whole document.
 */
-html:has(.watch-page) {
+html[data-watch] {
   /* On the root, so the scroll padding below can reckon with the same width. */
   --stage-cap: calc((100dvh - 8rem) * 16 / 9);
 }
@@ -142,7 +144,7 @@ html:has(.watch-page) {
   limits the stage, so portrait phones are untouched.
 */
 @media (width < 48rem) {
-  html:has(.watch-page) {
+  html[data-watch] {
     --stage-cap: calc(
       (100dvh - 8rem - var(--tabbar-h) - env(safe-area-inset-bottom, 0px)) * 16 / 9
     );
@@ -1359,7 +1361,7 @@ html:has(.watch-page) {
   the stage, so the pair takes header + stage, not header + Back + stage.
 */
 @media (width < 64rem) {
-  html:has(.watch-page) {
+  html[data-watch] {
     /* The stage's width and height at rest: the same as .watch-stage's own, in viewport units. */
     --rest-w: min(100vw - 2 * var(--gutter), var(--stage-cap));
     --rest-h: calc(var(--rest-w) * 9 / 16);
@@ -1369,13 +1371,13 @@ html:has(.watch-page) {
   }
 
   @media (width < 48rem) {
-    html:has(.watch-page) {
+    html[data-watch] {
       --rest-w: min(100vw, var(--stage-cap));
     }
   }
 
   @media (orientation: landscape) and (min-aspect-ratio: 4 / 3) {
-    html:has(.watch-page) {
+    html[data-watch] {
       /* The header's own 1px border is not in --header-h; the picture starts below it. */
       --stack: 1px;
     }
@@ -1447,7 +1449,7 @@ html:has(.watch-page) {
   }
 
   @supports (animation-timeline: scroll()) and (scale: tan(atan2(1px, 1px))) {
-    html:has(.watch-page) {
+    html[data-watch] {
       /* 46svh; where the tab bar takes 60px more (a phone on its side under 48rem) never less than
          36svh, and short of that room for a whole row of Up next beside it. */
       --stuck-h: min(
@@ -1473,7 +1475,7 @@ html:has(.watch-page) {
 
     /* Reduced motion: no ease, one step at the first scroll. */
     @media (prefers-reduced-motion: reduce) {
-      html:has(.watch-page),
+      html[data-watch],
       .watch-stage-wrap .watch-stage,
       .watch-stage-wrap .watch-ambient {
         animation-range: 0 1px;
@@ -1498,7 +1500,7 @@ html:has(.watch-page) {
     is about a row of Up next (6.5rem with a two-line title): the air there is what the room has to
     spare, so a row brought into view by keys or More… shows whole rather than 8px under the bar.
   */
-  html:has(.watch-page) {
+  html[data-watch] {
     --focus-air: clamp(
       0px,
       (
@@ -1510,7 +1512,7 @@ html:has(.watch-page) {
     );
   }
 
-  html:has(.watch-page):not([data-header-focus]) {
+  html[data-watch]:not([data-header-focus]) {
     scroll-padding-top: calc(var(--header-h) + var(--stack) + var(--stuck-h) + var(--focus-air));
   }
 }
@@ -1521,7 +1523,7 @@ html:has(.watch-page) {
   More… stopped up to 34px under the bar.
 */
 @media (width < 48rem) {
-  html:has(.watch-page) {
+  html[data-watch] {
     scroll-padding-bottom: calc(
       var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--focus-air, 1rem)
     );

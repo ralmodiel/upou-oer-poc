@@ -221,6 +221,18 @@ describe('More video resources below', () => {
     expect(shownCue()).toBe(true)
   })
 
+  it('marks html while it shows (scroll padding), as html:has() made every insertion restyle all', () => {
+    const { unmount } = renderHome()
+    const root = document.documentElement
+    expect(root).toHaveAttribute('data-more-cue')
+    footerSeen(true)
+    expect(root).not.toHaveAttribute('data-more-cue')
+    footerSeen(false)
+    expect(root).toHaveAttribute('data-more-cue')
+    unmount()
+    expect(root).not.toHaveAttribute('data-more-cue')
+  })
+
   it('steps aside while it would cover the card in focus', () => {
     renderHome()
     const pill = cue()

@@ -1,5 +1,7 @@
-/* Lock page scroll while the quick-look dialog is open, without layout shift. */
-html:has(dialog[data-details][open]) {
+/* Lock page scroll while the quick-look dialog is open, without layout shift. The attributes on html
+   here are set from script (DetailModal, Featured): with an html:has(), every node added anywhere
+   restyled the whole document. */
+html[data-quick-look] {
   overflow: hidden;
   scrollbar-gutter: stable;
 }
@@ -790,7 +792,7 @@ html:has(dialog[data-details][open]) {
   }
 }
 /* It fades in once, nudges once, then rests. Focus and anchor scrolls keep clear of it. */
-html:has([data-more-below]:not([data-hidden])) {
+html[data-more-cue] {
   scroll-padding-bottom: calc(var(--tabbar-h) + 5.5rem);
 }
 /* A phone on its side (index.css land:): the pill hugs the tab bar (or the screen's foot), so it
@@ -799,7 +801,7 @@ html:has([data-more-below]:not([data-hidden])) {
   .more-below {
     --more-foot: calc(var(--tabbar-h) + 0.5rem + env(safe-area-inset-bottom));
   }
-  html:has([data-more-below]:not([data-hidden])) {
+  html[data-more-cue] {
     scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 3.5rem);
   }
 }

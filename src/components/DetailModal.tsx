@@ -50,6 +50,10 @@ const PHONE = '(width < 48rem)'
 // Soft glow of the video's still behind the image column, gone by the time the text starts.
 const SCRIM = 'bg-linear-to-b from-surface/40 via-surface/80 via-60% to-surface'
 
+// <html data-quick-look> while the dialog is open locks the page's scroll (browse.css). As
+// html:has(dialog[open]), every node React added anywhere restyled the whole document.
+const lockPage = (on: boolean) => document.documentElement.toggleAttribute('data-quick-look', on)
+
 /** Quick look dialog driven by `?v=<id>`; unknown ids render nothing. */
 function focusPageTitle() {
   const title = document.querySelector<HTMLElement>('main h1') ?? document.getElementById('main')
@@ -115,6 +119,7 @@ function DetailDialog({ video }: { video: Video }) {
     if (!el) return
     closing.current = false
     if (!el.open) el.showModal()
+    lockPage(true)
     // Runs before the node is removed (close button, Back, links): a native close
     // returns focus to the element that opened the dialog. Its `close` event arrives later,
     // possibly after a StrictMode remount reopened the dialog; onClose ignores it then.
@@ -122,6 +127,7 @@ function DetailDialog({ video }: { video: Video }) {
       closing.current = true
       clearTimeout(exitTimer.current)
       el.close()
+      lockPage(false)
     }
   }, [])
 
@@ -244,6 +250,7 @@ function DetailDialog({ video }: { video: Video }) {
   const leave = () => {
     const el = dialog.current
     el?.close()
+    lockPage(false)
     // Opened from a shared link there is no trigger to return focus to (it stays on the closed
     // dialog's button, or the body): start on the page title.
     const active = document.activeElement

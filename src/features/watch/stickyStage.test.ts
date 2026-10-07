@@ -6,7 +6,7 @@ const node = (globalThis as unknown as { process: { getBuiltinModule(id: 'node:f
 const css = node.getBuiltinModule('node:fs').readFileSync('src/features/watch/watch.css', 'utf8')
 
 // The block that makes the Back row and the stage sticky: from its @media to the next top-level rule.
-const start = css.indexOf('@media (width < 64rem) {\n  html:has(.watch-page) {\n    /* The stage')
+const start = css.indexOf('@media (width < 64rem) {\n  html[data-watch] {\n    /* The stage')
 const sticky = css.slice(start, css.indexOf('@keyframes watch-stage-stick'))
 
 describe('the sticky stage under lg', () => {
@@ -48,7 +48,7 @@ describe('the sticky stage under lg', () => {
 describe('phone fixes read from watch.css', () => {
   it('counts the home-indicator inset in the tab bar clearance for focus and More…', () => {
     expect(css).toMatch(
-      /html:has\(\.watch-page\) \{\s*scroll-padding-bottom: calc\(\s*var\(--tabbar-h\) \+ env\(safe-area-inset-bottom, 0px\) \+ var\(--focus-air, 1rem\)\s*\);/,
+      /html\[data-watch\] \{\s*scroll-padding-bottom: calc\(\s*var\(--tabbar-h\) \+ env\(safe-area-inset-bottom, 0px\) \+ var\(--focus-air, 1rem\)\s*\);/,
     )
   })
 
@@ -59,7 +59,7 @@ describe('phone fixes read from watch.css', () => {
 
   it('rests the stage wholly above the tab bar on a phone on its side', () => {
     expect(css).toMatch(
-      /@media \(width < 48rem\) \{\s*html:has\(\.watch-page\) \{\s*--stage-cap: calc\(\s*\(100dvh - 8rem - var\(--tabbar-h\) - env\(safe-area-inset-bottom, 0px\)\) \* 16 \/ 9\s*\);/,
+      /@media \(width < 48rem\) \{\s*html\[data-watch\] \{\s*--stage-cap: calc\(\s*\(100dvh - 8rem - var\(--tabbar-h\) - env\(safe-area-inset-bottom, 0px\)\) \* 16 \/ 9\s*\);/,
     )
   })
 

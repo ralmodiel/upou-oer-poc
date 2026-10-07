@@ -26,6 +26,11 @@ function detectLite(): boolean {
 export const lite = detectLite()
 if (lite) document.documentElement.setAttribute('data-lite', '')
 
+// The reel sizes its type and layout in container units (Chromium 105+); without them its title,
+// controls and end card pile up in a corner. Those engines skip the reel: the video starts at once.
+export const reelWorks =
+  typeof CSS === 'undefined' || !CSS.supports || CSS.supports('container-type', 'size')
+
 // View Transitions snapshot the page into GPU layers: off in lite (the callers check for them).
 if (lite) {
   delete (Document.prototype as { startViewTransition?: unknown }).startViewTransition

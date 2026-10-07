@@ -8,6 +8,7 @@ import {
   type PointerEvent,
 } from 'react'
 import { prefetchWatch } from '../features/reel/preload'
+import { reelWorks } from '../lib/lite'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
@@ -93,7 +94,7 @@ export function useCardPreview(video: Video) {
 
   // Every video previews: one with no clean image plays the reel's type-only title card.
   const start = useCallback(() => {
-    if (prefersReducedMotion() || done.current) return
+    if (!reelWorks || prefersReducedMotion() || done.current) return
     claim(id, stop)
     setPhase((p) => (p === 'idle' ? 'playing' : p))
   }, [id, stop])

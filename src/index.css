@@ -515,7 +515,7 @@ html[data-theme-fade]::view-transition-new(root) {
     2. the watch page's ambient light (.watch-ambient)
     3. every backdrop-filter (header, tab bar, glass buttons, dialogs); the glass and frost
        tokens turn near-opaque so text stays readable without the blur
-    4. motion: animations and transitions jump to their end state (as under reduced motion)
+    4. motion: transitions, and animations outside the preview reel, jump to their end state
     5. View Transitions (removed in lite.ts: each one snapshots the page into GPU layers)
 */
 html[data-lite] {
@@ -543,12 +543,25 @@ html[data-lite] *::after,
 html[data-lite] *::backdrop {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
-  animation-duration: 0.01ms !important;
-  animation-delay: 0s !important;
-  animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   transition-delay: 0s !important;
   scroll-behavior: auto !important;
+}
+/* Animations jump to their end state, except where the timeline is the content or the end state
+   is blank: the preview reel (one still frame at its end), the Esc tip and "Copied" toast (they end
+   at opacity 0, so they would never show) and the autoplay countdown (it would read as spent).
+   Engines without selector() support (before Chromium 83) keep every animation. */
+@supports selector(:not(a b)) {
+  html[data-lite]
+    :not(.reel, .watch-autoplay, .watch-hint, .watch-toast):not(.reel *, .watch-autoplay *),
+  html[data-lite]
+    :not(.reel, .watch-autoplay, .watch-hint, .watch-toast):not(.reel *, .watch-autoplay *)::before,
+  html[data-lite]
+    :not(.reel, .watch-autoplay, .watch-hint, .watch-toast):not(.reel *, .watch-autoplay *)::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 /*

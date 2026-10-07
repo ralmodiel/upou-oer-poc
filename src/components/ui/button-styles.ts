@@ -13,7 +13,7 @@ const BASE =
 // Lifts are transforms (no reflow) and only without reduced motion.
 const LIFT = 'motion-safe:hover:-translate-y-0.5 motion-safe:focus-visible:-translate-y-0.5'
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: `bg-action bg-(image:--gradient-action) text-on-action shadow-(--shadow-action) hover:brightness-110 focus-visible:shadow-[var(--shadow-action),var(--shadow-glow)] focus-visible:ring-2 focus-visible:ring-paper focus-visible:brightness-110 ${LIFT}`,
+  primary: `border border-transparent bg-action bg-(image:--gradient-action) text-on-action shadow-(--shadow-action) hover:brightness-110 focus-visible:shadow-[var(--shadow-action),var(--shadow-glow)] focus-visible:ring-2 focus-visible:ring-paper focus-visible:brightness-110 ${LIFT}`,
   secondary: `border border-glass-border bg-frost text-ink shadow-(--shadow-elev-1) backdrop-blur-md hover:bg-frost-2 hover:shadow-[inset_0_1px_0_var(--color-rim),var(--shadow-elev-2)] focus-visible:bg-frost-2 focus-visible:shadow-[inset_0_1px_0_var(--color-rim),var(--shadow-elev-2),var(--shadow-glow)] ${LIFT}`,
   ghost:
     'text-ink-2 hover:bg-frost-2 hover:text-ink hover:shadow-(--shadow-glass) focus-visible:bg-frost-2 focus-visible:text-ink focus-visible:shadow-[var(--shadow-glass),var(--shadow-glow)]',

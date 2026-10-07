@@ -96,12 +96,12 @@ export default function Header() {
     >
       <div className="flex min-h-(--header-h) flex-wrap items-center gap-x-2 px-(--gutter) md:flex-nowrap lg:gap-x-3">
         {/* Brand lock-up: wordmark + pill, with the descriptor underneath from md. */}
-        <div className="flex min-w-0 shrink-0 flex-col">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 shrink grow basis-0 flex-col md:grow-0 md:basis-auto">
+          <div className="flex min-w-0 items-center gap-2">
             <Link
               to="/"
               aria-label="UPOU OER, home"
-              className="flex min-h-10 items-center gap-1 rounded-sm font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
+              className="flex min-h-10 shrink-0 items-center gap-1 rounded-sm font-display text-[1.375rem] leading-none tracking-tight sm:text-2xl"
             >
               <span className="text-ink">UPOU</span>
               <span className="text-maroon">OER</span>
@@ -110,7 +110,7 @@ export default function Header() {
               role="note"
               title="Proof of concept"
               aria-label="Proof of concept"
-              className="rounded-pill border border-glass-border bg-frost px-1 py-1 text-xs shadow-[inset_0_1px_0_var(--color-rim)] leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
+              className="min-w-0 truncate rounded-pill border border-glass-border bg-frost px-1 py-1 text-xs shadow-[inset_0_1px_0_var(--color-rim)] leading-none font-semibold tracking-wide text-ink-2 uppercase sm:px-1.5 sm:tracking-wider"
             >
               Proof of concept
             </span>
@@ -134,8 +134,10 @@ export default function Header() {
         <SearchBox />
         {/* One stop: a flip button on phones and desktop (tablets use the Help menu); light, dark
             and system are all in the Help menu. */}
-        <ThemeToggle className="ml-auto md:hidden lg:ml-0 lg:inline-flex" />
-        <HelpMenu />
+        <div className="ml-auto flex shrink-0 items-center gap-x-2 md:ml-0 lg:gap-x-3">
+          <ThemeToggle className="md:hidden lg:inline-flex" />
+          <HelpMenu />
+        </div>
       </div>
     </header>
   )

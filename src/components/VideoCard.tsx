@@ -15,7 +15,7 @@ import Badge from './ui/Badge'
 // Quick actions sit above the stretched link: quiet at rest, full strength while the card is
 // hovered or focused, and always strong on touch screens.
 const ACTIONS =
-  'relative z-20 -ml-2 flex items-center gap-0.5 text-ink-3 transition-colors duration-200 group-hover/card:text-ink-2 group-focus-within/card:text-ink-2 [@media(hover:none)]:text-ink-2'
+  'relative z-20 -ml-2 flex min-w-0 flex-wrap items-center gap-0.5 text-ink-3 transition-colors duration-200 group-hover/card:text-ink-2 group-focus-within/card:text-ink-2 [@media(hover:none)]:text-ink-2'
 export const ACTION =
   'inline-flex h-10 items-center gap-1.5 rounded-pill px-2.5 text-xs font-semibold transition-colors duration-200 hover:bg-surface-2 hover:text-maroon aria-pressed:text-maroon dark:aria-pressed:text-gold'
 

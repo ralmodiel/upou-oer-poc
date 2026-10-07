@@ -583,3 +583,71 @@ html[data-lite] *::backdrop {
     height: 100%;
   }
 }
+
+/*
+  Windows High Contrast and other forced palettes drop every background, so a switch that is on, the
+  chip in force and the current sort would look exactly like their off neighbours. The system
+  Highlight colours mark them instead.
+*/
+@media (forced-colors: active) {
+  [role='switch'][aria-checked='true'] > span {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+  }
+  [role='switch'] > span > span {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+  [role='switch'][aria-checked='true'] > span > span {
+    background: HighlightText;
+  }
+  [data-chip][aria-pressed='true'],
+  [data-chip][aria-current],
+  [aria-label='Sort by'] a[aria-current] {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
+/*
+  Printing a watch page gives its title, description, speakers and citation on white paper: the
+  site chrome, the player and the controls stay off the page.
+*/
+@media print {
+  html {
+    color-scheme: light;
+  }
+  *,
+  *::before,
+  *::after {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    mask: none !important;
+  }
+  /* The description prints in full, not folded to its first lines. */
+  .watch-desc p {
+    height: auto !important;
+    transition: none !important;
+  }
+  header,
+  nav.fixed,
+  footer,
+  button,
+  .watch-back-row,
+  .watch-hint,
+  .watch-stage-wrap,
+  .watch-aside {
+    display: none !important;
+  }
+  main,
+  article {
+    opacity: 1 !important;
+    transform: none !important;
+    visibility: visible !important;
+  }
+}

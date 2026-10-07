@@ -187,7 +187,7 @@ export const CategoryListItem = memo(function CategoryListItem({
       <span
         aria-hidden="true"
         data-pending={images && near ? '' : undefined}
-        className="page-row-cover relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
+        className="page-row-cover relative aspect-video w-[min(5rem,22vw)] shrink-0 overflow-hidden rounded-md bg-surface-2"
       >
         {images && near && (
           <img

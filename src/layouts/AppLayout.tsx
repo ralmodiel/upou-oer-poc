@@ -15,6 +15,7 @@ import ShortcutsSheet from '../components/ShortcutsSheet'
 import { usePainted } from '../components/browse-hooks'
 import { useReturnFocus } from '../components/hooks'
 import { useWarmRecommender } from '../components/recs'
+import { installFocusMarks } from '../lib/focusMarks'
 import { useGlobalShortcuts } from '../lib/shortcuts'
 import { useSpatialNavigation } from '../lib/spatial'
 import '../components/browse.css'
@@ -169,6 +170,7 @@ export default function AppLayout() {
   useSpatialNavigation()
   useReturnFocus()
   useWarmRecommender()
+  useEffect(installFocusMarks, [])
   // Closed until asked for (a key or a link): never part of the first frame.
   const painted = usePainted()
 

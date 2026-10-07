@@ -351,7 +351,7 @@ function DetailDialog({ video }: { video: Video }) {
           {/* The still plays too, and grows while focused or hovered (TV style) into the gutters
               around it, so nothing else moves. The wrapper scales: a focused link drops its
               transition (index.css). Phones: full bleed, no growth. */}
-          <div className="-mx-5 -mt-5 min-w-0 md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-1 land:row-start-1 md:m-0 land:m-0 md:motion-safe:transition-[scale] land:motion-safe:transition-[scale] md:motion-safe:duration-300 land:motion-safe:duration-300 md:motion-safe:ease-out-soft land:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:has-[a:focus]:scale-108 lg:col-span-7">
+          <div className="-mx-5 -mt-5 min-w-0 md:col-span-6 land:col-span-6 md:col-start-1 land:col-start-1 md:row-start-1 land:row-start-1 md:m-0 land:m-0 md:motion-safe:transition-[scale] land:motion-safe:transition-[scale] md:motion-safe:duration-300 land:motion-safe:duration-300 md:motion-safe:ease-out-soft land:motion-safe:ease-out-soft md:motion-safe:hover:scale-108 md:motion-safe:focus-within:scale-108 lg:col-span-7">
             <PlayLink
               video={video}
               aria-label={`Play ${video.title}`}

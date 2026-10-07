@@ -227,6 +227,7 @@ export default function PromoReel({
       data-single={plan.single || undefined}
       data-slides={plan.slides || undefined}
       data-title-card={titleCard || undefined}
+      data-started={started || undefined}
       data-lowres={(plan.lowRes && !preview) || undefined}
       style={style}
     >

@@ -310,7 +310,7 @@
   }
   /* Not while focus is in the sticky header, whose controls are always on screen: Chrome would
      scroll the page to bring them past that padding (a screen on focus, more with each key). */
-  html:has(header :focus) {
+  html[data-header-focus] {
     scroll-padding-top: 0;
   }
   body {

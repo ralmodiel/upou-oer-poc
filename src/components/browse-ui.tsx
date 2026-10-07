@@ -14,7 +14,7 @@ export const TEXT_LINK = 'font-semibold text-maroon underline-offset-4 hover:und
  * title's own outline would be cut by its line clamp. Lift and glow as on cards (browse.css .card-lift).
  */
 export const ITEM_FOCUS =
-  'group-has-[[data-card-link]:focus-visible]/item:outline-3 group-has-[[data-card-link]:focus-visible]/item:outline-offset-2 group-has-[[data-card-link]:focus-visible]/item:outline-focus'
+  'group-data-[focus-mark]/item:outline-3 group-data-[focus-mark]/item:outline-offset-2 group-data-[focus-mark]/item:outline-focus'
 
 /**
  * Hover and keyboard-focus cue on a card's image (the card link already plays): a small round play
@@ -27,8 +27,8 @@ export function PlayBadge({ item = false }: { item?: boolean }) {
       aria-hidden="true"
       className={`absolute bottom-2.5 left-2.5 grid size-10 place-items-center card-play rounded-pill text-maroon opacity-0 transition-opacity duration-200 ${
         item
-          ? 'group-hover/item:opacity-100 group-has-[[data-card-link]:focus-visible]/item:opacity-100'
-          : 'group-hover/card:opacity-100 group-has-[[data-card-link]:focus-visible]/card:opacity-100'
+          ? 'group-hover/item:opacity-100 group-data-[focus-mark]/item:opacity-100'
+          : 'group-hover/card:opacity-100 group-data-[focus-mark]/card:opacity-100'
       }`}
     >
       <PlayIcon className="size-5 translate-x-px" />

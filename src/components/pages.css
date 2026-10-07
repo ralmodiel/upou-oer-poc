@@ -185,7 +185,7 @@ html dialog.tv-sheet::backdrop {
 .tv-card:hover {
   box-shadow: var(--shadow-elev-3);
 }
-.tv-card:has(a:focus-visible) {
+.tv-card[data-focus-mark] {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
   box-shadow: var(--shadow-elev-3), var(--tv-card-glow);
@@ -205,7 +205,7 @@ html dialog.tv-sheet::backdrop {
   .tv-card:hover {
     translate: 0 -4px;
   }
-  .tv-card:has(a:focus-visible) {
+  .tv-card[data-focus-mark] {
     translate: 0 -6px;
     scale: 1.03;
   }
@@ -218,7 +218,7 @@ html dialog.tv-sheet::backdrop {
       opacity 300ms ease,
       transform 600ms var(--ease-out-soft);
   }
-  .tv-card:is(:hover, :has(a:focus-visible)) .tv-cover img {
+  .tv-card:is(:hover, [data-focus-mark]) .tv-cover img {
     transform: scale(1.05);
   }
 }
@@ -231,7 +231,7 @@ html dialog.tv-sheet::backdrop {
 /* Collection covers: a still's well shimmers while its picture loads (not before it is asked for,
    nor after it is in or has failed). */
 @media (prefers-reduced-motion: no-preference) {
-  :is(.page-tile, .page-row-cover):has(> img:not([data-loaded], [data-failed])) {
+  :is(.page-tile, .page-row-cover)[data-pending] {
     background-image: linear-gradient(to right, transparent, var(--color-shimmer), transparent);
     background-size: 200% 100%;
     background-repeat: no-repeat;

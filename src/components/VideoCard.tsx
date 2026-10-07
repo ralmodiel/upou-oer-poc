@@ -23,7 +23,7 @@ export const ACTION =
 // focus, readable from across a room (outline is not in the transition list). The lift, glow and
 // the picture's ease-in come from browse.css (.card-lift, .card-media).
 const FOCUS =
-  'group-has-[[data-card-link]:focus-visible]/card:outline-3 group-has-[[data-card-link]:focus-visible]/card:outline-focus group-has-[[data-card-link]:focus-visible]/card:outline-offset-2'
+  'group-data-[focus-mark]/card:outline-3 group-data-[focus-mark]/card:outline-focus group-data-[focus-mark]/card:outline-offset-2'
 
 interface Props {
   video: Video

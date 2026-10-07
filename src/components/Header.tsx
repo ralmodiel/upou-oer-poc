@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type FocusEvent,
   type FormEvent,
 } from 'react'
 import { Link, NavLink, useLocation, useMatch, useNavigate, useNavigationType } from 'react-router'
@@ -69,6 +70,14 @@ function CountBadge({ count, className = '' }: { count: number; className?: stri
 
 const myListLabel = (saved: number) => (saved > 0 ? `My List, ${saved} saved` : undefined)
 
+// <html data-header-focus> while focus is in the header (index.css, watch.css): set from focus
+// events, which come before the browser scrolls to the focused control. As html:has(header :focus)
+// every focus move anywhere restyled the whole page.
+const headerFocus = (e: FocusEvent<HTMLElement>) => {
+  const inside = e.type === 'focus' || e.currentTarget.contains(e.relatedTarget as Node | null)
+  document.documentElement.toggleAttribute('data-header-focus', inside)
+}
+
 export default function Header() {
   const scrolled = useScrolledPast(8)
   const saved = useSavedCount()
@@ -79,6 +88,8 @@ export default function Header() {
       // Glass: translucent paper over a modest blur, so content scrolls softly beneath it. Once
       // scrolled, a faint brand edge glows along its foot (index.css, shell-edge).
       data-scrolled={scrolled || undefined}
+      onFocus={headerFocus}
+      onBlur={headerFocus}
       className={`shell-edge sticky top-0 z-40 border-b bg-glass backdrop-blur-lg backdrop-saturate-150 transition-[border-color,box-shadow] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1 before:brand-stripe ${
         scrolled ? 'border-glass-border shadow-(--shadow-elev-2)' : 'border-line'
       }`}

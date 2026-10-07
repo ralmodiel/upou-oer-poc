@@ -539,7 +539,7 @@ html:has(.watch-page) {
     timeline mounts (its band), so it keeps time with the reel; held with it while the tab is
     hidden. Skip still cuts at once.
   */
-  .watch-stage:has(.watch-poster[data-loaded]) .reel[data-title-card]:has(> .reel-band) {
+  .watch-stage > [data-poster-loaded] ~ .reel[data-title-card][data-started] {
     animation: reel-gone 600ms var(--ease-io) calc(var(--reel-ms) - 600ms) both;
   }
 
@@ -1510,7 +1510,7 @@ html:has(.watch-page) {
     );
   }
 
-  html:has(.watch-page):not(:has(header :focus)) {
+  html:has(.watch-page):not([data-header-focus]) {
     scroll-padding-top: calc(var(--header-h) + var(--stack) + var(--stuck-h) + var(--focus-air));
   }
 }

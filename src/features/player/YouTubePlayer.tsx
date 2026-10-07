@@ -112,13 +112,18 @@ export function PlayerPoster({ video }: { video: Video }) {
   const source = sources[tries]
   const fail = () => setTries((n) => n + 1)
   // YouTube answers a missing still with a 120px placeholder. A real one fades in (watch.css).
+  // The source that loaded, so the stage's reel can dissolve into it (watch.css): an attribute on
+  // this box, which the reel follows as a sibling, costs far less to match than a :has() on the stage.
+  const [shown, setShown] = useState<string | null>(null)
   const check = (e: SyntheticEvent<HTMLImageElement>) => {
-    if (e.currentTarget.naturalWidth <= 120) fail()
-    else e.currentTarget.dataset.loaded = ''
+    if (e.currentTarget.naturalWidth <= 120) return fail()
+    e.currentTarget.dataset.loaded = ''
+    setShown(e.currentTarget.getAttribute('src'))
   }
   if (!isYouTubeId(video.youtubeId)) return null
   return (
     <div
+      data-poster-loaded={(source && shown === source.src) || undefined}
       className="pointer-events-none absolute inset-0 overflow-hidden bg-[#faf8f6]"
       aria-hidden="true"
     >

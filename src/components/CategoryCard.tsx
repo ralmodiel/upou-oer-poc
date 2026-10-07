@@ -18,11 +18,16 @@ const MAIN_SIZES =
 const SIDE_SIZES =
   '(min-width: 96rem) min(7.5vw, 8rem), (min-width: 64rem) 10vw, (min-width: 40rem) 15vw, 31vw'
 
+// The well stops shimmering (pages.css) once its picture is in or has failed: data-pending is cleared
+// on the well itself, which costs far less to match than a :has() on the image.
+const settle = (img: HTMLImageElement) => img.parentElement?.removeAttribute('data-pending')
 const markLoaded = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.loaded = ''
+  settle(e.currentTarget)
 }
 const markFailed = (e: SyntheticEvent<HTMLImageElement>) => {
   e.currentTarget.dataset.failed = ''
+  settle(e.currentTarget)
 }
 // A missing large still falls back to the small one; if that fails too, the well stays.
 const retryOrHide = (e: SyntheticEvent<HTMLImageElement>, small: string) => {
@@ -30,7 +35,10 @@ const retryOrHide = (e: SyntheticEvent<HTMLImageElement>, small: string) => {
   if (img.srcset || img.getAttribute('src') !== small) {
     img.srcset = ''
     img.src = small
-  } else img.dataset.failed = ''
+  } else {
+    img.dataset.failed = ''
+    settle(img)
+  }
 }
 
 function Tile({
@@ -53,6 +61,7 @@ function Tile({
     // a denser screen's pick) carries its letterbox bars: there the picture is a centred 16:9 box the
     // height of the tile, so those bars fall outside it as they do in any 16:9 slot.
     <div
+      data-pending=""
       className={`page-tile overflow-hidden bg-surface-2 hidpi:flex hidpi:items-center hidpi:justify-center ${className}`}
     >
       <img
@@ -177,6 +186,7 @@ export const CategoryListItem = memo(function CategoryListItem({
       <span aria-hidden="true" className={`h-11 w-1 shrink-0 rounded-pill ${MARK[toneOf(slug)]}`} />
       <span
         aria-hidden="true"
+        data-pending={images && near ? '' : undefined}
         className="page-row-cover relative aspect-video w-20 shrink-0 overflow-hidden rounded-md bg-surface-2"
       >
         {images && near && (

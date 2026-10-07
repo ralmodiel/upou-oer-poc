@@ -46,7 +46,7 @@ it('opens on the still, which plays and grows while focused, with ↓ leading to
   await waitFor(() => expect(still).toHaveFocus())
   expect(still).toHaveAttribute('href', '/watch/climate-basics')
   // The growth hangs off the wrapper (a focused link drops its transition in index.css).
-  expect(still.parentElement?.className).toContain('has-[a:focus]:scale-108')
+  expect(still.parentElement?.className).toContain('focus-within:scale-108')
   expect(still).toHaveAttribute('data-spatial', 'over-entry')
   expect(within(dialog).getByRole('link', { name: 'Play' })).toHaveAttribute(
     'data-spatial',

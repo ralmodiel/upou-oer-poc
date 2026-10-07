@@ -296,7 +296,7 @@ html:has(dialog[data-details][open]) {
   background-color: var(--color-glass);
   box-shadow: var(--shadow-glass);
 }
-.card-lift:has([data-card-link]:focus-visible) .card-play {
+.card-lift[data-focus-mark] .card-play {
   -webkit-backdrop-filter: blur(12px) saturate(1.4);
   backdrop-filter: blur(12px) saturate(1.4);
 }
@@ -314,7 +314,7 @@ html:has(dialog[data-details][open]) {
       opacity 200ms ease,
       scale 350ms var(--ease-tv);
   }
-  .card-lift:has([data-card-link]:focus-visible) .card-play {
+  .card-lift[data-focus-mark] .card-play {
     scale: 1;
   }
   @media (hover: hover) {
@@ -357,7 +357,7 @@ html:has(dialog[data-details][open]) {
     opacity 300ms ease,
     transform 600ms var(--ease-tv);
 }
-.card-lift:has([data-card-link]:focus-visible) .card-media,
+.card-lift[data-focus-mark] .card-media,
 .card-tile:focus-visible {
   box-shadow: var(--card-glow), var(--card-elev), var(--shadow-glow);
 }
@@ -368,7 +368,7 @@ html:has(dialog[data-details][open]) {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .card-lift:has([data-card-link]:focus-visible) .card-media,
+  .card-lift[data-focus-mark] .card-media,
   .card-tile:focus-visible {
     translate: 0 -2px;
   }
@@ -379,7 +379,7 @@ html:has(dialog[data-details][open]) {
       translate 350ms var(--ease-tv),
       box-shadow 350ms var(--ease-tv);
   }
-  .card-lift:has([data-card-link]:focus-visible) .card-media > :is(img, .card-preview) {
+  .card-lift[data-focus-mark] .card-media > :is(img, .card-preview) {
     transform: scale(1.05);
   }
   @media (hover: hover) {
@@ -412,7 +412,7 @@ html:has(dialog[data-details][open]) {
   .card-lift > :is(h2, h3, h4) {
     color: var(--color-ink-2);
   }
-  .card-lift:has([data-card-link]:focus-visible) > :is(h2, h3, h4) {
+  .card-lift[data-focus-mark] > :is(h2, h3, h4) {
     color: var(--color-ink);
   }
   @media (hover: hover) {
@@ -424,11 +424,11 @@ html:has(dialog[data-details][open]) {
     .card-lift {
       transition: translate 350ms var(--ease-tv);
     }
-    .card-lift:has([data-card-link]:focus-visible) {
+    .card-lift[data-focus-mark] {
       translate: 0 -2px;
     }
     .card-lift .card-media,
-    .card-lift:has([data-card-link]:focus-visible) .card-media,
+    .card-lift[data-focus-mark] .card-media,
     .card-lift:hover .card-media {
       translate: none;
     }
@@ -722,12 +722,12 @@ html:has(dialog[data-details][open]) {
 }
 /* The hero's video in the row: a gold ring round its picture (never a tint over it), and a thin
    gold line along its foot counting down to the next one. */
-[data-row='featured'] > li[data-active]:not(:has(:focus-visible)) article > .aspect-video {
+[data-row='featured'] > li[data-active]:not([data-focus-mark]) article > .aspect-video {
   outline: 2px solid var(--color-band-gold);
   outline-offset: 3px;
 }
 /* A soft gold halo outside the ring (the picture stays as it is). */
-[data-row='featured'] > li[data-active]:not(:has(:focus-visible)) article {
+[data-row='featured'] > li[data-active]:not([data-focus-mark]) article {
   --card-hairline: 0 0 0 1px rgb(0 0 0 / 0.06), 0 0 28px -6px rgb(252 181 27 / 0.55);
 }
 /* The count: a rounded gold line inset along the picture's foot, on a faint light track (giving way
@@ -750,8 +750,17 @@ html:has(dialog[data-details][open]) {
   background: linear-gradient(90deg, var(--color-band-gold), #ffd36e);
   box-shadow: 0 0 6px rgb(252 181 27 / 0.6);
   transform-origin: left;
-  transform: scaleX(var(--advance, 0));
-  transition: transform 250ms linear;
+  transform: scaleX(0);
+  /* ADVANCE_MS (Featured.tsx); restarts when the card becomes active or its hold lifts. */
+  animation: hero-advance 7s linear both;
+}
+[data-row='featured'] > li[data-active][data-hold] article > .aspect-video::after {
+  animation: none;
+}
+@keyframes hero-advance {
+  to {
+    transform: scaleX(1);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-row='featured'] > li[data-active] article > .aspect-video::before,

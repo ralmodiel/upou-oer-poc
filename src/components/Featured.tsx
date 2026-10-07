@@ -89,7 +89,13 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
 
   useEffect(() => {
     let waited = 0
-    const reset = () => (waited = 0)
+    // A click or key press starts the count again; the line restarts with it on the next tick (it
+    // may then end a tick after the swap, unseen).
+    let restart = false
+    const reset = () => {
+      waited = 0
+      restart = true
+    }
     window.addEventListener('pointerdown', reset, true)
     window.addEventListener('keydown', reset, true)
     const timer = window.setInterval(() => {
@@ -106,11 +112,12 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
         document.querySelector('.card-preview') ||
         document.querySelector('dialog[open]')
       waited = busy ? 0 : waited + TICK_MS
-      // On the active card only: on the zone it restyled the hero and the whole row every tick.
-      el.querySelector<HTMLElement>('[data-row="featured"] > li[data-active]')?.style.setProperty(
-        '--advance',
-        String(waited / ADVANCE_MS),
-      )
+      const hold = !!busy || restart
+      restart = false
+      // The progress line is one CSS animation (browse.css) on the active card, held by an
+      // attribute written only when that changes: a value written every tick restyled the page.
+      const li = el.querySelector<HTMLElement>('[data-row="featured"] > li[data-active]')
+      if (li && li.hasAttribute('data-hold') !== hold) li.toggleAttribute('data-hold', hold)
       if (waited < ADVANCE_MS) return
       waited = 0
       swapHero(() => setIndex((i) => (i + 1) % count))
@@ -131,7 +138,7 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
     const items = el?.querySelectorAll<HTMLElement>('[data-row="featured"] > li') ?? []
     items.forEach((li, i) => {
       li.toggleAttribute('data-active', i === index)
-      li.style.removeProperty('--advance')
+      li.removeAttribute('data-hold')
     })
     const li = items[index]
     const track = li?.closest<HTMLElement>('[data-spatial="track"]')

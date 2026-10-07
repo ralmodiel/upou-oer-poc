@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigationType } from 'react-router'
 import CollectionChips from '../components/CollectionChips'
 import Featured from '../components/Featured'
@@ -8,7 +8,7 @@ import PageBand from '../components/PageBand'
 import RecentlyViewed from '../components/RecentlyViewed'
 import Recommended from '../components/Recommended'
 import Section from '../components/Section'
-import { onIdle, useFrozen } from '../components/browse-hooks'
+import { onIdle, useBelowFoldLater, useFrozen } from '../components/browse-hooks'
 import { GridHint, ManageLink } from '../components/browse-ui'
 import { forYou, moreLikeThis, reasonsFor } from '../components/recs'
 import { ChevronRightIcon } from '../components/icons'
@@ -253,6 +253,10 @@ export default function BrowsePage() {
     [featured, alsoNew, recent, shownRows],
   )
   const restoring = useRestoring()
+  // Everything below the featured block starts below the fold: on a first visit it renders after
+  // the first paint (a Back or reload restores into it, so it is there at once).
+  const bands = useRef<HTMLDivElement>(null)
+  const showBands = useBelowFoldLater(bands, !restoring)
   const recs = useHomeRecommendations(PICKS, shown, restoring, prefs.recommendations || showBecause)
   // Recs computed before the latest watch (Back from the player) may hold a title now shown above:
   // never repeat one across the top rows (unless that would leave a row bare: a tiny catalog).
@@ -281,48 +285,52 @@ export default function BrowsePage() {
     <>
       <GridHint />
       <Intro />
-      <Featured videos={featured} alsoNew={alsoNew} />
+      <Featured videos={featured} alsoNew={alsoNew} later={!restoring} />
       {/* Every third section is a tinted band (browse.css). */}
-      <div className="home-bands">
-        {prefs.recommendations && (
-          <Recommended
-            row="recommended"
-            title="Recommended for you"
-            description={
-              <>
-                Picked from what you {pickSources(prefs)} in this browser.{' '}
-                <ManageLink className={IN_TEXT} />
-              </>
-            }
-            videos={forYouList}
-            reasons={recs.reasons}
-            pending={recs.pending}
-            cards={PICKS}
-          />
+      <div ref={bands} className="home-bands">
+        {showBands && (
+          <>
+            {prefs.recommendations && (
+              <Recommended
+                row="recommended"
+                title="Recommended for you"
+                description={
+                  <>
+                    Picked from what you {pickSources(prefs)} in this browser.{' '}
+                    <ManageLink className={IN_TEXT} />
+                  </>
+                }
+                videos={forYouList}
+                reasons={recs.reasons}
+                pending={recs.pending}
+                cards={PICKS}
+              />
+            )}
+            <RecentlyViewed videos={recent} />
+            <HistoryOff />
+            {showBecause && recs.because && becauseList.length > 0 && (
+              <Recommended
+                row="because"
+                title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
+                description={
+                  <>
+                    Titles close to the one you watched last. <ManageLink className={IN_TEXT} />
+                  </>
+                }
+                videos={becauseList}
+                reasons={recs.because.reasons}
+                cards={PICKS}
+              />
+            )}
+            {shownRows.map((row) => (
+              <Section key={row.id} row={row} eager={restoring} />
+            ))}
+            {/* The guide and the subject index close the feed: mid-page, either read as its end. */}
+            <HowItWorks />
+            <CollectionChips />
+            <MoreCollections shown={shownRows.length} />
+          </>
         )}
-        <RecentlyViewed videos={recent} />
-        <HistoryOff />
-        {showBecause && recs.because && becauseList.length > 0 && (
-          <Recommended
-            row="because"
-            title={`Because you watched “${shortTitle(recs.because.video.title)}”`}
-            description={
-              <>
-                Titles close to the one you watched last. <ManageLink className={IN_TEXT} />
-              </>
-            }
-            videos={becauseList}
-            reasons={recs.because.reasons}
-            cards={PICKS}
-          />
-        )}
-        {shownRows.map((row) => (
-          <Section key={row.id} row={row} eager={restoring} />
-        ))}
-        {/* The guide and the subject index close the feed: mid-page, either read as its end. */}
-        <HowItWorks />
-        <CollectionChips />
-        <MoreCollections shown={shownRows.length} />
       </div>
     </>
   )

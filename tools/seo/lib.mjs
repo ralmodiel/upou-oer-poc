@@ -6,7 +6,17 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { STAGE_SIZES } from '../../src/data/images.ts'
+import CROPS from '../../src/data/frame-crops.json' with { type: 'json' }
+import FLAGS from '../../src/data/frame-flags.json' with { type: 'json' }
+import {
+  STAGE_SIZES,
+  candidateOf,
+  isCleanImage,
+  slotImages,
+  widthOf,
+  youtubeIdOf,
+  zoomFrom,
+} from '../../src/data/images.ts'
 import { formatDate } from '../../src/lib/format.ts'
 import {
   SITE_NAME,
@@ -26,6 +36,7 @@ import {
 import { registerNameTokens } from '../../src/lib/tags.ts'
 import { watchUrl } from '../../src/lib/youtube.ts'
 import { hasCleanPoster, isGeneral, loadCatalog, newestFirst, posterOf } from './catalog.mjs'
+import { chromeMarkup } from './chrome.mjs'
 
 const CATALOG = fileURLToPath(new URL('../../src/data/catalog.json', import.meta.url))
 
@@ -59,20 +70,65 @@ const renderTag = ({ tag, attrs, text }) => {
 export const templateOf = (html) =>
   html
     .replace(/\n?[ \t]*<!--seo-->[\s\S]*?<!--\/seo-->/, '')
+    .replace(/\n?[ \t]*<script\b[^>]*\bdata-theme-boot\b[^>]*><\/script>/, '')
     .replace(/<div id="root">[\s\S]*?<!--\/seo-fallback--><\/div>/, '<div id="root"></div>')
     .replace(/\n?[ \t]*<meta\b[^>]*\bname="description"[^>]*>/, '')
 
-function shell(template, options, fallback, extra = []) {
+// With a `section` ('home', 'collections', 'my-list', or null for none) the page also gets the
+// app's header and tab bar (chrome.mjs), painted from the HTML while the scripts load, and the
+// theme script ahead of the stylesheet and scripts (it waits for neither). Left out on the search
+// page, whose header field shows the query.
+function shell(template, options, fallback, extra = [], section) {
   const block = ['<!--seo-->', ...[...headTags(options), ...extra].map(renderTag), '<!--/seo-->']
     .map((line) => `    ${line}`)
     .join('\n')
+  const chrome = section === undefined ? '' : chromeMarkup(basePath(), section)
+  const boot = chrome
+    ? `<script src="${basePath()}theme-boot.js" data-theme-boot></script>\n    `
+    : ''
   return template
-    .replace(/<title\b[^>]*>[\s\S]*?<\/title>/, `<title>${esc(options.title)}</title>`)
+    .replace(/<title\b[^>]*>[\s\S]*?<\/title>/, () => `${boot}<title>${esc(options.title)}</title>`)
     .replace(/\n[ \t]*<\/head>/, `\n${block}\n  </head>`)
     .replace(
       '<div id="root"></div>',
-      `<div id="root"><!--seo-fallback-->\n<div class="seo-fallback">\n${fallback}\n</div>\n<!--/seo-fallback--></div>`,
+      `<div id="root">${chrome}<!--seo-fallback-->\n<div class="seo-fallback">\n${fallback}\n</div>\n<!--/seo-fallback--></div>`,
     )
+}
+
+// The home's largest paint is the featured video's still, which React renders only after the
+// scripts run. The shell holds a preload for exactly the file the hero then shows (its poster, with
+// the hero's srcSet and sizes), off (media="not all") until public/theme-boot.js sees the
+// stylesheet arrive: started with the HTML it pushed the stylesheet back (first paint +0.2 s on a
+// slow link); started after it, first paint is unchanged and the still lands 0.4-0.8 s sooner.
+// generate.test.mjs keeps HERO_SIZES equal to src/components/media.ts.
+const HERO_SIZES =
+  '(min-width: 64rem) 55vw, (min-resolution: 2.5dppx) and (orientation: portrait) 45vw, (min-resolution: 2.5dppx) 22vw, 100vw'
+// What media.ts thumbnailOf(video, true) picks for the hero (heroImageOf, else the least bad image).
+const FRAME = /\/(maxres|sd|mq)[123]\.jpg(\?|$)/
+function heroPreload(v) {
+  if (!v) return null
+  const flags = FLAGS[v.youtubeId]
+  const clean = (src) => !!src && isCleanImage(flags, src)
+  const original = v.backdrop.replace(FRAME, '/$1default.jpg$2')
+  const fallback = widthOf(original) >= 640 ? original : v.thumbnails?.[0]
+  const best = [v.poster, fallback, ...v.frames].find(clean)
+  const large = best ?? v.poster ?? v.thumbnail
+  const small =
+    v.thumbnails?.find((s) => candidateOf(s) === candidateOf(large) && (!best || clean(s))) ??
+    (best ? large : v.thumbnail)
+  const { srcSet } = slotImages(small, large, (src) => zoomFrom(CROPS[youtubeIdOf(src)], src))
+  const sizes = srcSet ? { imagesrcset: srcSet, imagesizes: HERO_SIZES } : {}
+  return {
+    tag: 'link',
+    attrs: {
+      rel: 'preload',
+      as: 'image',
+      href: large,
+      ...sizes,
+      media: 'not all',
+      'data-hero': '',
+    },
+  }
 }
 
 // A watch page's largest paint is its player poster, which React renders only after the scripts
@@ -248,14 +304,20 @@ export async function generate({
   const home = homeSeo(videos.length, categories.length, hero && socialImageOf(hero))
   files.push([
     join(dist, 'index.html'),
-    shell(template, home, homeFallback(home, latestFirst(categories), newest.slice(0, LATEST))),
+    shell(
+      template,
+      home,
+      homeFallback(home, latestFirst(categories), newest.slice(0, LATEST)),
+      [heroPreload(newest.find((v) => v.featured) ?? newest[0])].filter(Boolean),
+      'home',
+    ),
   ])
   urls.push({ loc: canonicalUrl('/'), lastmod: newest[0]?.publishedAt })
 
   const collections = collectionsSeo(categories)
   files.push([
     join(dist, 'collections', 'index.html'),
-    shell(template, collections, collectionsFallback(collections, categories)),
+    shell(template, collections, collectionsFallback(collections, categories), [], 'collections'),
   ])
   urls.push({ loc: canonicalUrl('/collections'), lastmod: newest[0]?.publishedAt })
 
@@ -265,13 +327,16 @@ export async function generate({
   const myList = myListSeo()
   files.push(
     [join(dist, 'search', 'index.html'), shell(template, search, appFallback(search, 'Search'))],
-    [join(dist, 'my-list', 'index.html'), shell(template, myList, appFallback(myList, 'My List'))],
+    [
+      join(dist, 'my-list', 'index.html'),
+      shell(template, myList, appFallback(myList, 'My List'), [], 'my-list'),
+    ],
   )
 
   for (const c of categories) {
     files.push([
       join(dist, 'collections', c.slug, 'index.html'),
-      shell(template, collectionSeo(c, c.videos), collectionFallback(c)),
+      shell(template, collectionSeo(c, c.videos), collectionFallback(c), [], 'collections'),
     ])
     urls.push({ loc: canonicalUrl(`/collections/${c.slug}`), lastmod: c.cover.publishedAt })
   }
@@ -279,7 +344,7 @@ export async function generate({
     const c = byName.get(v.category)
     files.push([
       join(dist, 'watch', v.id, 'index.html'),
-      shell(template, videoSeo(v, c), videoFallback(v, c), [posterPreload(v)]),
+      shell(template, videoSeo(v, c), videoFallback(v, c), [posterPreload(v)], null),
     ])
     urls.push({ loc: canonicalUrl(`/watch/${v.id}`), lastmod: v.publishedAt })
   }

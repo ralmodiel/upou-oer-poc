@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import Header, { TabBar } from '../components/Header'
 import PrivacyDialog from '../components/PrivacyDialog'
 import ShortcutsSheet from '../components/ShortcutsSheet'
+import { usePainted } from '../components/browse-hooks'
 import { useReturnFocus } from '../components/hooks'
 import { useWarmRecommender } from '../components/recs'
 import { useGlobalShortcuts } from '../lib/shortcuts'
@@ -22,6 +23,8 @@ export default function AppLayout() {
   useSpatialNavigation()
   useReturnFocus()
   useWarmRecommender()
+  // Closed until asked for (a key or a link): never part of the first frame.
+  const painted = usePainted()
 
   return (
     // Bottom padding keeps the footer clear of the phone tab bar.
@@ -42,8 +45,8 @@ export default function AppLayout() {
       </main>
       <Footer />
       <DetailModal />
-      <ShortcutsSheet />
-      <PrivacyDialog />
+      {painted && <ShortcutsSheet />}
+      {painted && <PrivacyDialog />}
     </div>
   )
 }

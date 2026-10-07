@@ -5,8 +5,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { thumbnailOf } from '../../src/components/media'
-import { getCategories } from '../../src/data/catalog'
+import { HERO_SIZES, thumbnailOf } from '../../src/components/media'
+import { getCategories, getFeatured } from '../../src/data/catalog'
 import records from '../../src/data/catalog.json'
 import { expandRecord } from '../../src/data/expand'
 import { STAGE_SIZES } from '../../src/data/images'
@@ -93,6 +93,33 @@ describe('tools/seo/generate.mjs', () => {
       `<link rel="preload" as="image" href="${poster.href}"${sizes} fetchpriority="high" data-seo />`,
     )
     expect(shell.match(/rel="preload"/g)).toHaveLength(1)
+
+    // The app's header and tab bar paint from the HTML (chrome.test.mjs keeps them the app's),
+    // with the theme script ahead of the scripts and stylesheet; none on the search page, whose
+    // header field holds the query.
+    const boot = '<script src="/upou-networks/theme-boot.js" data-theme-boot></script>'
+    for (const [page, current] of [
+      [home, '/upou-networks'],
+      [shell, null],
+      [readFileSync(join(dist, 'collections', slugs[0], 'index.html'), 'utf8'), 'collections'],
+    ]) {
+      expect(page.indexOf(boot)).toBeGreaterThan(0)
+      expect(page.indexOf(boot)).toBeLessThan(page.indexOf('<script type="module"'))
+      expect(page).toMatch(/<div id="root"><header [^]*<\/nav><!--seo-fallback-->/)
+      expect(page.match(/aria-current="page"/g)?.length ?? 0).toBe(current ? 2 : 0)
+    }
+    // The home also holds the hero still's preload, off until theme-boot.js turns it on: the very
+    // file and sizes the hero renders, so the app reuses the download.
+    const hero = thumbnailOf(getFeatured()[0], true)
+    const preload = home.match(/<link rel="preload"[^>]*data-hero[^>]*>/)?.[0] ?? ''
+    expect(preload).toContain('media="not all"')
+    expect(preload).toContain(`href="${hero.large}"`)
+    expect(preload).toContain(`imagesrcset="${hero.srcSet}"`)
+    expect(preload).toContain(`imagesizes="${HERO_SIZES}"`)
+    expect(shell).not.toContain('data-hero')
+    const search = readFileSync(join(dist, 'search', 'index.html'), 'utf8')
+    expect(search).not.toContain('theme-boot')
+    expect(search).toContain('<div id="root"><!--seo-fallback-->')
 
     // Search and My List: shells so a direct load is a 200, but noindex and out of the sitemap.
     for (const [dir, title] of [

@@ -12,7 +12,7 @@ import { reelWorks } from '../lib/lite'
 import { lastInput } from '../lib/pointer'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
-import { canHover, onIdle } from './browse-hooks'
+import { canHover, onIdle, whenImagesSettled } from './browse-hooks'
 import { prefersReducedMotion } from './hooks'
 
 const HOVER_DELAY_MS = 800
@@ -43,8 +43,8 @@ function release(id: string) {
 }
 
 // The reel chunk (shared with the watch page), fetched once: when the browser is first idle after a
-// card mounts (with the watch page's), or at the first hover or focus on a card, so a preview never
-// waits on the network.
+// card mounts and the pictures on screen have arrived (with the watch page's), or at the first hover
+// or focus on a card, so a preview never waits on the network.
 let reelRequested = false
 let idleScheduled = false
 function prefetchReel() {
@@ -57,10 +57,13 @@ function prefetchReel() {
 function prefetchReelWhenIdle() {
   if (idleScheduled || reelRequested) return
   idleScheduled = true
-  onIdle(() => {
-    prefetchReel()
-    prefetchWatch()
-  }, 4000)
+  // Not before the pictures on screen have arrived: on a slow link the chunks took its bandwidth.
+  whenImagesSettled(() =>
+    onIdle(() => {
+      prefetchReel()
+      prefetchWatch()
+    }, 4000),
+  )
 }
 
 /** Stops whichever preview is playing (dialogs opening, for instance). */

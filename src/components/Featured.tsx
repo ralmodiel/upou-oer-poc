@@ -13,7 +13,7 @@ import PlayLink from './PlayLink'
 import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
-import { useImagesSettled } from './browse-hooks'
+import { useBelowFoldLater, useImagesSettled } from './browse-hooks'
 import { FactsLine, LONG_TITLE } from './browse-ui'
 import { AT_DETAILS, wasOpenedInApp } from './details'
 import { LAND, prefersReducedMotion } from './hooks'
@@ -29,6 +29,8 @@ interface Props {
   alsoNew: readonly Video[]
   /** The video the hero opens on (the first by default). */
   start?: number
+  /** Also new may render after the first paint when it starts below the fold (a first visit). */
+  later?: boolean
 }
 
 /** Time the page is left alone before the hero moves on to the next featured video. */
@@ -69,7 +71,7 @@ function Featured(props: Props) {
  * (HOVER_INTENT_MS), or focus on one, shows that video at once; the count then starts from it. The
  * active card shows the count as a thin line.
  */
-function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
+function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
   const { key } = useLocation()
   const popped = useNavigationType() === 'POP'
   const count = videos.length
@@ -79,6 +81,8 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
   useEffect(() => void heroAt.set(key, index), [key, index])
   const shown = useRef(index)
   const zone = useRef<HTMLDivElement>(null)
+  // Also new follows the featured zone.
+  const showNew = useBelowFoldLater(zone, later, 'bottom')
   const hovered = useRef(false)
   const intent = useRef({ timer: 0, to: -1 })
 
@@ -180,7 +184,7 @@ function FeaturedHome({ videos, alsoNew, start = 0 }: Props) {
           </div>
         </section>
       </div>
-      {alsoNew.length > 0 && (
+      {showNew && alsoNew.length > 0 && (
         <Recommended row="new" title="Also new" videos={alsoNew} cards={alsoNew.length} />
       )}
       <MoreBelow />

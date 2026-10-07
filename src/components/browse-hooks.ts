@@ -1,4 +1,13 @@
-import { startTransition, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from 'react'
+import { flushSync } from 'react-dom'
 
 const lists = new Map<string, MediaQueryList>()
 const listOf = (query: string) => {
@@ -43,6 +52,91 @@ export function onIdle(fn: () => void, timeout = 2000): () => void {
   }
   const id = window.setTimeout(fn, 150)
   return () => clearTimeout(id)
+}
+
+// The app's first frame has painted. Until then, parts far below the fold or never on screen at
+// first (closed dialogs) wait, so the first paint is not held up by them.
+let painted = false
+
+/**
+ * False in the app's first commit, true from the frame after it has painted (and at once on every
+ * later page). The parts it gates render in a transition, so their work never blocks a frame.
+ */
+export function usePainted(): boolean {
+  const [done, setDone] = useState(painted)
+  useEffect(() => {
+    if (done) return
+    // A callback before the next frame; the update it schedules runs after that frame's paint.
+    const frame = requestAnimationFrame(() => {
+      painted = true
+      startTransition(() => setDone(true))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [done])
+  return done
+}
+
+// The home hero's picture, the largest paint of a first visit there.
+const LEAD_IMAGE = '[data-hero-media] img'
+const LEAD_WAIT_MAX_MS = 1500
+
+/**
+ * Calls `fn` after the frame that paints the lead picture (once it has loaded or failed), or
+ * LEAD_WAIT_MAX_MS after the call; returns a cancel.
+ */
+function afterLeadImage(fn: () => void): () => void {
+  const img = document.querySelector<HTMLImageElement>(LEAD_IMAGE)
+  let frame = 0
+  const go = () => {
+    clearTimeout(timer)
+    img?.removeEventListener('load', go)
+    img?.removeEventListener('error', go)
+    // The first callback runs before the frame that paints the picture, the second after it.
+    frame = requestAnimationFrame(() => (frame = requestAnimationFrame(fn)))
+  }
+  const timer = window.setTimeout(go, LEAD_WAIT_MAX_MS)
+  if (!img?.src || img.complete) go()
+  else {
+    img.addEventListener('load', go)
+    img.addEventListener('error', go)
+  }
+  return () => {
+    clearTimeout(timer)
+    cancelAnimationFrame(frame)
+    img?.removeEventListener('load', go)
+    img?.removeEventListener('error', go)
+  }
+}
+
+/**
+ * True unless this is the app's first commit and what it gates starts below the viewport: where
+ * `edge` of `ref`'s element (its top, or its bottom for what follows it) is. It then renders once
+ * the lead picture has painted (see above), in a transition, so the first paint and the largest one
+ * wait for nothing out of view. Measured before the first paint, so content in view at first is in
+ * the first frame. `enabled` false renders at once (a Back or reload restoring a scroll position).
+ */
+export function useBelowFoldLater(
+  ref: RefObject<Element | null>,
+  enabled: boolean,
+  edge: 'top' | 'bottom' = 'top',
+): boolean {
+  const [show, setShow] = useState(() => painted || !enabled)
+  useLayoutEffect(() => {
+    if (show) return
+    // Measured in the first frame before it paints, not during the commit: a layout forced there
+    // held back the request of the picture just rendered (the hero's).
+    let cancelLater = () => {}
+    const frame = requestAnimationFrame(() => {
+      const box = ref.current?.getBoundingClientRect()
+      if (box && box[edge] < window.innerHeight) flushSync(() => setShow(true))
+      else cancelLater = afterLeadImage(() => startTransition(() => setShow(true)))
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      cancelLater()
+    }
+  }, [show, ref, edge])
+  return show
 }
 
 /**
@@ -102,6 +196,16 @@ if (typeof window !== 'undefined') {
 const onSettled = (fn: () => void) => {
   settleListeners.add(fn)
   return () => void settleListeners.delete(fn)
+}
+
+/** Runs `fn` once the pictures on the first screen have arrived (at once if they have). */
+export function whenImagesSettled(fn: () => void) {
+  if (settled) return fn()
+  const once = () => {
+    settleListeners.delete(once)
+    fn()
+  }
+  settleListeners.add(once)
 }
 
 /** True once the pictures on the first screen have arrived (or 8 s passed; see above). */

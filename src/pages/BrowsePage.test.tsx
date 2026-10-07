@@ -52,7 +52,8 @@ describe('BrowsePage', () => {
       )
       render(<RouterProvider router={router} />)
       await act(() => router.navigate('/'))
-      const research = screen.getByRole('region', { name: 'Research' })
+      // Below the fold on a first visit, the sections render just after the first paint.
+      const research = await screen.findByRole('region', { name: 'Research' })
       // Heading and See all are there at once; the cards wait (a same-size skeleton holds the place).
       expect(within(research).getByRole('link', { name: /^See all/ })).toBeInTheDocument()
       expect(within(research).queryAllByRole('article')).toHaveLength(0)

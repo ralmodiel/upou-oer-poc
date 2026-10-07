@@ -115,7 +115,7 @@ export default function CategoryPage() {
         title={category.name}
         aside={mosaic ? <MosaicBackdrop videos={newest} /> : undefined}
       >
-        {all.length} {all.length === 1 ? 'video' : 'videos'}
+        {all.length.toLocaleString('en')} {all.length === 1 ? 'video' : 'videos'}
         {category.name === GENERAL_CATEGORY ? ' without a subject category' : ''}
       </PageBand>
       <div className="page-stage px-(--gutter) pt-6 pb-16">

@@ -2,7 +2,7 @@ import { hashString } from '../lib/seed'
 import type { CatalogRecord, Video } from '../types'
 import { frameFlagsOf } from './frameFlags'
 import { videoImages, type VideoImages } from './images'
-import { isObject, isValidRecord } from './records'
+import { isObject, isValidRecord, tidyTitle } from './records'
 
 export { isValidRecord }
 
@@ -56,7 +56,7 @@ export function expandRecord(r: CatalogRecord): Video {
   const video = {
     id: r.id,
     youtubeId: r.y,
-    title: r.t,
+    title: tidyTitle(r.t),
     description: r.d ?? '',
     category: r.c,
     tags: r.g ?? [],

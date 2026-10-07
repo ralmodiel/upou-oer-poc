@@ -21,6 +21,8 @@ export const SITE_NAME = 'UPOU OER'
 export const PUBLISHER = 'University of the Philippines Open University'
 const PUBLISHER_URL = 'https://www.upou.edu.ph/'
 const LICENSE_URL = 'https://creativecommons.org/licenses/by/4.0/'
+// UPOU's own channel, as in src/data/expand.ts (not imported: the SEO build runs this file in Node).
+const DEFAULT_CHANNEL = 'UP Open University'
 /** Search results show about 60 characters of a title and 160 of a description. */
 export const TITLE_MAX = 65
 /**
@@ -91,7 +93,8 @@ export function clamp(text: string, max: number): string {
 
 /** "Main · UPOU OER" when that fits TITLE_MAX; longer titles drop the suffix (up to LONG_TITLE_MAX). */
 export function pageTitle(main: string): string {
-  const full = `${clamp(main, TITLE_MAX)} · ${SITE_NAME}`
+  // Measured whole: a title cut to fit beside the suffix would lose the end that tells parts apart.
+  const full = `${main.replace(/\s+/g, ' ').trim()} · ${SITE_NAME}`
   return full.length <= TITLE_MAX ? full : clamp(main, LONG_TITLE_MAX)
 }
 
@@ -112,7 +115,8 @@ export function describeVideo(v: Video): string {
     .join(', ')
   const facts = `${v.category} · ${v.channel}${published}${topics ? ` · Topics: ${topics}` : ''}`
   const text = `${clamp(v.title, 100)} · ${facts}`
-  return clamp(text.length < 120 ? `${text} · Free to watch, CC BY 4.0.` : text, DESCRIPTION_MAX)
+  const terms = v.channel === DEFAULT_CHANNEL ? 'Free to watch, CC BY 4.0.' : 'Free to watch.'
+  return clamp(text.length < 120 ? `${text} · ${terms}` : text, DESCRIPTION_MAX)
 }
 
 export const describeCollection = (c: Category): string =>
@@ -145,7 +149,8 @@ export function videoJsonLd(v: Video): JsonLd {
     ...(v.tags.length ? { keywords: v.tags.join(', ') } : {}),
     publisher: organization,
     isAccessibleForFree: true,
-    license: LICENSE_URL,
+    // UPOU's own uploads are CC BY 4.0; another channel's (TVUP, UP Press…) may not be.
+    ...(v.channel === DEFAULT_CHANNEL ? { license: LICENSE_URL } : {}),
   })
 }
 

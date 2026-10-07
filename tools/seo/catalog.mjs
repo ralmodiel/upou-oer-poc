@@ -1,6 +1,7 @@
 // Node-side view of the catalog. It mirrors src/data/expand.ts and the category grouping in
 // src/data/catalog.ts, which Node cannot import (JSON import, extensionless paths); images come
 // from the same src/data/images.ts. tools/seo/generate.test.mjs checks that the two agree.
+import { tidyTitle } from '../../src/data/records.ts'
 import CROPS from '../../src/data/frame-crops.json' with { type: 'json' }
 import FLAGS from '../../src/data/frame-flags.json' with { type: 'json' }
 import {
@@ -38,7 +39,7 @@ export function expandRecord(r, flags = FLAGS) {
   return {
     id: r.id,
     youtubeId: r.y,
-    title: r.t,
+    title: tidyTitle(r.t),
     description: r.d ?? '',
     category: r.c,
     tags: r.g ?? [],

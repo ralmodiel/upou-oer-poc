@@ -204,15 +204,15 @@ export default function PrivacyDialog() {
         <div>
           <p className="eyebrow">Privacy</p>
           <h2 id={titleId} className="mt-1 font-display text-2xl leading-tight">
-            History and personalization
+            Privacy and history
           </h2>
         </div>
         <IconButton label="Close" icon={<CloseIcon />} onClick={close} className="-mt-1 -mr-2" />
       </div>
       <div className="px-5 pt-3 pb-5 sm:px-6 sm:pb-6">
         <p className="text-sm text-ink-2">
-          Your watch history, searches and My List are kept only in this browser. Nothing is sent to
-          a server.
+          Your watch history, searches and My List are kept only in this browser; this site has no
+          server of its own. Videos and their pictures load from YouTube, which sees what you play.
         </p>
 
         <h3 className={GROUP}>Watch history</h3>
@@ -227,7 +227,7 @@ export default function PrivacyDialog() {
             onChange={set('resume')}
           >
             {prefs.history
-              ? 'Each video resumes where you left it, with Play from start beside Play. It also lets the YouTube player keep its own data, such as caption settings, in this browser. Turning it off deletes the saved places.'
+              ? 'Each video resumes where you left it, with Play from start beside Play. It also lets the YouTube player keep its own data, such as caption settings, in this browser (in Chrome and Edge it keeps none while this is off). Turning it off deletes the saved places.'
               : 'Needs “Save watch history”.'}
           </Toggle>
           <Toggle
@@ -237,7 +237,7 @@ export default function PrivacyDialog() {
             onChange={set('useHistory')}
           >
             {prefs.history
-              ? 'Recently viewed, Because you watched, and picks in Recommended, Up next and More like this. Off: nothing on the site draws on your history.'
+              ? 'Recently viewed, Because you watched, and picks in Recommended, Up next and More like this. Off: no suggestions draw on your history.'
               : needsHistory}
           </Toggle>
           <ClearRow status={watched} count={history.entries.length} onClear={history.clear}>

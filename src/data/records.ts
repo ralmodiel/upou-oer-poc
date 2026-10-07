@@ -20,3 +20,6 @@ export const isValidRecord = (value: unknown): value is CatalogRecord =>
   text(value.c) &&
   typeof value.p === 'string' &&
   !Number.isNaN(Date.parse(value.p))
+
+/** A title as shown: a stray trailing separator from the source ("What is a Species really? |") dropped. */
+export const tidyTitle = (title: string): string => title.replace(/[\s|–—-]+$/u, '')

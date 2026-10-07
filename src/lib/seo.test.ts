@@ -76,6 +76,26 @@ describe('text', () => {
     const part = (n: number) =>
       `From Cone Snail Venom to Drugs: The Scientific Odyssey of a UP Graduate (Part ${n})`
     expect(pageTitle(part(1))).not.toBe(pageTitle(part(2)))
+    // Short enough to cut beside the suffix, but the cut would drop "Part n".
+    const short = (n: number) =>
+      `Intra Cellular Protein Sorting and Maintenance of Compartmentalization Part ${n}`
+    expect(pageTitle(short(1))).toBe(short(1))
+    // No two catalog videos with different titles share a page title.
+    const byTitle = new Map<string, string>()
+    for (const r of slim) {
+      const t = pageTitle(r.t)
+      const seen = byTitle.get(t)
+      if (seen !== undefined && seen !== r.t && seen.length <= LONG_TITLE_MAX)
+        expect(r.t).toBe(seen)
+      byTitle.set(t, r.t)
+    }
+  })
+
+  it('claims CC BY 4.0 only for UPOU’s own uploads', () => {
+    const own = { ...fixtureVideos[0], channel: 'UP Open University' }
+    const other = { ...fixtureVideos[0], channel: 'TVUP' }
+    expect(videoJsonLd(own)).toHaveProperty('license')
+    expect(videoJsonLd(other)).not.toHaveProperty('license')
   })
 
   it('describes every video in at most DESCRIPTION_MAX characters', () => {

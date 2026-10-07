@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import type { Category } from '../../data/catalog'
+import { DEFAULT_CHANNEL } from '../../data/expand'
 import { formatDate } from '../../lib/format'
 import type { Video } from '../../types'
 import LikeButton from './LikeButton'
@@ -31,7 +32,10 @@ export default function WatchMeta({ video, category }: { video: Video; category?
             </li>
           )}
           <li>{video.channel}</li>
-          <li className="font-medium text-forest">Free · CC BY 4.0</li>
+          {/* UPOU's own uploads are CC BY 4.0; another channel's terms are on its source page. */}
+          <li className="font-medium text-forest">
+            {video.channel === DEFAULT_CHANNEL ? 'Free · CC BY 4.0' : 'Free to watch'}
+          </li>
         </ul>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-2">

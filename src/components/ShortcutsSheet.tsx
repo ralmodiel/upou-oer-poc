@@ -10,7 +10,7 @@ const KEYS: { keys: string[]; text: string }[] = [
   { keys: ['←', '→', '↑', '↓'], text: 'Move the highlight to the nearest card or control' },
   {
     keys: ['↓', '↑'],
-    text: '↓ from a card goes on to the next row; ↑ straight after, to its Save',
+    text: '↓ from a card moves to the next row; ↑ right after returns to that card’s Save',
   },
   { keys: ['←', '→'], text: 'Along a row of chips (↑ or ↓ leaves the row)' },
   { keys: ['Enter'], text: 'Open the highlighted video or press the control' },

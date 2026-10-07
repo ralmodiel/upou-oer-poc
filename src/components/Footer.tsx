@@ -52,8 +52,8 @@ export default function Footer() {
           </h2>
           <p className="mt-3 leading-relaxed text-on-band/90">{DISCLAIMER}</p>
           <p className="mt-3 leading-relaxed text-on-band/75">
-            It is not affiliated with, endorsed by, or intended to imitate the design of any
-            commercial streaming service.
+            It is an independent project, not affiliated with or endorsed by UP Open University, and
+            not intended to imitate the design of any commercial streaming service.
           </p>
         </section>
         <section aria-labelledby="footer-source">
@@ -117,7 +117,8 @@ export default function Footer() {
           UPOU <span className="text-band-gold">OER</span>
         </p>
         <p>
-          Open Educational Resources from UP Open University · a proof of concept, not a product.
+          Open Educational Resources from UP Open University · an independent proof of concept, not
+          a product.
         </p>
       </div>
     </footer>

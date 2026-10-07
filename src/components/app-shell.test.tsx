@@ -124,7 +124,9 @@ describe('ShortcutsSheet', () => {
   it('lists the remote keys, including what ↓ does from a card and in a chip row', () => {
     render(<ShortcutsSheet />)
     expect(
-      screen.getByText('↓ from a card goes on to the next row; ↑ straight after, to its Save'),
+      screen.getByText(
+        '↓ from a card moves to the next row; ↑ right after returns to that card’s Save',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByText('Along a row of chips (↑ or ↓ leaves the row)')).toBeInTheDocument()
     expect(screen.getByText('Previous or next section of the page')).toBeInTheDocument()

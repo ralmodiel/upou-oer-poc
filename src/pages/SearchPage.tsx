@@ -232,7 +232,7 @@ export default function SearchPage() {
               ? `No videos match “${q}”. Showing results for “${fix.text}”.`
               : count === 0
                 ? `No videos${where} match “${q}”`
-                : `${count} ${count === 1 ? 'video' : 'videos'}${where}`}
+                : `${count.toLocaleString('en')} ${count === 1 ? 'video' : 'videos'}${where}`}
           </p>
           {fix && (
             <p>

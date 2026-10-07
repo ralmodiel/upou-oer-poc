@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { centreShift, swapWatchPage, useStageCentre } from './useStageCentre'
 
 // A 1366x768 laptop: a 64px header, the stage 464px tall under the 56px Back row.
@@ -82,7 +82,11 @@ function fakeTransitions() {
 }
 
 describe('swapWatchPage', () => {
+  // Fake timers throughout: a swap polls for the new page for up to 1.5 s, and a real poll left
+  // running fired after the file's jsdom was gone ("document is not defined" in CI).
+  beforeEach(() => vi.useFakeTimers())
   afterEach(() => {
+    vi.clearAllTimers()
     vi.useRealTimers()
     Reflect.deleteProperty(document, 'startViewTransition')
     document.body.innerHTML = ''
@@ -93,7 +97,6 @@ describe('swapWatchPage', () => {
     const go = vi.fn()
     expect(swapWatchPage(go)).toBe(false)
     expect(go).not.toHaveBeenCalled()
-    vi.useFakeTimers()
     const { start, ends, updates } = fakeTransitions()
     document.body.innerHTML = '<div class="watch-page"></div>'
     let held = true

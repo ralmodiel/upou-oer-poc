@@ -3,7 +3,7 @@ import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setFrameCrops, setFrameFlags } from '../../data/frameFlags'
 import PromoReel, { REEL_MS } from './PromoReel'
-import { buildReelPlan, REEL_TITLE_MAX } from './plan'
+import { buildReelPlan, REEL_TITLE_MAX, TICK_AT } from './plan'
 import { DECODE_CAP_MS } from './preload'
 import { testVideo } from './testing'
 
@@ -29,10 +29,13 @@ describe('PromoReel', () => {
     expect(
       screen.getByText('Learn how raw numbers become insight.', { exact: false }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(/Starting in/)
+    // The countdown is announced once, as it starts; its digits on screen are not read.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
     expect(screen.getByRole('progressbar', { name: 'Preview progress' })).toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(TICK_AT[0]))
+    expect(screen.getByRole('status')).toHaveTextContent('Video starts in 3 seconds')
 
-    await act(() => vi.advanceTimersByTimeAsync(REEL_MS - 1))
+    await act(() => vi.advanceTimersByTimeAsync(REEL_MS - TICK_AT[0] - 1))
     expect(onComplete).not.toHaveBeenCalled()
     await act(() => vi.advanceTimersByTimeAsync(1))
     expect(onComplete).toHaveBeenCalledTimes(1)

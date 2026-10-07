@@ -1,5 +1,5 @@
-import type { MouseEvent } from 'react'
-import { Outlet, useNavigation } from 'react-router'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { Outlet, useLocation, useNavigation, useNavigationType } from 'react-router'
 import DetailModal from '../components/DetailModal'
 import Footer from '../components/Footer'
 import Header, { TabBar } from '../components/Header'
@@ -23,6 +23,38 @@ function skipToMain(e: MouseEvent<HTMLAnchorElement>) {
 function NavProgress() {
   const busy = useNavigation().state !== 'idle'
   return busy ? <div aria-hidden className="nav-progress" /> : null
+}
+
+// A new page is announced by its title. When the link that opened it was in the header or tab bar
+// (or focus was lost), focus moves to the page so the next Tab starts there; pages that place focus
+// themselves (watch, a submitted search) and Back (useReturnFocus) keep theirs.
+const ANNOUNCE_MS = 150
+function RouteAnnouncer() {
+  const { pathname } = useLocation()
+  const type = useNavigationType()
+  const [message, setMessage] = useState('')
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    const timer = window.setTimeout(() => {
+      setMessage(document.title)
+      const el = document.activeElement
+      if (type === 'POP' || el?.matches('input, textarea, select, [role="combobox"]')) return
+      if (!el || el === document.body || el.closest('header, nav[aria-label="Primary"]'))
+        document.getElementById('main')?.focus({ preventScroll: true })
+    }, ANNOUNCE_MS)
+    return () => clearTimeout(timer)
+    // The path alone: a query (search as you type) or ?v= (quick look) is no new page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+  return (
+    <p role="status" className="sr-only">
+      {message}
+    </p>
+  )
 }
 
 const FRAME =
@@ -73,6 +105,7 @@ export default function AppLayout() {
       <DetailModal />
       {painted && <ShortcutsSheet />}
       {painted && <PrivacyDialog />}
+      <RouteAnnouncer />
     </div>
   )
 }

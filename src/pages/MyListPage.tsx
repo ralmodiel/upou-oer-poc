@@ -107,7 +107,7 @@ function StarterPicks({ below }: { below: boolean }) {
     >
       <SectionHeading id={headingId} title="Start with the newest" />
       <div className="mt-5">
-        <VideoGrid videos={picks} />
+        <VideoGrid videos={picks} heading="h3" />
       </div>
     </section>
   )

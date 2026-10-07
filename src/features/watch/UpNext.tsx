@@ -252,8 +252,10 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
     focusFrom.current = list.append().length ? before : before - 1
   }
 
-  // New picks start at the top of the list; focus stays on the button.
+  // New picks start at the top of the list; focus stays on the button, and a status says so.
+  const [refreshed, setRefreshed] = useState(0)
   const onRefresh = () => {
+    setRefreshed((n) => n + 1)
     following.current = false
     viewerScroll.current = false
     list.refresh?.()
@@ -281,6 +283,10 @@ export default function UpNext({ video, list }: { video: Video; list: UpNextList
               <RefreshIcon className="size-5 transition-transform duration-500 ease-out group-active:-rotate-180 motion-reduce:transition-none" />
             </button>
           )}
+          {/* A space toggles each time, so the same words are announced again. */}
+          <span role="status" className="sr-only">
+            {refreshed ? `Up next refreshed${refreshed % 2 ? '' : '\u00a0'}` : ''}
+          </span>
           {/* Names the switch; hidden itself, so screen readers do not read it twice. */}
           <span id={switchId} aria-hidden="true" className="ml-auto">
             Autoplay

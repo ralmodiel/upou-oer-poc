@@ -70,8 +70,11 @@ function VideoCard({
       ) : (
         showCategory && <p className="eyebrow order-2 mt-3 truncate">{video.category}</p>
       )}
+      {/* Named by the title alone: its link reads "Play …", which in a list of headings would start
+          every card with the same word. */}
       <Heading
         title={title}
+        aria-label={title}
         className={`order-3 ${titleGap} line-clamp-2 min-h-[2lh] text-base/snug font-semibold text-ink transition-colors duration-200 group-hover/card:text-maroon`}
       >
         {/* Stretched link: a click, tap or Enter anywhere on the card plays the video. */}

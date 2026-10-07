@@ -46,6 +46,8 @@ interface Props {
   first?: number
   /** A home row's id (data-row), so Back finds its cards again by place (useReturnFocus). */
   row?: string
+  /** The card titles' level when the grid sits under a section heading rather than the h1. */
+  heading?: 'h2' | 'h3' | 'h4'
 }
 
 // Roving tabindex: only one card per grid is in the Tab order (its link, then its Save and
@@ -59,8 +61,10 @@ export default function VideoGrid({
   seeAll,
   first,
   row,
+  heading: level,
 }: Props) {
-  const { list, item: itemClass, sizes, heading } = LAYOUTS[layout]
+  const { list, item: itemClass, sizes } = LAYOUTS[layout]
+  const heading = level ?? LAYOUTS[layout].heading
   const eyebrow = showCategory ?? layout !== 'row'
   const [current, setCurrent] = useState(0)
   const [lastFirst, setLastFirst] = useState(first)

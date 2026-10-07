@@ -16,7 +16,7 @@ import type { Video } from '../../types'
 import { createReelAudio, type ReelAudio } from './audio'
 import { createClock, type Clock } from './clock'
 import { SkipIcon, SoundOffIcon, SoundOnIcon } from './icons'
-import { buildReelPlan, INDEX_STYLES, TICK_STYLES, type ReelPlan } from './plan'
+import { buildReelPlan, INDEX_STYLES, TICK_AT, TICK_STYLES, type ReelPlan } from './plan'
 import { DECODE_CAP_MS, settleImages } from './preload'
 import { reelImages } from './stills'
 import './reel.css'
@@ -88,6 +88,8 @@ export default function PromoReel({
   const audioRef = useRef<ReelAudio | null>(null)
   const clockRef = useRef<Clock | null>(null)
   const doneRef = useRef(false)
+  // The video whose countdown has begun (a new video starts silent).
+  const [countdownOf, setCountdownOf] = useState<string | null>(null)
   const stills = loaded?.key === video.id ? loaded : null
   const started = stills !== null
   // No clean image at all, or none that loads: the reel plays as a type-only title card on the
@@ -101,6 +103,7 @@ export default function PromoReel({
     onComplete()
   }
   const onTimeUp = useEffectEvent(complete)
+  const onCountdown = useEffectEvent(() => setCountdownOf(video.id))
   const soundWanted = useEffectEvent(() => soundOn)
 
   // Sound is set up while the stills decode: starting an AudioContext can stall the main thread.
@@ -154,6 +157,8 @@ export default function PromoReel({
     const audio = audioRef.current
     const clock = createClock(REEL_MS, () => onTimeUp())
     clockRef.current = clock
+    // The countdown is announced once, as it starts (the digits on screen are not read).
+    const cue = createClock(TICK_AT[0], () => onCountdown())
     let running = false
     let disposed = false
     const sync = () => {
@@ -161,11 +166,13 @@ export default function PromoReel({
       root.toggleAttribute('data-paused', hidden)
       if (hidden) {
         clock.pause()
+        cue.pause()
         audio?.pause()
         // Flush styles so the CSS pause lands before the tab stops rendering.
         root.getBoundingClientRect()
       } else if (running) {
         clock.resume()
+        cue.resume()
         audio?.resume()
       }
     }
@@ -176,6 +183,7 @@ export default function PromoReel({
       if (disposed) return
       running = true
       clock.advance(Number(timeline?.currentTime) || 0)
+      cue.advance(Number(timeline?.currentTime) || 0)
       sync()
       audio?.begin()
     }
@@ -191,6 +199,7 @@ export default function PromoReel({
       document.removeEventListener('visibilitychange', sync)
       root.removeEventListener('pointerdown', unlock)
       clock.pause()
+      cue.pause()
       clockRef.current = null
     }
   }, [started])
@@ -224,14 +233,22 @@ export default function PromoReel({
       {stills ? (
         <Timeline plan={plan} stills={stills} preview={preview} video={video} />
       ) : (
-        <div className="reel-loading" role={preview ? undefined : 'status'}>
+        <div className="reel-loading">
           {cover ? (
             <img src={cover} alt="" draggable={false} style={cropOf(cover)} />
           ) : (
             <TitleCard video={video} plan={plan} />
           )}
-          {!preview && <span className="sr-only">Loading preview</span>}
         </div>
+      )}
+      {!preview && (
+        <p role="status" className="sr-only">
+          {!stills
+            ? 'Loading preview'
+            : countdownOf === video.id
+              ? 'Video starts in 3 seconds'
+              : ''}
+        </p>
       )}
       {!preview && (
         <div className="reel-controls">
@@ -443,7 +460,7 @@ const Timeline = memo(function Timeline({ plan, stills, preview, video }: Timeli
             ))}
           </p>
           {!preview && (
-            <p className="reel-count" role="status">
+            <p className="reel-count" aria-hidden="true">
               Starting in
               {TICK_STYLES.map((s, i) => (
                 <Fragment key={i}>

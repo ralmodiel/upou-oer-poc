@@ -574,7 +574,7 @@ function addFile(i: number, part: CatalogPart): void {
 }
 
 // Per attempt, the download included: a slow phone link takes seconds for a file, not this long.
-const FILE_TIMEOUT_MS = 20_000
+const FILE_TIMEOUT_MS = 10_000
 
 /** File `i`, fetched once (again after a failure). */
 function loadFile(i: number, low = false): Promise<void> {
@@ -678,9 +678,10 @@ export function catalogWait(pathname: string, search: string): Promise<void> | u
     const quickLook = new URLSearchParams(search).get('v')
     const watched = readProfile().watched.map((e) => e.id)
     const wanted = quickLook ? [...watched, quickLook] : watched
-    const fits = () => (homeFits(watched) ? undefined : loadAll())
+    // The home never fails on a file: what did not arrive is left out (the summary has the rest).
+    const fits = () => (homeFits(watched) ? undefined : loadAll().catch(() => undefined))
     if (wanted.every((id) => byId.has(id))) return fits()
-    return loadVideos(wanted, false).then(fits)
+    return loadVideos(wanted, false).then(fits, () => undefined)
   }
   const watch = WATCH.exec(pathname)
   return watch ? loadVideos([safeDecode(watch[1])], true) : loadAll()

@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { Outlet, useLocation, useNavigation, useNavigationType } from 'react-router'
+import {
+  Outlet,
+  useLocation,
+  useNavigation,
+  useNavigationType,
+  useRevalidator,
+  useRouteError,
+} from 'react-router'
 import DetailModal from '../components/DetailModal'
 import Footer from '../components/Footer'
 import Header, { TabBar } from '../components/Header'
@@ -68,9 +75,91 @@ const FRAME =
 export function AppFallback() {
   return (
     <div className={FRAME}>
+      <NavLoading />
       <Header />
       <TabBar />
       <main className="flex-1" />
+    </div>
+  )
+}
+
+// A first load that waits on the catalog shows the in-app navigation's thin bar (after its delay).
+function NavLoading() {
+  return (
+    <>
+      <div aria-hidden className="nav-progress" />
+      <p role="status" className="sr-only">
+        Loading videos
+      </p>
+    </>
+  )
+}
+
+const CHUNK_ERROR =
+  /dynamically imported module|Importing a module script failed|error loading dynamically/i
+const RELOADED_KEY = 'upou:chunk-reload'
+
+// A page's code that fails to load is usually a redeploy (new file names) or a blip, and the browser
+// remembers the failed import: one reload fixes both. Not again within a minute, so it never loops.
+function reloadOnce(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(RELOADED_KEY))
+    if (last && Date.now() - last < 60_000) return false
+    sessionStorage.setItem(RELOADED_KEY, String(Date.now()))
+  } catch {
+    return false
+  }
+  window.location.reload()
+  return true
+}
+
+/**
+ * The layout route's error page: header and tab bar stay, so the visitor can go elsewhere. A
+ * catalog file that did not arrive can be tried again in place; a page's code that failed reloads.
+ */
+export function AppError() {
+  const error = useRouteError()
+  const revalidator = useRevalidator()
+  const chunk = CHUNK_ERROR.test(String((error as Error | undefined)?.message ?? error))
+  const [reloading] = useState(() => chunk && reloadOnce())
+  const loading = revalidator.state === 'loading'
+  const catalog =
+    !chunk &&
+    /catalog file|Failed to fetch|NetworkError|aborted|JSON/i.test(
+      String((error as Error | undefined)?.message ?? ''),
+    )
+  return (
+    <div className={FRAME}>
+      {loading && <div aria-hidden className="nav-progress" />}
+      <Header />
+      <TabBar />
+      <main
+        id="main"
+        tabIndex={-1}
+        className="grid flex-1 place-items-center px-6 py-16 text-center"
+      >
+        {!reloading && (
+          <div>
+            <h1 className="font-display text-title text-ink">
+              {catalog ? 'Couldn’t load the video list' : 'Something went wrong'}
+            </h1>
+            <p className="mt-2 text-ink-2">
+              {catalog
+                ? 'Check your connection, then try again.'
+                : 'Please reload the page to try again.'}
+            </p>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => (catalog ? revalidator.revalidate() : window.location.reload())}
+              className="mt-6 rounded-pill bg-action px-5 py-2.5 font-semibold text-on-action transition hover:bg-action-2 disabled:opacity-60"
+            >
+              {catalog ? (loading ? 'Trying…' : 'Try again') : 'Reload'}
+            </button>
+          </div>
+        )}
+      </main>
+      <Footer />
     </div>
   )
 }

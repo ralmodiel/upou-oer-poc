@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react'
-import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router'
+import { createBrowserRouter, Navigate, Outlet, ScrollRestoration } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import { catalogRoute } from './data/catalog'
 import { loadCite } from './data/cites'
-import AppLayout, { AppFallback } from './layouts/AppLayout'
+import AppLayout, { AppError, AppFallback } from './layouts/AppLayout'
 import BrowsePage from './pages/BrowsePage'
 import SearchPage from './pages/SearchPage'
 import MyListPage from './pages/MyListPage'
@@ -63,8 +63,11 @@ const router = createBrowserRouter(
           // The rest of the catalog arrives after the first paint; a page that needs it waits here.
           ...catalogRoute,
           HydrateFallback: AppFallback,
+          ErrorBoundary: AppError,
           children: [
             { index: true, Component: BrowsePage },
+            // GitHub Pages serves the home at /index.html too.
+            { path: 'index.html', element: <Navigate to="/" replace /> },
             { path: 'search', Component: SearchPage },
             { path: 'my-list', Component: MyListPage },
             { path: 'collections', Component: CollectionsPage },

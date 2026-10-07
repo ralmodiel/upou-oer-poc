@@ -1,7 +1,7 @@
 // Smoke test for the shell generator: runs the CLI against a stand-in dist and checks the output
 // against the app's own catalog, so drift between tools/seo/catalog.mjs and src/data shows here.
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -147,6 +147,18 @@ describe('tools/seo/generate.mjs', () => {
 
     run()
     expect(readFileSync(join(dist, 'index.html'), 'utf8')).toBe(home)
+  })
+
+  // Older engines (LG webOS 6) default to sending the whole address, search terms and all, with
+  // every YouTube still; the page states the origin-only policy, and every shell keeps it.
+  it('keeps the referrer policy in every shell', () => {
+    mkdirSync(dist, { recursive: true })
+    writeFileSync(join(dist, 'index.html'), readFileSync('index.html', 'utf8'))
+    run()
+    const policy = '<meta name="referrer" content="strict-origin-when-cross-origin" />'
+    const first = expandRecord(records[0])
+    for (const page of ['index.html', 'search/index.html', `watch/${first.id}/index.html`])
+      expect(readFileSync(join(dist, page), 'utf8')).toContain(policy)
   })
 
   it('sees the catalog as the app does: videos, canonical images and collection order', () => {

@@ -1,3 +1,4 @@
+import { savesData } from '../../lib/youtube'
 import type { Video } from '../../types'
 import { reelImages } from './stills'
 
@@ -72,11 +73,15 @@ export function prefetchWatch() {
   import('../../pages/WatchPage').catch(() => (watchRequested = false))
 }
 
-/** Warms the watch chunk and reel images before the user presses Play. */
+/**
+ * Warms the watch chunk and reel images before the user presses Play. Not the images when the
+ * viewer asks to save data: a hover that never becomes a press would cost four large stills.
+ */
 export function preloadReel(video: Video) {
   if (warmed.has(video.id)) return
   warmed.add(video.id)
   prefetchWatch()
+  if (savesData()) return
   // The stills and the poster the watch stage ends on (flagged ones never load).
   const { poster, stills } = reelImages(video)
   for (const src of new Set([poster, ...stills.map((s) => s.src)])) if (src) void decodeImage(src)

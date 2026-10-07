@@ -120,6 +120,39 @@ describe('PromoReel', () => {
     expect(localStorage.getItem('upou:reel-sound')).toBe('true')
   })
 
+  it('stored sound left suspended by the autoplay policy starts on any key or press', async () => {
+    vi.useFakeTimers()
+    const resume = vi.fn(() => Promise.resolve())
+    const param = { value: 0, setTargetAtTime: () => {} }
+    class FakeAudioContext {
+      state = 'suspended'
+      currentTime = 0
+      destination = {}
+      resume = resume
+      suspend = () => Promise.resolve()
+      close = () => Promise.resolve()
+      addEventListener() {}
+      createGain = () => ({ gain: param, connect: () => {} })
+    }
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+    localStorage.setItem('upou:reel-sound', 'true')
+    try {
+      const { unmount } = render(<PromoReel video={testVideo} onComplete={() => {}} />)
+      await act(() => vi.advanceTimersByTimeAsync(DECODE_CAP_MS))
+      resume.mockClear()
+      // A remote's arrow key, away from the reel's own controls.
+      fireEvent.keyDown(document.body, { key: 'ArrowRight' })
+      expect(resume).toHaveBeenCalledTimes(1)
+      fireEvent.pointerDown(document.body)
+      expect(resume).toHaveBeenCalledTimes(2)
+      unmount()
+      fireEvent.keyDown(document.body, { key: 'ArrowRight' })
+      expect(resume).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('treats anything but a stored true as muted; `muted` drops the sound control', () => {
     localStorage.setItem('upou:reel-sound', '"on"')
     const first = render(<PromoReel video={testVideo} onComplete={() => {}} />)

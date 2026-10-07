@@ -10,6 +10,7 @@ import {
 import { prefetchWatch } from '../features/reel/preload'
 import { reelWorks } from '../lib/lite'
 import { lastInput } from '../lib/pointer'
+import { savesData } from '../lib/youtube'
 import type { Video } from '../types'
 import PromoReel from './PreviewReel'
 import { canHover, onIdle, whenImagesSettled } from './browse-hooks'
@@ -75,8 +76,9 @@ type Phase = 'idle' | 'playing' | 'ending' | 'done'
  * Preview reel for one card: mounts the muted reel in the card's 16:9 box when the card is
  * focused, or hovered for a moment on devices that hover (outside dialogs); unmounts on blur,
  * pointer leave or Esc. After the reel ends its end card stays briefly, then the thumbnail returns
- * until the pointer leaves. Reduced motion: no automatic previews. Spread `hostProps` on the card and
- * render `overlay` inside its Thumbnail; `start` / `stop` let a viewer play it on selection.
+ * until the pointer leaves. Reduced motion or Save-Data: no automatic previews (each one fetches
+ * three or four stills). Spread `hostProps` on the card and render `overlay` inside its Thumbnail;
+ * `start` / `stop` let a viewer play it on selection.
  */
 export function useCardPreview(video: Video) {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -97,7 +99,7 @@ export function useCardPreview(video: Video) {
 
   // Every video previews: one with no clean image plays the reel's type-only title card.
   const start = useCallback(() => {
-    if (!reelWorks || prefersReducedMotion() || done.current) return
+    if (!reelWorks || prefersReducedMotion() || savesData() || done.current) return
     claim(id, stop)
     setPhase((p) => (p === 'idle' ? 'playing' : p))
   }, [id, stop])

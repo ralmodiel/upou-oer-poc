@@ -152,6 +152,20 @@ describe('card previews', () => {
     act(() => cardLink(0).focus())
     expect(previews()).toHaveLength(0)
   })
+
+  it('never starts when the viewer saves data (each preview fetches its stills)', () => {
+    Object.defineProperty(navigator, 'connection', {
+      value: { saveData: true },
+      configurable: true,
+    })
+    try {
+      renderGrid()
+      act(() => cardLink(0).focus())
+      expect(previews()).toHaveLength(0)
+    } finally {
+      Reflect.deleteProperty(navigator, 'connection')
+    }
+  })
 })
 
 describe('featured viewer previews', () => {

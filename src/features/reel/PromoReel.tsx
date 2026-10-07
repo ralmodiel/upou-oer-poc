@@ -26,6 +26,8 @@ export type ReelVariant = 'full' | 'preview'
 // Preview stages up to this wide (CSS px: cards) take the 320px stills whatever the DPR, so a
 // hover costs three or four small images; the hero's larger stage gets the big ones.
 const CARD_STAGE_PX = 480
+// User gestures that may start a suspended AudioContext.
+const UNLOCK_EVENTS = ['pointerdown', 'keydown'] as const
 
 // Wordmark letters, indexed across both words so the kinetic ident can drop them in one by one.
 const WORDMARK = ['UPOU', 'OER'].map((word, wi, words) => {
@@ -187,17 +189,18 @@ export default function PromoReel({
       sync()
       audio?.begin()
     }
-    // On direct page loads audio starts suspended; a first press on the reel can unlock it.
+    // On direct page loads audio starts suspended; the first press anywhere (a click, or a key
+    // from a keyboard or TV remote) can unlock it, so stored sound is not left silent behind "Mute".
     const unlock = () => audio?.resume()
     sync()
     if (timeline) timeline.ready.then(begin, () => {})
     else begin()
     document.addEventListener('visibilitychange', sync)
-    if (audio) root.addEventListener('pointerdown', unlock)
+    if (audio) for (const type of UNLOCK_EVENTS) document.addEventListener(type, unlock, true)
     return () => {
       disposed = true
       document.removeEventListener('visibilitychange', sync)
-      root.removeEventListener('pointerdown', unlock)
+      for (const type of UNLOCK_EVENTS) document.removeEventListener(type, unlock, true)
       clock.pause()
       cue.pause()
       clockRef.current = null

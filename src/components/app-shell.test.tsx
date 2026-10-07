@@ -57,10 +57,25 @@ describe('Header and tab bar', () => {
     const router = renderAt('/search/?q=climate', <Header />)
     const field = screen.getByRole('combobox', { name: 'Search videos' })
     expect(field).toHaveValue('climate')
-    // On the search page typing replaces the entry instead of adding one per key.
+    // Typing keeps the loaded search in history, then refines one entry instead of adding one per key.
     await userEvent.type(field, 's')
     await waitFor(() => expect(router.state.location.search).toBe('?q=climates'))
+    expect(router.state.historyAction).toBe('PUSH')
+    await userEvent.type(field, '{Backspace}{Backspace}')
+    await waitFor(() => expect(router.state.location.search).toBe('?q=climat'))
     expect(router.state.historyAction).toBe('REPLACE')
+  })
+
+  it('keep each submitted search in history, so Back walks through them', async () => {
+    const router = renderAt('/', <Header />)
+    const field = screen.getByRole('combobox', { name: 'Search videos' })
+    await userEvent.type(field, 'gender{Enter}')
+    await waitFor(() => expect(router.state.location.search).toBe('?q=gender'))
+    await userEvent.clear(field)
+    await userEvent.type(field, 'climate{Enter}')
+    await waitFor(() => expect(router.state.location.search).toBe('?q=climate'))
+    await act(() => router.navigate(-1))
+    await waitFor(() => expect(router.state.location.search).toBe('?q=gender'))
   })
 
   it('keep the theme to one header control, with every choice in the Help menu', () => {

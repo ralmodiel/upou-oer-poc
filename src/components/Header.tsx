@@ -236,8 +236,13 @@ function SearchBox() {
   const go = (term: string, submitted = false) => {
     setPending(null)
     if (!term && !onSearchPage) return
+    // Typing refines the search it started (one history entry); a submitted or linked search stays
+    // in history, so Back walks through earlier searches.
+    const typedEntry =
+      (location.state as { fromSearchBox?: boolean; submitted?: boolean } | null)?.fromSearchBox &&
+      !(location.state as { submitted?: boolean }).submitted
     navigate(term ? `/search?q=${encodeURIComponent(term)}` : '/search', {
-      replace: onSearchPage,
+      replace: onSearchPage && !!typedEntry,
       state: submitted ? SUBMITTED : FROM_SEARCH_BOX,
     })
   }
@@ -258,6 +263,8 @@ function SearchBox() {
       go(term, true)
     },
     'inset-x-0 md:left-auto md:w-[max(100%,26rem)]',
+    // A picked video or collection wins over the as-you-type search still waiting to run.
+    () => setPending(null),
   )
 
   const requestFocus = () => {

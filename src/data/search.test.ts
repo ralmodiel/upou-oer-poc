@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fixtureVideos } from '../components/test-fixtures'
 import { buildVocabulary } from '../lib/fuzzy'
 import type { Video } from '../types'
-import { searchCatalog, searchVideos, videos, warmSearch } from './catalog'
+import {
+  getCategoryVideos,
+  searchCatalog,
+  searchVideos,
+  slugifyCategory,
+  videos,
+  warmSearch,
+} from './catalog'
 import { setCatalog } from './testing'
 
 // Spies on the fuzzy module, keeping its behaviour, to count vocabulary builds.
@@ -94,5 +101,41 @@ describe('searchCatalog', () => {
       expect(found.videos.length).toBeGreaterThan(2)
       expect(searchCatalog(fixed).exact).toBeGreaterThan(2)
     }
+  })
+
+  it('takes function words as optional, and two letters only as a whole word', () => {
+    setCatalog([
+      video('stats', { title: 'Introduction Statistics for Beginners' }),
+      video('ai', { title: 'AI in the Classroom' }),
+      video('train', { title: 'Training Facilitators on Sustainability' }),
+    ])
+    expect(searchVideos('introduction to statistics').map((v) => v.id)).toEqual(['stats'])
+    expect(searchVideos('ai').map((v) => v.id)).toEqual(['ai'])
+    // Only function words: they are all the query has, so they count.
+    expect(searchVideos('in the').map((v) => v.id)).toEqual(['ai'])
+  })
+
+  it('matches possessives and plurals', () => {
+    setCatalog([
+      video('roles', { title: 'Teacher’s Roles in Flexible Learning' }),
+      video('orient', { title: 'UPOU Student Orientation 2023' }),
+    ])
+    expect(searchVideos('teachers roles').map((v) => v.id)).toEqual(['roles'])
+    expect(searchVideos("teacher's roles").map((v) => v.id)).toEqual(['roles'])
+    expect(searchVideos('students').map((v) => v.id)).toEqual(['orient'])
+  })
+
+  it('files A–Z titles past their leading quotes', () => {
+    const name = fixtureVideos[2].category
+    setCatalog([
+      video('w', { title: '“Wika, Kultura at Lipunan” Welcome Message' }),
+      video('a', { title: 'Ang Pambansang Wika' }),
+      video('z', { title: 'Zoology' }),
+    ])
+    expect(getCategoryVideos(slugifyCategory(name), 'title').map((v) => v.id)).toEqual([
+      'a',
+      'w',
+      'z',
+    ])
   })
 })

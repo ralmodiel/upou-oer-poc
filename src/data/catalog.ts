@@ -2,6 +2,7 @@ import catalogNames from 'virtual:catalog-names'
 import files from 'virtual:catalog-files'
 import summary from 'virtual:catalog-home'
 import { formatDate } from '../lib/format'
+import { STOPWORDS, stem } from '../lib/text'
 import {
   buildVocabulary,
   correctionOf,
@@ -31,7 +32,7 @@ import { DEFAULT_CHANNEL, expandRecord } from './expand'
 import { addFrameFlags, frameFlagsOf } from './frameFlags'
 import { isCleanImage } from './images'
 import { unpackRecords, type CatalogPack } from './pack'
-import { addSpeakers } from './speakers'
+import { addSpeakers, speakersOf } from './speakers'
 import { chunkOf, HOME, ROW_POOL, type CatalogPart, type HomeSummary } from './split'
 
 /** Whether the video's canonical image passes the frame filter (it fails only when all do). */
@@ -120,7 +121,17 @@ function stamp(v: Video): number {
 const newestFirst = (a: Video, b: Video) => stamp(b) - stamp(a)
 const oldestFirst = (a: Video, b: Video) => stamp(a) - stamp(b)
 const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
-const byTitle = (a: Video, b: Video) => collator.compare(a.title, b.title)
+// A–Z ignores leading quotes and brackets ("“Wika, Kultura…”" files under W).
+const sortKeys = new WeakMap<Video, string>()
+const sortKey = (v: Video) => {
+  let key = sortKeys.get(v)
+  if (key === undefined) {
+    key = v.title.replace(/^[^\p{L}\p{N}]+/u, '') || v.title
+    sortKeys.set(v, key)
+  }
+  return key
+}
+const byTitle = (a: Video, b: Video) => collator.compare(sortKey(a), sortKey(b))
 
 /** The whole catalog, newest first. Shared and memoized: do not mutate. */
 const byDate = () => cached('byDate', () => [...videos].sort(newestFirst))
@@ -328,7 +339,9 @@ export function similarTo(video: Video, list: readonly Video[] = videos, limit =
 const indexed = (v: Video): IndexedVideo => ({
   v,
   title: wordsOf(v.title),
-  meta: wordsOf(`${v.category} ${v.tags.join(' ')} ${v.channel}`),
+  meta: wordsOf(
+    `${v.category} ${v.tags.join(' ')} ${v.channel} ${speakersOf(v.youtubeId).join(' ')}`,
+  ),
   body: wordsOf(v.description),
 })
 
@@ -361,19 +374,30 @@ const hitsOf = (word: string) => {
 export function queryTerms(query: string): Term[] {
   const last = memo.get('terms') as { query: string; terms: Term[] } | undefined
   if (last?.query === query) return last.terms
-  const terms = normalize(query)
+  const words = normalize(query)
+    .replace(/['’‘`´]/g, '')
     .split(/\s+/)
     // Edge punctuation is dropped so quoted or comma-separated queries still match; inside a
     // word it splits it as in the index ("covid-19" → "covid 19").
     .map((t) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' '))
     .filter(Boolean)
     .map((word): Term => {
+      const root = stem(word)
+      const extra = root !== word && root.length >= 4 ? { stem: root } : {}
       const hits = maxEdits(word) ? hitsOf(word) : FEW_HITS
-      if (hits >= FEW_HITS) return { word, near: [] }
+      if (hits >= FEW_HITS) return { word, near: [], ...extra }
       // A misspelling is rarer than the word meant: "beta" (2 videos) never means "zeta" (1).
       const near = nearWords(vocabulary(), word).filter((n) => n.count > hits)
-      return { word, near: near.map((n) => n.word) }
+      return { word, near: near.map((n) => n.word), ...extra }
     })
+  // Function words ("introduction to statistics") count when present but never exclude a video,
+  // unless the query is nothing but them.
+  const content = words.filter((t) => !STOPWORDS.has(t.word))
+  const terms =
+    content.length && content.length < words.length
+      ? words.map((t) => (STOPWORDS.has(t.word) ? { ...t, optional: true } : t))
+      : words
+
   memo.set('terms', { query, terms })
   return terms
 }
@@ -392,10 +416,10 @@ export function searchCatalog(
   if (!terms.length) return { videos: [], exact: 0 }
   const hits: { v: Video; score: number }[] = []
   let exact = 0
-  // One letter or digit ("R", the "C" of "C++", the "1" of "#1") is in nearly every field, so on
-  // the results page it counts only as a whole word. Suggestions still take it as a word start.
+  // One or two letters ("R", the "C" of "C++", "AI", "IT") are inside nearly every field, so on
+  // the results page they count only as a whole word. Suggestions still take them as a word start.
   const tier = (field: string, t: Term) =>
-    t.word.length > 1 ? matchTier(field, t) : field.includes(` ${t.word} `) ? EXACT : 0
+    t.word.length > 2 ? matchTier(field, t) : field.includes(` ${t.word} `) ? EXACT : 0
   for (const { v, title, meta, body } of index()) {
     if (wanted && v.category !== wanted) continue
     let score = 0
@@ -405,6 +429,7 @@ export function searchCatalog(
       const b = titles ? 0 : tier(meta, t)
       const c = titles ? 0 : tier(body, t)
       if (!a && !b && !c) {
+        if (t.optional) continue
         score = 0
         break
       }

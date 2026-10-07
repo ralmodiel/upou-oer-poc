@@ -8,6 +8,10 @@ export interface Term {
   word: string
   /** Near spellings it also matches, likeliest first (only for words rare as typed). */
   near: readonly string[]
+  /** The singular or root ("students" → "student"), matched as a word start; when it differs. */
+  stem?: string
+  /** A function word ("to", "of", "ang"): it adds to the score but a video may lack it. */
+  optional?: boolean
 }
 
 /** Catalog words by length, with the number of videos that use each. */
@@ -40,8 +44,10 @@ export const normalize = (s: string) =>
   (ASCII.test(s) ? s : s.normalize('NFD').replace(/\p{Diacritic}/gu, '')).toLowerCase()
 
 /** Text as words with a space at each end (" climate change basics "), for word tests. */
+// Apostrophes join ("Teacher’s" → "teachers"), as in text.ts's normalizeText.
 export const wordsOf = (text: string) =>
   ` ${normalize(text)
+    .replace(/['’‘`´]/g, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()} `
 
@@ -158,6 +164,8 @@ export function matchTier(field: string, term: Term): number {
     if (field.includes(` ${term.word} `)) return EXACT
     return field.includes(` ${term.word}`) ? PREFIX : PART
   }
+  // The root, as a word start ("students" finds "Student Orientation"), ranks with a part.
+  if (term.stem && field.includes(` ${term.stem}`)) return PART
   // A near spelling counts only as a whole word.
   for (const near of term.near) if (field.includes(` ${near} `)) return NEAR
   return 0

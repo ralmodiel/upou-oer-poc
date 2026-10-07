@@ -92,12 +92,14 @@ export interface SearchSuggestions {
 
 /**
  * Suggestions for `field`. A video or collection opens its page (committing the typed query to
- * search history, when allowed); a topic or a fix goes to `search`. `className` places the list.
+ * search history, when allowed); a topic or a fix goes to `search`. `className` places the list;
+ * `onPick` runs before any pick (the header drops its pending as-you-type search).
  */
 export function useSearchSuggestions(
   field: RefObject<HTMLInputElement | null>,
   search: (query: string) => void,
   className = '',
+  onPick?: () => void,
 ): SearchSuggestions {
   const navigate = useNavigate()
   const { record } = useSearchHistory()
@@ -171,6 +173,7 @@ export function useSearchSuggestions(
 
   const choose = (item: Suggestion) => {
     close()
+    onPick?.()
     if (item.kind === 'video' || item.kind === 'collection') {
       // Opening a result commits the query, as on the search page.
       record(typed.current)

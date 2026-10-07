@@ -178,6 +178,8 @@ if (typeof window !== 'undefined') {
   const settle = () => {
     const since = performance.now()
     const timer = setInterval(() => {
+      // A test file torn down within the first 250 ms leaves this module without a document.
+      if (typeof document === 'undefined') return clearInterval(timer)
       // Only images with a box: a lazy one in a hidden block (a collection's mosaic tiles past the
       // fourth) never loads, and held the gate shut for the whole 8 s.
       const loading =

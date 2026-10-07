@@ -247,7 +247,7 @@ export default function PromoReel({
           {!stills
             ? 'Loading preview'
             : countdownOf === video.id
-              ? 'Video starts in 3 seconds'
+              ? 'The video is about to start'
               : ''}
         </p>
       )}

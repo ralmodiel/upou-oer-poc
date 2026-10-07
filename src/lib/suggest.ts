@@ -95,7 +95,11 @@ function scoreOf(field: string, terms: readonly Term[]): number {
   let score = 0
   for (const t of terms) {
     const tier = matchTier(field, t)
-    if (!tier) return 0
+    if (!tier) {
+      // A function word may be missing (as on the results page).
+      if (t.optional) continue
+      return 0
+    }
     score += tier
   }
   return score

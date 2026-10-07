@@ -384,19 +384,24 @@ export function queryTerms(query: string): Term[] {
     .map((word): Term => {
       const root = stem(word)
       const extra = root !== word && root.length >= 4 ? { stem: root } : {}
-      const hits = maxEdits(word) ? hitsOf(word) : FEW_HITS
+      // A plural is as common as its root ("seeds" is no misspelling of "needs").
+      const hits = maxEdits(word)
+        ? Math.max(hitsOf(word), extra.stem ? hitsOf(` ${extra.stem}`) : 0)
+        : FEW_HITS
       if (hits >= FEW_HITS) return { word, near: [], ...extra }
       // A misspelling is rarer than the word meant: "beta" (2 videos) never means "zeta" (1).
-      const near = nearWords(vocabulary(), word).filter((n) => n.count > hits)
+      const near = nearWords(vocabulary(), word).filter(
+        (n) => n.count > hits && !(extra.stem && n.word.startsWith(extra.stem)),
+      )
       return { word, near: near.map((n) => n.word), ...extra }
     })
   // Function words ("introduction to statistics") count when present but never exclude a video,
-  // unless the query is nothing but them.
-  const content = words.filter((t) => !STOPWORDS.has(t.word))
-  const terms =
-    content.length && content.length < words.length
-      ? words.map((t) => (STOPWORDS.has(t.word) ? { ...t, optional: true } : t))
-      : words
+  // nor stand for a near spelling ("week" is no "weak"), unless the query has no other word but
+  // numbers ("lesson 1" keeps "lesson").
+  const content = words.filter((t) => !STOPWORDS.has(t.word) && !/^\d+$/.test(t.word))
+  const terms = content.length
+    ? words.map((t) => (STOPWORDS.has(t.word) ? { ...t, near: [], optional: true } : t))
+    : words
 
   memo.set('terms', { query, terms })
   return terms
@@ -417,9 +422,14 @@ export function searchCatalog(
   const hits: { v: Video; score: number }[] = []
   let exact = 0
   // One or two letters ("R", the "C" of "C++", "AI", "IT") are inside nearly every field, so on
-  // the results page they count only as a whole word. Suggestions still take them as a word start.
+  // the results page they count only as a whole word; suggestions (titles) take two letters as the
+  // start of a word still being typed ("climate ch").
   const tier = (field: string, t: Term) =>
-    t.word.length > 2 ? matchTier(field, t) : field.includes(` ${t.word} `) ? EXACT : 0
+    t.word.length > (titles ? 1 : 2)
+      ? matchTier(field, t)
+      : field.includes(` ${t.word} `)
+        ? EXACT
+        : 0
   for (const { v, title, meta, body } of index()) {
     if (wanted && v.category !== wanted) continue
     let score = 0
@@ -598,7 +608,9 @@ function loadFile(i: number, low = false): Promise<void> {
           addFile(i, JSON.parse(body) as CatalogPart)
           break
         } catch (error) {
-          if (attempt === 2) throw error
+          // Named so the error page can tell a catalog file from a crash (AppLayout's AppError).
+          if (attempt === 2)
+            throw new Error(`catalog file ${i}: ${String(error)}`, { cause: error })
           await new Promise((resolve) => setTimeout(resolve, 400 * 3 ** attempt))
         } finally {
           clearTimeout(timer)

@@ -99,8 +99,12 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
       waited = 0
       restart = true
     }
+    // The count stands still while the tab is hidden, but the line's animation runs on: back in
+    // view, both start again.
+    const onShown = () => !document.hidden && reset()
     window.addEventListener('pointerdown', reset, true)
     window.addEventListener('keydown', reset, true)
+    document.addEventListener('visibilitychange', onShown)
     const timer = window.setInterval(() => {
       const el = zone.current
       if (document.hidden || !el) return
@@ -127,6 +131,7 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
     }, TICK_MS)
     return () => {
       clearInterval(timer)
+      document.removeEventListener('visibilitychange', onShown)
       window.removeEventListener('pointerdown', reset, true)
       window.removeEventListener('keydown', reset, true)
     }

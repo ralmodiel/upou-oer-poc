@@ -125,10 +125,7 @@ export function AppError() {
   const [reloading] = useState(() => chunk && reloadOnce())
   const loading = revalidator.state === 'loading'
   const catalog =
-    !chunk &&
-    /catalog file|Failed to fetch|NetworkError|aborted|JSON/i.test(
-      String((error as Error | undefined)?.message ?? ''),
-    )
+    !chunk && /^catalog file/.test(String((error as Error | undefined)?.message ?? ''))
   return (
     <div className={FRAME}>
       {loading && <div aria-hidden className="nav-progress" />}

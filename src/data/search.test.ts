@@ -138,4 +138,26 @@ describe('searchCatalog', () => {
       'z',
     ])
   })
+
+  it('keeps function words and roots from pulling in other words', () => {
+    setCatalog([
+      video('heart', { title: 'Chronic Heart Failure' }),
+      video('hearing', { title: 'Hearing Loss in Children' }),
+      video('weak', { title: 'A Weak Industry' }),
+      video('week', { title: 'Climate Week Opening' }),
+      video('climate', { title: 'Climate Policy' }),
+      video('seed', { title: 'Seed Banks' }),
+      video('needs', { title: 'Special Needs' }),
+      video('lesson', { title: 'Lesson 1: Basics' }),
+      video('other1', { title: 'Episode 1 of Something' }),
+    ])
+    expect(searchVideos('hearing').map((v) => v.id)).toEqual(['hearing'])
+    // "week" is a function word here: optional, and never read as "weak".
+    expect(searchCatalog('climate week').correction).toBeUndefined()
+    expect(searchVideos('climate week').map((v) => v.id)).toEqual(['week', 'climate'])
+    expect(searchCatalog('seeds')).toMatchObject({ correction: undefined })
+    expect(searchVideos('seeds').map((v) => v.id)).toEqual(['seed'])
+    // Nothing but a number beside it: the function word stays required.
+    expect(searchVideos('lesson 1').map((v) => v.id)).toEqual(['lesson'])
+  })
 })

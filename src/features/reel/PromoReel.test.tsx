@@ -33,7 +33,7 @@ describe('PromoReel', () => {
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
     expect(screen.getByRole('progressbar', { name: 'Preview progress' })).toBeInTheDocument()
     await act(() => vi.advanceTimersByTimeAsync(TICK_AT[0]))
-    expect(screen.getByRole('status')).toHaveTextContent('Video starts in 3 seconds')
+    expect(screen.getByRole('status')).toHaveTextContent('The video is about to start')
 
     await act(() => vi.advanceTimersByTimeAsync(REEL_MS - TICK_AT[0] - 1))
     expect(onComplete).not.toHaveBeenCalled()

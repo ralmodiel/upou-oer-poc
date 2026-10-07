@@ -164,8 +164,11 @@ export function matchTier(field: string, term: Term): number {
     if (field.includes(` ${term.word} `)) return EXACT
     return field.includes(` ${term.word}`) ? PREFIX : PART
   }
-  // The root, as a word start ("students" finds "Student Orientation"), ranks with a part.
-  if (term.stem && field.includes(` ${term.stem}`)) return PART
+  // The root as a word or its plain plural ("students" finds "Student Orientation"; "hearing" never
+  // finds "heart"), ranked with a part.
+  const s = term.stem
+  if (s && (field.includes(` ${s} `) || field.includes(` ${s}s `) || field.includes(` ${s}es `)))
+    return PART
   // A near spelling counts only as a whole word.
   for (const near of term.near) if (field.includes(` ${near} `)) return NEAR
   return 0

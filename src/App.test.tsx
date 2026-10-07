@@ -17,4 +17,6 @@ it('restores a reloaded watch page to its scroll position once the page is in, n
   // The whole app and the watch page load here: slow beside the rest of a full run.
   await screen.findByRole('heading', { level: 1, name: testVideo.title }, { timeout: 15_000 })
   expect(scrollTo).toHaveBeenCalledWith(0, 700)
+  // The address Pages serves (a directory), so the next reload is no redirect that drops state.
+  expect(window.location.pathname).toBe(`${path}/`)
 }, 30_000)

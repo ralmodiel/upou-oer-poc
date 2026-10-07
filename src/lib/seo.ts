@@ -77,6 +77,24 @@ export function siteUrl(): string {
 export const canonicalUrl = (path: string): string =>
   `${siteUrl()}${trimSlash(path.replace(/[?#].*/, ''))}/`
 
+/** A page's path as Pages serves it (its shell is a directory): "/watch/x" → "/watch/x/"; files keep theirs. */
+export const directoryPath = (pathname: string): string =>
+  /(\/|\.[^/]*)$/.test(pathname) ? pathname : `${pathname}/`
+
+/**
+ * Ids and slugs are lower case (records.ts): the same address with them lowered, for a link typed or
+ * printed in capitals (a QR code); undefined when it has none.
+ */
+export function lowerCaseIds(href: string): string | undefined {
+  const url = new URL(href)
+  const path = url.pathname.replace(/\/(watch|collections)\/[^/]+\/?$/i, (end) => end.toLowerCase())
+  const v = url.searchParams.get('v') ?? ''
+  if (path === url.pathname && v === v.toLowerCase()) return undefined
+  url.pathname = path
+  if (v) url.searchParams.set('v', v.toLowerCase())
+  return url.href
+}
+
 export const embedUrlOf = (youtubeId: string) =>
   `https://www.youtube-nocookie.com/embed/${youtubeId}`
 

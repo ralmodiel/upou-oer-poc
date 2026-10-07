@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react'
-import { createBrowserRouter, Navigate, Outlet, ScrollRestoration } from 'react-router'
+import { createBrowserRouter, Navigate, Outlet, replace, ScrollRestoration } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import { catalogRoute } from './data/catalog'
 import { loadCite } from './data/cites'
 import AppLayout, { AppError, AppFallback } from './layouts/AppLayout'
+import { directoryPath, lowerCaseIds } from './lib/seo'
 import BrowsePage from './pages/BrowsePage'
 import SearchPage from './pages/SearchPage'
 import MyListPage from './pages/MyListPage'
@@ -62,6 +63,11 @@ const router = createBrowserRouter(
           Component: AppLayout,
           // The rest of the catalog arrives after the first paint; a page that needs it waits here.
           ...catalogRoute,
+          // A link in capitals goes to its page first: the catalog would look in the wrong file.
+          loader: (args: { request: Request }) => {
+            const lower = lowerCaseIds(args.request.url)
+            return lower ? replace(lower) : catalogRoute.loader(args)
+          },
           HydrateFallback: AppFallback,
           ErrorBoundary: AppError,
           children: [
@@ -97,6 +103,15 @@ const router = createBrowserRouter(
     basename: import.meta.env.BASE_URL.replace(/(.)\/$/, '$1'),
   },
 )
+
+// Pages answers "/watch/x" with a 301 to "/watch/x/", and the browser drops the entry's
+// history.state on that redirect: reloading a page reached in the app lost its scroll position,
+// its Up next playlist and where Back goes. So the address bar shows the form Pages serves.
+router.subscribe(() => {
+  const { pathname, search, hash } = window.location
+  const path = directoryPath(pathname)
+  if (path !== pathname) window.history.replaceState(window.history.state, '', path + search + hash)
+})
 
 export default function App() {
   return <RouterProvider router={router} />

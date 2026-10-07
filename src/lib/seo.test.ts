@@ -11,6 +11,8 @@ import {
   TITLE_MAX,
   breadcrumbJsonLd,
   canonicalUrl,
+  directoryPath,
+  lowerCaseIds,
   clamp,
   collectionJsonLd,
   collectionSeo,
@@ -118,6 +120,27 @@ describe('urls', () => {
     )
     configureSite({})
     expect(canonicalUrl('/collections/')).toBe(`${window.location.origin}/collections/`)
+  })
+
+  it('lowers ids and slugs typed or printed in capitals, and leaves other addresses alone', () => {
+    const at = 'https://x.org/upou-oer-poc'
+    expect(lowerCaseIds(`${at}/watch/E-Commerce-Funnel/?t=5`)).toBe(
+      `${at}/watch/e-commerce-funnel/?t=5`,
+    )
+    expect(lowerCaseIds(`${at}/collections/Education`)).toBe(`${at}/collections/education`)
+    expect(lowerCaseIds(`${at}/WATCH/X/`)).toBe(`${at}/watch/x/`)
+    expect(lowerCaseIds(`${at}/?v=Data-Privacy`)).toBe(`${at}/?v=data-privacy`)
+    expect(lowerCaseIds(`${at}/collections/education/?v=x`)).toBeUndefined()
+    expect(lowerCaseIds(`${at}/search/?q=Data%20Science`)).toBeUndefined()
+    expect(lowerCaseIds(`${at}/Nope`)).toBeUndefined()
+  })
+
+  it('writes page paths the way Pages serves them, so a reload is no redirect', () => {
+    expect(directoryPath('/upou-oer-poc')).toBe('/upou-oer-poc/')
+    expect(directoryPath('/upou-oer-poc/watch/x')).toBe('/upou-oer-poc/watch/x/')
+    expect(directoryPath('/watch/x/')).toBe('/watch/x/')
+    expect(directoryPath('/')).toBe('/')
+    expect(directoryPath('/upou-oer-poc/index.html')).toBe('/upou-oer-poc/index.html')
   })
 })
 

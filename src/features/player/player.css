@@ -59,8 +59,10 @@
   cursor: pointer;
 }
 
-.player-start-over:hover {
-  background: rgb(55 54 55 / 0.14);
+@media (hover: hover) {
+  .player-start-over:hover {
+    background: rgb(55 54 55 / 0.14);
+  }
 }
 
 .player-start-over:focus-visible {

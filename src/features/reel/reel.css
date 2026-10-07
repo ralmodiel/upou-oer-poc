@@ -1123,7 +1123,7 @@
     transform 0.2s var(--ease);
 }
 
-.reel-btn:hover,
+/* Hover only where a pointer hovers: after a tap on a tablet it stuck, reading as pressed. */
 .reel-btn:focus-visible {
   background: var(--surface);
   color: var(--maroon);
@@ -1132,10 +1132,24 @@
     0 0 0 1px rgb(55 54 55 / 0.12),
     0 14px 28px -12px rgb(27 26 23 / 0.6);
 }
+@media (hover: hover) {
+  .reel-btn:hover {
+    background: var(--surface);
+    color: var(--maroon);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 0 0 1px rgb(55 54 55 / 0.12),
+      0 14px 28px -12px rgb(27 26 23 / 0.6);
+  }
+}
 
 @media (prefers-reduced-motion: no-preference) {
-  .reel-btn:hover,
   .reel-btn:focus-visible {
+    translate: 0 -1px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .reel-btn:hover {
     translate: 0 -1px;
   }
 }
@@ -1169,7 +1183,6 @@
     0 8px 22px -12px rgb(27 26 23 / 0.6);
 }
 
-.reel-skip:hover,
 .reel-skip:focus-visible {
   border-color: var(--maroon-2);
   background: linear-gradient(to bottom, var(--maroon), var(--maroon-2));
@@ -1177,6 +1190,16 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.22),
     0 14px 28px -12px rgb(27 26 23 / 0.65);
+}
+@media (hover: hover) {
+  .reel-skip:hover {
+    border-color: var(--maroon-2);
+    background: linear-gradient(to bottom, var(--maroon), var(--maroon-2));
+    color: var(--paper);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 14px 28px -12px rgb(27 26 23 / 0.65);
+  }
 }
 
 /*

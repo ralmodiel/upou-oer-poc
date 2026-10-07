@@ -182,8 +182,10 @@ html dialog.tv-sheet::backdrop {
     scale 250ms var(--ease-out-soft),
     box-shadow 250ms var(--ease-out-soft);
 }
-.tv-card:hover {
-  box-shadow: var(--shadow-elev-3);
+@media (hover: hover) {
+  .tv-card:hover {
+    box-shadow: var(--shadow-elev-3);
+  }
 }
 .tv-card[data-focus-mark] {
   outline: 3px solid var(--color-focus);
@@ -202,8 +204,10 @@ html dialog.tv-sheet::backdrop {
   box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.12);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .tv-card:hover {
-    translate: 0 -4px;
+  @media (hover: hover) {
+    .tv-card:hover {
+      translate: 0 -4px;
+    }
   }
   .tv-card[data-focus-mark] {
     translate: 0 -6px;
@@ -218,8 +222,13 @@ html dialog.tv-sheet::backdrop {
       opacity 300ms ease,
       transform 600ms var(--ease-out-soft);
   }
-  .tv-card:is(:hover, [data-focus-mark]) .tv-cover img {
+  .tv-card[data-focus-mark] .tv-cover img {
     transform: scale(1.05);
+  }
+  @media (hover: hover) {
+    .tv-card:hover .tv-cover img {
+      transform: scale(1.05);
+    }
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -295,8 +304,10 @@ input[data-search-page]::-webkit-search-cancel-button {
     inset 0 1px 0 rgb(255 255 255 / 0.06);
 }
 /* Washes stay light enough for the ink-3 count to keep 4.5:1 on the frost (4.6:1 dark, focused). */
-.page-row:hover {
-  background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+@media (hover: hover) {
+  .page-row:hover {
+    background-color: color-mix(in oklab, var(--color-ink) 4%, transparent);
+  }
 }
 /* TV focus on a row: the row keeps its inset ring and washes lighter; the cover takes a ring and a
    soft neutral glow and comes forward (the glow replaces the control bloom, which would spill). */

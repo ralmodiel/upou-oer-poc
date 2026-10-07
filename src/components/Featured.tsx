@@ -6,6 +6,7 @@ import { lastInput } from '../lib/pointer'
 import { useSavedPosition } from '../lib/storage'
 import type { Video } from '../types'
 import Backdrop from './Backdrop'
+import Carousel from './Carousel'
 import DetailsLink from './DetailsLink'
 import MyListButton from './MyListButton'
 import PlayFromStart from './PlayFromStart'
@@ -14,6 +15,7 @@ import Recommended from './Recommended'
 import Thumbnail from './Thumbnail'
 import VideoGrid from './VideoGrid'
 import { useBelowFoldLater, useImagesSettled } from './browse-hooks'
+import { useCarousel } from './carousel-state'
 import { FactsLine, LONG_TITLE } from './browse-ui'
 import { AT_DETAILS, wasOpenedInApp } from './details'
 import { LAND, prefersReducedMotion } from './hooks'
@@ -85,6 +87,7 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
   // Also new follows the featured zone.
   const showNew = useBelowFoldLater(zone, later, 'bottom')
   const hovered = useRef(false)
+  const carousel = useCarousel(videos.length, true)
   const intent = useRef({ timer: 0, to: -1 })
 
   useEffect(() => {
@@ -184,17 +187,17 @@ function FeaturedHome({ videos, alsoNew, start = 0, later = false }: Props) {
           hovered.current = false
           cancelPick()
         }}
-        onPointerOver={(e) => pick(e.target, HOVER_INTENT_MS)}
+        // A mouse resting on a card shows it; a finger is only passing (a scroll or a swipe).
+        onPointerOver={(e) => e.pointerType === 'mouse' && pick(e.target, HOVER_INTENT_MS)}
         onFocus={(e) => pick(e.target, 0)}
       >
         <Hero video={videos[Math.min(index, count - 1)]} priority={index === start} />
         {/* Every featured video, side by side: five in a line from lg, scrolling sideways below. */}
         <section aria-label="Featured videos" className="px-(--gutter) py-6">
-          <div className="row">
-            <div data-spatial="track" className="row-track">
-              <VideoGrid videos={videos} layout="row" row="featured" showCategory />
-            </div>
-          </div>
+          {/* Pages like the other rows (its buttons) where it scrolls sideways. */}
+          <Carousel carousel={carousel} label="Featured videos">
+            <VideoGrid videos={videos} layout="row" row="featured" showCategory />
+          </Carousel>
         </section>
       </div>
       {showNew && alsoNew.length > 0 && (
@@ -234,12 +237,30 @@ function swapHero(apply: () => void) {
     '[data-featured-zone]',
   )
   const scoped = zone?.startViewTransition ? zone : undefined
+  // The document-wide transition (no scoped one: Chromium before 140-ish, Safari) paints the hero's
+  // snapshots above everything, the sticky header and tab bar too: it cuts instead unless the hero
+  // is clear of them.
+  if (!scoped && !clearOfChrome(zone)) return show()
   const root = scoped ?? document.documentElement
   root.dataset.heroSwap = ''
   const transition = scoped?.startViewTransition?.(show) ?? document.startViewTransition(show)
   swapping = transition
   void transition.finished.finally(() => {
     if (swapping === transition) delete root.dataset.heroSwap
+  })
+}
+
+// Whether the parts the swap animates (browse.css, hero-media and hero-text) lie between the
+// header and the tab bar.
+function clearOfChrome(zone: Element | null): boolean {
+  const parts = [...(zone?.querySelectorAll('[data-hero-media], [data-hero-text]') ?? [])]
+  if (!parts.length) return false
+  const header = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0
+  const tabs = document.querySelector('nav[aria-label="Primary"]')?.getBoundingClientRect()
+  const floor = tabs && tabs.height > 0 ? tabs.top : window.innerHeight
+  return parts.every((el) => {
+    const box = el.getBoundingClientRect()
+    return box.top >= header && box.bottom <= floor
   })
 }
 

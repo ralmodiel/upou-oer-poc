@@ -117,11 +117,18 @@ describe('Featured hero and row', () => {
     expect(heroPlays()).toBe(href(1))
   })
 
+  it('never swaps for a finger passing over a card (a scroll or a swipe)', () => {
+    renderHome()
+    fireEvent.pointerOver(cardLink(2), { pointerType: 'touch' })
+    wait(HOVER_INTENT_MS * 2)
+    expect(heroPlays()).toBe(href(0))
+  })
+
   it('shows a card under a resting pointer after the intent delay, and keeps it on leaving', () => {
     const { container } = renderHome()
     const zone = container.querySelector('[data-featured-zone]')!
     fireEvent.pointerEnter(zone)
-    fireEvent.pointerOver(cardLink(2))
+    fireEvent.pointerOver(cardLink(2), { pointerType: 'mouse' })
     wait(HOVER_INTENT_MS - 50)
     expect(heroPlays()).toBe(href(0))
     wait(50)
@@ -138,7 +145,7 @@ describe('Featured hero and row', () => {
     const { container } = renderHome()
     screen.getByRole('link', { name: 'Play' }).focus()
     fireEvent.pointerEnter(container.querySelector('[data-featured-zone]')!)
-    fireEvent.pointerOver(cardLink(2))
+    fireEvent.pointerOver(cardLink(2), { pointerType: 'mouse' })
     wait(HOVER_INTENT_MS)
     expect(heroPlays()).toBe(href(2))
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Play' }))
@@ -146,9 +153,9 @@ describe('Featured hero and row', () => {
 
   it('drops a pick when the pointer sweeps on before the intent delay', () => {
     renderHome()
-    fireEvent.pointerOver(cardLink(1))
+    fireEvent.pointerOver(cardLink(1), { pointerType: 'mouse' })
     wait(HOVER_INTENT_MS / 2)
-    fireEvent.pointerOver(cardLink(2))
+    fireEvent.pointerOver(cardLink(2), { pointerType: 'mouse' })
     wait(HOVER_INTENT_MS)
     expect(heroPlays()).toBe(href(2))
   })
